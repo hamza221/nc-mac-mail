@@ -92,6 +92,11 @@ A workstream that needs a change in someone else's file writes it in its report 
 blocks, raises it. It does not reach across the boundary — that is how two agents produce
 one conflict and two half-fixes.
 
+Two standing exceptions, both from WS-00. `NextcloudMail/App/NextcloudMailApp.swift` and
+`RootSplitView.swift` exist so that the skeleton launches; they are WS-13's to replace, not
+to work around. And `Packages/*/Tests/*/PlaceholderTests.swift` is an empty test target per
+package, so the workstream that writes the first test writes a test rather than a target.
+
 ## What "owned" means for documents
 
 Documents are not frozen. If an implementation finds that a document is wrong — the sync

@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: Hamza Mahjoubi
+SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+
 # WS-05 — Incremental sync, tail scan, deep reconcile
 
 **Wave 2, after WS-04. Size: L.**

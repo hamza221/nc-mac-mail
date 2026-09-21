@@ -28,6 +28,9 @@ old one stays.*
 | [0013](0013-module-layout.md) | Four local packages plus one app target | Accepted |
 | [0014](0014-singleton-enumeration.md) | Enumerate with `view=singleton`; thread locally | Accepted |
 | [0015](0015-bounded-sync-window.md) | Bounded sync window plus periodic deep reconcile | Accepted |
+| [0016](0016-warnings-as-errors-at-the-build-command.md) | Ask for warnings-as-errors at the build command, not in the manifests | Accepted |
+| [0017](0017-file-system-synchronized-group.md) | The app target reads its sources from a synchronised folder | Accepted |
+| [0018](0018-ad-hoc-signature-in-the-checked-in-project.md) | The checked-in project signs ad hoc | Accepted |
 
 ## Which ones matter most
 

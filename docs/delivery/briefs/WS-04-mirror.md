@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: Hamza Mahjoubi
+SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+
 # WS-04 — Mirror coordinator and two-stage backfill
 
 **Wave 2, after WS-01, WS-02, WS-03. Size: L. This is the heart of the product.**

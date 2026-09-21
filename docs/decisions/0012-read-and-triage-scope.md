@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: Hamza Mahjoubi
+SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+
 # ADR-0012: v1 is read and triage; no composer
 
 **Status:** Accepted

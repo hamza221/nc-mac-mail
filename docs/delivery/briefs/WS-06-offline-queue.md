@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: Hamza Mahjoubi
+SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+
 # WS-06 — Mutation queue and drainer
 
 **Wave 2, after WS-05. Size: M.**

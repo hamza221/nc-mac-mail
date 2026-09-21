@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: Hamza Mahjoubi
+SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+
 # ADR-0013: Four local packages plus one app target
 
 *(plus a fifth, test-only, that ships nothing — see below)*

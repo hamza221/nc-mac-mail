@@ -9,8 +9,11 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 ## Build
 
-- [ ] `swift build` clean in every package the workstream touched, **warnings as errors**.
-- [ ] `xcodebuild -scheme NextcloudMail build` clean, if the app target was touched.
+- [ ] `make build` clean — `swift build -Xswiftc -warnings-as-errors` in every package.
+      The flag lives in the command, not the manifest
+      ([ADR-0016](../decisions/0016-warnings-as-errors-at-the-build-command.md)).
+- [ ] `make build-app` clean, if the app target was touched. Not bare `xcodebuild`: it needs
+      the `SUPPRESS_WARNINGS=NO` that the Makefile adds.
 - [ ] Swift 6 language mode, strict concurrency, no new `@unchecked Sendable`, no new
       `@preconcurrency import`.
 - [ ] No new third-party dependency without an ADR.
@@ -42,7 +45,8 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 ## Style
 
-- [ ] `swift-format` and `swiftlint` clean, using the configuration WS-00 set up.
+- [ ] `make lint` clean. That is `swift format` (a toolchain subcommand, not a separate
+      binary) and `swiftlint`, using the configuration WS-00 set up.
 - [ ] No `print`. `OSLog`, with `.private` on anything that could carry user data.
 - [ ] No force unwrap outside tests, except where a comment proves the invariant.
 - [ ] No `Image(systemName:)` outside the one `MailSymbol` mapping file

@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: Hamza Mahjoubi
+SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+
 # WS-09 — Message view, WebView, scheme handler
 
 **Wave 3, after WS-04. Size: XL. The unknowns live here.**

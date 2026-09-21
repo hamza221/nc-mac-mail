@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: Hamza Mahjoubi
+SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+
 # WS-08 — Message list
 
 **Wave 3, after WS-04. Size: L. Parallel with WS-07, WS-09, WS-13.**

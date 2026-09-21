@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: Hamza Mahjoubi
+SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+
 # WS-00 — Project skeleton, packages, CI, lint
 
 **Wave 0. Nothing else starts until this merges. Size: M.**
@@ -22,16 +27,18 @@ and CI enforces both — so every later workstream adds code rather than infrast
 
 ## Build
 
-**The Xcode project.** App target `NextcloudMail`, macOS 26, Swift 6.2, bundle id
-`com.nextcloud.mail.macos`. App Sandbox with `com.apple.security.network.client` and
+**The Xcode project.** App target `NextcloudMail`, macOS 26, Swift 6 language mode, bundle
+id `com.nextcloud.mail.macos`. App Sandbox with `com.apple.security.network.client` and
 nothing else. Hardened runtime on. A `NavigationSplitView` with three placeholder columns
 and `.ncTheme(.nextcloud)` at the scene root, so M0 is visibly an app.
 
-Keychain caveat: if a local ad-hoc signature blocks `SecItem`, develop with the sandbox off
-and document how to turn it back on. Do not silently ship it off — put it in the README's
-development section.
+Keychain caveat, **measured and closed by WS-00**: an ad-hoc signature does not block
+`SecItem`. A bundle signed `codesign --sign - --options runtime` with these entitlements
+runs inside its container and gets `errSecSuccess` from `SecItemAdd`, `SecItemCopyMatching`
+and `SecItemDelete` on macOS 26. The sandbox stays on. What the ad-hoc signature does drop
+is the hardened runtime — see [../../decisions/0018-ad-hoc-signature-in-the-checked-in-project.md](../../decisions/0018-ad-hoc-signature-in-the-checked-in-project.md).
 
-**Four packages** under `Packages/`, each with its own manifest:
+**Five packages** under `Packages/`, each with its own manifest:
 
 | Package | Depends on | `defaultIsolation` |
 | --- | --- | --- |
@@ -52,9 +59,14 @@ let shared: [SwiftSetting] = [
     .swiftLanguageMode(.v6),
     .enableUpcomingFeature("ExistentialAny"),
     .enableUpcomingFeature("InternalImportsByDefault"),
-    .treatAllWarnings(as: .error),
 ]
 ```
+
+`.treatAllWarnings(as: .error)` was in this list and had to come out: Xcode gives every
+package target `-suppress-warnings` and swiftc rejects the pair, so the app did not build at
+all. Warnings-as-errors moved to `swift build -Xswiftc -warnings-as-errors`, which covers
+the same targets. [ADR-0016](../../decisions/0016-warnings-as-errors-at-the-build-command.md)
+has the measurements.
 
 The app target gets `defaultIsolation(MainActor.self)`; the packages do **not** — see the
 concurrency document for why that would be expensive.
@@ -76,7 +88,9 @@ Cache SwiftPM. Fail on warnings.
 ## Acceptance
 
 - `make build`, `make test`, `make lint` all pass on a clean checkout.
-- `xcodebuild -scheme NextcloudMail build` is clean with warnings as errors.
+- `make build-app` is clean. The bare `xcodebuild -scheme NextcloudMail build` is **not**,
+  and cannot be until `NextcloudUI` stops setting `.treatAllWarnings(as: .error)`: it needs
+  `SUPPRESS_WARNINGS=NO`, which is what `make build-app` adds. ADR-0016.
 - The app launches and shows three empty columns wearing the Nextcloud brand colour.
 - CI is green on a pull request, and demonstrably red when a warning is introduced.
 - `swift test` runs in all five packages with zero tests and no errors.

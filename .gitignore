@@ -1,0 +1,10 @@
+.DS_Store
+.build/
+.swiftpm/
+DerivedData/
+build/
+*.xcuserdatad
+xcuserdata/
+.index-build/
+*.dmg
+.claude/worktrees/

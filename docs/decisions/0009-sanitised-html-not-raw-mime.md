@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: Hamza Mahjoubi
+SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+
 # ADR-0009: Store the server's sanitised HTML, not raw MIME
 
 **Status:** Accepted

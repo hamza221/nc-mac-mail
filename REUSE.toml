@@ -1,0 +1,49 @@
+# SPDX-FileCopyrightText: Hamza Mahjoubi
+# SPDX-License-Identifier: AGPL-3.0-or-later
+version = 1
+SPDX-PackageName = "Nextcloud Mail for macOS"
+SPDX-PackageSupplier = "Nextcloud GmbH <https://nextcloud.com/impressum/>"
+SPDX-PackageDownloadLocation = "https://github.com/hamza221/nextcloud-mail-desktop"
+
+# Path globs rather than per-file .license sidecars, matching NextcloudUI:
+# `reuse lint` walks every file and sidecars would make it the slowest job in CI.
+
+# Files whose format has no comment syntax, or that a tool rewrites.
+[[annotations]]
+path = [
+    ".gitignore",
+    ".swift-format",
+    ".xcode-version",
+    "Packages/**/Package.resolved",
+]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "Hamza Mahjoubi"
+SPDX-License-Identifier = "CC0-1.0"
+
+# Xcode owns these files and strips anything it did not write. The entitlements
+# file keeps its explanatory comments, but it is annotated here as well so that
+# an Xcode rewrite cannot fail the lint.
+[[annotations]]
+path = [
+    "NextcloudMail.xcodeproj/**",
+    "NextcloudMail/NextcloudMail.entitlements",
+]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "Hamza Mahjoubi"
+SPDX-License-Identifier = "AGPL-3.0-or-later"
+
+# Recorded server responses, scrubbed by Scripts/record-fixtures.sh. JSON carries
+# no comment. WS-14 owns what lands here.
+[[annotations]]
+path = "Packages/NCMailTestSupport/Sources/NCMailTestSupport/Resources/Fixtures/**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "Hamza Mahjoubi"
+SPDX-License-Identifier = "AGPL-3.0-or-later"
+
+# `plan/` holds the three briefs this work started from, kept exactly as written
+# (see README.md). A header would be an edit to an input document.
+[[annotations]]
+path = "plan/**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "Hamza Mahjoubi"
+SPDX-License-Identifier = "AGPL-3.0-or-later"

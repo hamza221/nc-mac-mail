@@ -1,0 +1,64 @@
+# SPDX-FileCopyrightText: Hamza Mahjoubi
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# SwiftLint is not a style tool here -- `swift format` owns formatting. These
+# rules make the invariants in AGENTS.md a build failure rather than a review
+# miss. Keep the file small: a rule that does not encode an invariant does not
+# belong in it.
+
+only_rules:
+  - custom_rules
+  - force_cast
+  - force_try
+  - force_unwrapping
+
+excluded:
+  - .build
+  - Packages/NCMailCore/.build
+  - Packages/NCMailNet/.build
+  - Packages/NCMailStore/.build
+  - Packages/NCMailSync/.build
+  - Packages/NCMailTestSupport/.build
+  - LICENSES
+
+force_unwrapping:
+  severity: error
+force_cast:
+  severity: error
+force_try:
+  severity: error
+
+custom_rules:
+  ncm_no_print:
+    name: "print"
+    regex: '(^|[^\w.])print\s*\('
+    message: "Mail bodies and addresses must never reach stdout. Use OSLog, with .private on anything a user wrote."
+    severity: error
+
+  ncm_no_sf_symbol:
+    included: ".*\\.swift"
+    excluded: ".*MailSymbol\\.swift"
+    name: "Image(systemName:) outside MailSymbol.swift"
+    regex: 'Image\s*\(\s*systemName\s*:'
+    message: "Every symbol goes through MailSymbol, so the swap to an MDI glyph is one file. See docs/reference/ui-components.md."
+    severity: error
+
+  ncm_no_urlsession_outside_net:
+    included: ".*\\.swift"
+    excluded: "Packages/(NCMailNet|NCMailTestSupport)/.*"
+    name: "URLSession outside NCMailNet"
+    regex: '\bURLSession\b'
+    message: "The network never renders. Requests live in NCMailNet; everything else reads the database."
+    severity: error
+
+  ncm_no_unchecked_sendable:
+    name: "@unchecked Sendable"
+    regex: '@unchecked\s+Sendable'
+    message: "If a type will not conform, it is the wrong type. See docs/architecture/concurrency.md."
+    severity: error
+
+  ncm_no_magic_metrics:
+    name: "Magic number in a layout modifier"
+    regex: '\.(padding|cornerRadius)\s*\(\s*\d'
+    message: "Layout constants come from theme.metrics, not literals."
+    severity: error

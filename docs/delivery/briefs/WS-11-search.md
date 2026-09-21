@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: Hamza Mahjoubi
+SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+
 # WS-11 — Local full-text search
 
 **Wave 4, after WS-03 and WS-08. Size: M.**

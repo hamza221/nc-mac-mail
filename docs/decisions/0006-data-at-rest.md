@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: Hamza Mahjoubi
+SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+
 # ADR-0006: Sandbox container plus FileVault, not an encrypted database
 
 **Status:** Accepted, with a named trigger to revisit

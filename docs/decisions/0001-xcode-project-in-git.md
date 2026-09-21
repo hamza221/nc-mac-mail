@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: Hamza Mahjoubi
+SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+
 # ADR-0001: Check an Xcode project into git rather than ship a pure SwiftPM app
 
 **Status:** Accepted

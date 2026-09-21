@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: Hamza Mahjoubi
+SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+
 # WS-13 — App shell, theme, restoration, status
 
 **Wave 3, after WS-01 and WS-02. Size: M. Parallel with WS-07, WS-08, WS-09.**

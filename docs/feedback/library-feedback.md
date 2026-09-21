@@ -117,3 +117,61 @@ Kept deliberately: a feedback document that only complains is not evidence.
   kind of documentation.
 - **The `MailScreenDemo` in the showcase** is a genuinely useful reference composition — it
   is what the sidebar and list briefs point at.
+
+---
+
+## From WS-00 (project skeleton)
+
+### `.treatAllWarnings(as: .error)` makes the library unbuildable from Xcode
+**Workstream:** WS-00 · **Component:** `Package.swift` · **Severity:** blocker
+**Where:** `Package.swift:19` (`sharedSwiftSettings`), every target
+
+Any Xcode project that depends on `NextcloudUI` fails to build, before compiling a line of
+its own code:
+
+```
+error: conflicting options '-warnings-as-errors' and '-suppress-warnings'
+error: Conflicting options (in target 'NextcloudDesign' from project 'nextcloud-ui-swift')
+** BUILD FAILED **
+```
+
+Xcode gives every package target `-suppress-warnings`, so a dependency's warnings stay out
+of the consumer's issue navigator. `.treatAllWarnings(as: .error)` produces
+`-warnings-as-errors`. swiftc rejects the pair. Xcode 26.6 (17F113), Swift 6.3.3.
+
+What makes it a blocker rather than friction is where the override can go. `xcodebuild
+SUPPRESS_WARNINGS=NO` on the command line works, because a command-line setting reaches the
+synthesised package projects. `SUPPRESS_WARNINGS = NO` in the consumer's `.xcodeproj` does
+not — checked at project level, no effect. So there is no fix a consumer can commit, and
+**Cmd-B in the Xcode GUI cannot be made to work at all** while the setting is in the
+manifest. This app builds only through `make build-app`, which adds the override.
+
+The library's own CI never sees it: it runs `swift build`, where SwiftPM applies no
+suppression to the root package.
+
+Suggested fix: drop `.treatAllWarnings(as: .error)` from the manifest and pass
+`-Xswiftc -warnings-as-errors` from the `Makefile` and CI instead. SwiftPM applies
+`-Xswiftc` to the root package's own targets and not to its dependencies, so the coverage is
+identical and consumers are unaffected. That is what this repo now does; ADR-0016 has the
+measurements. The library also has a `Showcase/**/*.pbxproj` glob in its `REUSE.toml` with
+no project behind it — the moment that project exists, its own build will hit this.
+
+### `.ncTheme(.nextcloud)` at a scene root is one line and it works
+**Workstream:** WS-00 · **Component:** `NCTheme` · **Severity:** polish
+**Where:** `NextcloudMail/App/NextcloudMailApp.swift:19`
+
+The skeleton's three columns wear the brand colour with a single modifier on the
+`WindowGroup` content and `@Environment(\.ncTheme)` in the column view. No setup, no
+injection, no `@StateObject`. `NCDynamicColor` conforming to `ShapeStyle` means
+`.foregroundStyle(theme.colors.primary)` composes with no unwrapping. Nothing to report
+beyond that it was uneventful, which is the point of a token system.
+
+### Icons compile under Xcode, as ADR-0001 assumed
+**Workstream:** WS-00 · **Component:** `NextcloudIcons` · **Severity:** —
+**Where:** build log, target `nextcloud-ui-swift_NextcloudIcons`
+
+`actool` runs and emplaces `Assets.car` in the resource bundle:
+`note: Emplaced .../nextcloud-ui-swift_NextcloudIcons.bundle/Contents/Resources/Assets.car`.
+That is the premise of [ADR-0001](../decisions/0001-xcode-project-in-git.md) confirmed for
+an unsigned debug build. Question 4 in the list above — whether the glyphs survive a
+sandboxed, hardened, signed Release build — is still open and still WS-13's.
