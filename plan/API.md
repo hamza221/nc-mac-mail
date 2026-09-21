@@ -1,5 +1,12 @@
 # Nextcloud Mail API map
 
+> **Status: current reference, still accurate.** This is the complete endpoint map and
+> remains the first place to look for anything the app does not use yet.
+>
+> For the subset v1 actually calls, the exact JSON shapes, and the four endpoint traps that
+> cost a day each if met in a debugger, see
+> [docs/reference/api-payloads.md](../docs/reference/api-payloads.md).
+
 Every endpoint in `appinfo/routes.php` plus the ones declared with route attributes,
 with the parameters each controller method accepts.
 Source: https://github.com/nextcloud/mail (main, app version 5.12.0-rc.1).

@@ -1,5 +1,12 @@
 # Nextcloud Mail feature list
 
+> **Status: input brief, still accurate.** The feature list of the Vue client, kept as
+> written, and the map of what a native client could eventually cover.
+>
+> What v1 does and deliberately does not do is in
+> [docs/product/overview.md](../docs/product/overview.md) and
+> [ADR-0012](../docs/decisions/0012-read-and-triage-scope.md).
+
 Source: https://github.com/nextcloud/mail (main, app version 5.12.0-rc.1).
 Server app written in PHP (Nextcloud 32 to 36, PHP 8.1 to 8.5) with a Vue 3 frontend.
 IMAP/SMTP handling is built on the Horde libraries.

@@ -1,5 +1,19 @@
 # Native macOS client for Nextcloud Mail
 
+> **Status: input brief, partly superseded.** This is the plan the project started from
+> and it is kept as written. The living specification is in [`docs/`](../docs/README.md).
+>
+> One decision below has been reversed: **"No local database"**. The app now keeps a
+> complete local mirror of subscribed mailboxes and reads from it always — see
+> [ADR-0003](../docs/decisions/0003-local-first-full-mirror.md) and
+> [docs/architecture/local-mirror.md](../docs/architecture/local-mirror.md). The single app
+> target has also become four packages plus an app target
+> ([ADR-0013](../docs/decisions/0013-module-layout.md)), and the phases here are now the
+> sixteen workstreams in [docs/delivery/workstreams.md](../docs/delivery/workstreams.md).
+>
+> Everything else — the Xcode project, Login Flow v2, the scope, the WebView rules, the
+> verification checklist — carries through unchanged.
+
 ## Context
 
 `hamza221/nextcloud-swiftui` (the `NextcloudUI` package) has all six waves built and its
