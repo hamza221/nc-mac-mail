@@ -20,7 +20,7 @@ XCODEFLAGS := -project NextcloudMail.xcodeproj -scheme NextcloudMail \
 # The toolchain ships swift-format as a subcommand of `swift`. There is no
 # standalone `swift-format` binary to install, and invoking one is the most
 # common way this Makefile gets broken by a well-meaning edit.
-FORMAT_PATHS := Packages/*/Package.swift Packages/*/Sources Packages/*/Tests NextcloudMail
+FORMAT_PATHS := Packages/*/Package.swift Packages/*/Sources Packages/*/Tests NextcloudMail NextcloudMailTests
 
 .PHONY: help
 help: ## Show this help
@@ -52,6 +52,10 @@ test-tsan: ## Run every package's tests under Thread Sanitizer
 .PHONY: build-app
 build-app: ## Build the app target with xcodebuild
 	xcodebuild $(XCODEFLAGS) build
+
+.PHONY: test-app
+test-app: ## Run the app target's unit tests with xcodebuild
+	xcodebuild $(XCODEFLAGS) test
 
 .PHONY: app
 app: build-app ## Build the app and launch it

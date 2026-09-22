@@ -41,6 +41,7 @@ old one stays.*
 | [0026](0026-fixtures-through-a-dependency-free-target.md) | Fixtures through a dependency-free `NCMailFixtures` target | Accepted |
 | [0027](0027-userdefaults-cache-for-the-launch-theme.md) | Cache the launch theme colour in `UserDefaults` for boot, `meta` for everything else | Accepted |
 | [0028](0028-no-force-unwrap-even-in-tests.md) | No force unwrap anywhere, including tests — `#require` instead | Accepted |
+| [0029](0029-app-test-target-borrows-its-modules-from-the-host.md) | The app's test target borrows its modules from the host app | Accepted |
 
 ## Which ones matter most
 

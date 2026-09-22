@@ -98,6 +98,30 @@ jobs:
         # -suppress-warnings and nothing builds. ADR-0016.
         run: make build-app
 
+  app-tests:
+    name: App target (tests)
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - id: xcode
+        run: echo "version=$(cat .xcode-version)" >> "$GITHUB_OUTPUT"
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: ${{ steps.xcode.outputs.version }}
+
+      - name: Cache resolved packages
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Developer/Xcode/DerivedData/**/SourcePackages
+          key: xcode-spm-${{ steps.xcode.outputs.version }}-${{ hashFiles('NextcloudMail.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+          restore-keys: xcode-spm-${{ steps.xcode.outputs.version }}-
+
+      - name: Test
+        # A separate job from the Release build above: NextcloudMailTests is
+        # hosted by the app, runs in Debug, and a test failure should not read
+        # as "the app does not compile". ADR-0029.
+        run: make test-app
+
   lint:
     name: Formatting
     runs-on: macos-26
