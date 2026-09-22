@@ -336,3 +336,38 @@ instances with different colours. `AppSession` picks the first account in a stab
 (server, login name) sort, which is deterministic but arbitrary — not a considered answer.
 This is a product question for `docs/product/ux-spec.md`, not a `NextcloudUI` gap, so it is
 recorded here rather than filed against the library.
+
+### Nothing new from `NextcloudUI` — WS-04 draws nothing
+**Workstream:** WS-04 · **Component:** — · **Severity:** —
+
+The mirror is an actor in `NCMailSync` with no view, no symbol and no colour, so it never
+touched the library. Recorded rather than left blank, because "nothing new" is only an
+acceptable answer if somebody checked.
+
+### `MailStore` cannot write a page and its cursor in one transaction from outside
+**Workstream:** WS-04 · **Component:** `NCMailStore`, not `NextcloudUI` · **Severity:** friction
+**Where:** `MailStore.upsert(envelopes:)`, `MailStore.setEnvelopeCursor(_:complete:mailboxId:lastSyncAt:)`
+
+`local-mirror.md` asked stage 1 for one transaction over both.
+`upsert(envelopes:)` opens its own, and the pieces it uses — `SearchIndexWriter`,
+`EnvelopeWrite.indexedPeople` — are internal to the package, so a caller cannot reproduce
+the page write inside its own `store.write { }` without reimplementing the address rewrite
+and the FTS row from outside the module that owns them.
+
+Resolved by ordering rather than by a new method
+([ADR-0030](../decisions/0030-stage-one-owns-its-cursor.md)): envelopes commit first, the
+cursor second, and a crash between them re-reads one page. Noted here because the next
+workstream to want two store calls atomic will hit the same wall, and because
+`upsert(envelopes:cursor:complete:mailboxId:)` is a small addition if WS-03 would rather
+have it than the ordering argument.
+
+### `mailbox.lastPrimedAt` has no DAO, so stage 0 writes it in raw SQL
+**Workstream:** WS-04 · **Component:** `NCMailStore` · **Severity:** friction
+**Where:** `MirrorCoordinator.storePrimed(_:mailboxId:)`
+
+`MailboxWrite` correctly omits every mirror-bookkeeping column (ADR-0023), and
+`setEnvelopeCursor` covers `envelopeCursor`, `envelopesComplete`, `lastSyncAt`,
+`syncFailureCount` and `lastSyncError` — but nothing covers `lastPrimedAt`, which stage 0
+is the only writer of. It is set through `store.write { }` with a one-line `UPDATE`, which
+works and is the documented escape hatch, but it is `NCMailSync` naming a column in another
+package's table. `setPrimed(mailboxId:at:)` next to `setEnvelopeCursor` would close it.

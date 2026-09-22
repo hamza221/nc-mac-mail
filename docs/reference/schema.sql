@@ -69,7 +69,10 @@ CREATE TABLE mailbox (
     cacheBuster        TEXT,
     -- Mirror bookkeeping, per mailbox. All of it survives a quit.
     isMirrored         INTEGER NOT NULL DEFAULT 0,   -- subscribed => mirrored
-    envelopeCursor     INTEGER,                      -- `dateInt` of the oldest envelope pulled
+    envelopeCursor     INTEGER,                      -- exclusive upper bound for the next page:
+    --                                              one past the oldest `dateInt` pulled, so a
+    --                                              duplicate at a page boundary is re-read rather
+    --                                              than skipped (ADR-0030)
     envelopesComplete  INTEGER NOT NULL DEFAULT 0,
     bodiesComplete     INTEGER NOT NULL DEFAULT 0,
     lastSyncAt         INTEGER,

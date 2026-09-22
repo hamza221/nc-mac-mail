@@ -29,6 +29,10 @@ let package = Package(
         .package(path: "../NCMailCore"),
         .package(path: "../NCMailNet"),
         .package(path: "../NCMailStore"),
+        // Test-only, and the reason the dependency is safe to list here: SwiftPM's cycle
+        // check runs on the target graph actually used, not on which packages a manifest
+        // lists, and nothing in the `NCMailSync` target itself touches it. ADR-0026.
+        .package(path: "../NCMailTestSupport"),
     ],
     targets: [
         // The only target that sees both NCMailNet and NCMailStore. That is the
@@ -38,6 +42,14 @@ let package = Package(
             dependencies: ["NCMailCore", "NCMailNet", "NCMailStore"],
             swiftSettings: shared
         ),
-        .testTarget(name: "NCMailSyncTests", dependencies: ["NCMailSync"], swiftSettings: shared),
+        .testTarget(
+            name: "NCMailSyncTests",
+            dependencies: [
+                "NCMailSync", "NCMailCore", "NCMailNet", "NCMailStore",
+                .product(name: "NCMailTestSupport", package: "NCMailTestSupport"),
+                .product(name: "NCMailFixtures", package: "NCMailTestSupport"),
+            ],
+            swiftSettings: shared
+        ),
     ]
 )

@@ -129,6 +129,45 @@ know why.
 
 ---
 
+## 11. `GET /api/messages`'s `cursor` is strictly exclusive, so a duplicate `dateInt` at a page boundary is unreachable
+
+**Where:** `lib/Controller/MessagesController.php::index`, `lib/Db/MessageMapper.php::findIdsByQuery`
+**Kind:** correctness · **Impact:** high
+
+`cursor` is a `dateInt`, and the comparison is `<`. Verified against Mail 5.12.0-rc.1:
+`GET /messages?mailboxId=5&view=singleton&limit=3` ends at `dateInt` 1789590490, and
+`&cursor=1789590490` returns only messages older than it, never it.
+
+Two messages can share a `dateInt` — the test account's inbox has ids 44 and 45 both at
+1778515439 — and `dateInt` is second resolution, so on a busy mailbox this is common rather
+than exotic. When a page's `limit` falls between two such messages, the client sends the
+first one's `dateInt` as the cursor and the second becomes unreachable by pagination.
+There is no error, no gap in the count the client can see, and no second chance: every
+subsequent page is strictly older.
+
+A client can work around it by sending `oldest dateInt + 1` and tolerating one duplicated
+row per page, which is what this client does
+([ADR-0030](../decisions/0030-stage-one-owns-its-cursor.md)). It should not have to, and a
+client that reads the parameter's name and does the obvious thing loses mail silently.
+
+**Suggestion:** make the cursor a `(dateInt, id)` pair, or document the `+ 1`. The web
+client does not hit this because it never enumerates a whole mailbox.
+
+## 12. The wall-clock cost of a backfill is the IMAP fetch, and it varies eightfold
+
+**Where:** `lib/Controller/MessagesController.php::getBody`
+**Kind:** performance · **Impact:** medium
+
+Measured by mirroring a 155-message account three times with identical code, two body
+fetches in flight: 183 s, 213 s and 1,498 s. The request count is the same every time; what
+moves is how long `/body` takes to open an IMAP connection, fetch, parse and sanitise.
+
+This is the number behind the bulk-body ask in finding 1. A client cannot make it smaller by
+being politer — it is already inside the concurrency budget — and at 1.4 s per message a
+50,000-message account is 19 hours of somebody's server doing one message at a time.
+
+---
+
 ## Things that are right, and worth saying
 
 - **The server sanitises HTML and blocks remote images before the client sees them**

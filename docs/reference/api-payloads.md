@@ -18,7 +18,7 @@ The complete endpoint map — including everything v1 does not use — is
 [../../plan/API.md](../../plan/API.md). This document covers only what v1 touches, plus the
 traps.
 
-## Read this first: the four traps
+## Read this first: the five traps
 
 Each has already been designed around. They are collected here because each one costs a day
 if it is met in a debugger instead of a document.
@@ -46,6 +46,16 @@ scan.
 (`lib/Controller/MessagesController.php:379`). `POST /api/thread/{id}` takes
 `destMailboxId` (`lib/Controller/ThreadController.php:55`). Same concept, same value, two
 spellings.
+
+**5. `GET /messages`'s `cursor` is strictly exclusive, and `dateInt` is not unique.**
+Added by WS-04 after mirroring the live account. The comparison is `<`, verified: a page
+ending at `dateInt` 1789590490 followed by `&cursor=1789590490` returns only messages older
+than it. Two messages can share a `dateInt` — the test inbox has ids 44 and 45 both at
+1778515439 — so when a page boundary falls between them, the second is unreachable by
+pagination, with no error and no gap anyone can see. Send **`oldest dateInt + 1`** and let
+the boundary message repeat; the upsert is by primary key, so it costs nothing.
+[ADR-0030](../decisions/0030-stage-one-owns-its-cursor.md), and finding 11 in
+[../feedback/server-findings.md](../feedback/server-findings.md).
 
 And one more, cheaper but sharp: **`mailbox.id` is not an id.** It is
 `base64_encode(name)`. The numeric key every other endpoint wants is `databaseId`.

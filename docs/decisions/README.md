@@ -42,6 +42,9 @@ old one stays.*
 | [0027](0027-userdefaults-cache-for-the-launch-theme.md) | Cache the launch theme colour in `UserDefaults` for boot, `meta` for everything else | Accepted |
 | [0028](0028-no-force-unwrap-even-in-tests.md) | No force unwrap anywhere, including tests — `#require` instead | Accepted |
 | [0029](0029-app-test-target-borrows-its-modules-from-the-host.md) | The app's test target borrows its modules from the host app | Accepted |
+| [0030](0030-stage-one-owns-its-cursor.md) | Stage 1 owns its cursor — envelopes commit first, and priming never moves it | Accepted |
+| [0031](0031-conditions-pushed-power-read.md) | The app pushes the network path into the mirror; the mirror reads the power state itself | Accepted |
+| [0032](0032-body-text-is-not-kept-twice.md) | `messageBody.rawJSON` drops the `body` field | Accepted — narrows ADR-0020 |
 
 ## Which ones matter most
 

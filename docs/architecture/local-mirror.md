@@ -51,6 +51,11 @@ written down honestly in [security.md](security.md) and
 Stage 1 makes the app usable. Stage 2 makes it complete. They run per account, and
 accounts run in parallel with each other.
 
+Measured on the live account from an empty database, reading the database the way a view's
+`ValueObservation` does: the sidebar has its mailboxes **0.86 s** after sign-in, and the
+inbox has more than fifty rows at **3.9 s**, at which point five mailboxes are still being
+enumerated and not one body has been downloaded. That gap is the whole design.
+
 ### Stage 0 — priming (per mailbox, cheap, mandatory)
 
 The server keeps its own IMAP cache and refuses to enumerate a mailbox it has not cached:
@@ -66,9 +71,13 @@ POST /api/mailboxes/{databaseId}/sync
 {"ids": [], "init": true}
 ```
 
-- **200** — primed. `lastPrimedAt` is set. The response also carries the first full
-  envelope set for the mailbox (`findAllIds` when `ids` is empty), so stage 1 can skip its
-  first page.
+- **200** — primed. `lastPrimedAt` is set. The response also carries envelopes, free:
+  with an empty `ids` the server answers from `findAllIds` rather than the thread-head
+  self-join, so none of them is a thread head standing in for its replies. Measured by WS-04
+  against the live server: mailbox 5, 95 messages, 95 envelopes back. They are stored, and
+  **the cursor is not advanced from them** — stage 1 still reads its own first page, because
+  "all" was measured on 95 messages and nothing promises it at 50,000
+  ([ADR-0030](../decisions/0030-stage-one-owns-its-cursor.md)).
 - **202 Accepted** with a `fail` envelope — `IncompleteSyncException`: the server is still
   working. Retry with backoff; do not treat as an error.
 - **5xx / timeout** — a large mailbox on a slow IMAP server can take a while. Retry with
@@ -90,16 +99,35 @@ GET /api/messages?mailboxId={id}&view=singleton&limit=100&cursor={oldest dateInt
 - `limit` is clamped server-side to 1…100 (`lib/Controller/MessagesController.php:index`).
   Use 100.
 - `cursor` is the `dateInt` of the last (oldest) envelope received. Pass it to get the
-  next page.
-- Write the page and the new `mailbox.envelopeCursor` **in one transaction**. A crash
-  between the two is the only way to get a gap, and there is no between.
+  next page. It is **exclusive**, verified by WS-04 against the live server: a full walk of
+  the 95-message inbox at `limit=10` returned 10 pages and 95 distinct ids with no
+  duplicate at any boundary.
+- Write the page, then the new `mailbox.envelopeCursor`, **in that order**. Two
+  transactions, not one: `MailStore.upsert(envelopes:)` owns the page write including the
+  address rewrite and the FTS row, and its internals are not reachable from `NCMailSync`.
+  The ordering is what matters — a crash in between re-fetches one page whose upserts land
+  identically, while the reverse order advances past messages that were never written and
+  nothing downstream would ever look for them
+  ([ADR-0030](../decisions/0030-stage-one-owns-its-cursor.md)).
 - A page shorter than `limit` ends the mailbox: set `envelopesComplete = 1`.
 
-Duplicate `dateInt` values at a page boundary can cause a message to repeat across pages;
-upserts by primary key make that harmless. They cannot cause a skip, because the cursor is
-inclusive-exclusive on a value that repeats — but the deep reconcile in
-[sync-engine.md](sync-engine.md) is what actually guarantees completeness, and it exists
-partly for this.
+**Duplicate `dateInt` values at a page boundary lose a message**, and this document used
+to claim the opposite. The cursor is strictly exclusive, measured on the live server: with
+`cursor=1789590490` the message whose `dateInt` is exactly 1789590490 does not come back.
+So if two messages share a `dateInt` and the page ends between them, the second is never
+enumerated — the live inbox has such a pair, ids 44 and 45 at 1778515439, and the algorithm
+as written dropped id 45.
+
+The fix is one character: send **`oldest dateInt + 1`**, not `oldest dateInt`. The next page
+then starts with the boundary message again, whose upsert by primary key is a no-op, and
+costs at most one duplicated row per page. Verified against the same pair:
+`cursor=1778515440` returns both 44 and 45. WS-04 does this;
+[ADR-0030](../decisions/0030-stage-one-owns-its-cursor.md) records it, and
+`mailbox.envelopeCursor` therefore holds the exclusive upper bound for the *next* page
+rather than the oldest `dateInt` seen.
+
+The deep reconcile in [sync-engine.md](sync-engine.md) is still what guarantees
+completeness, and WS-05 must use the same `+ 1` when it enumerates.
 
 Cost for a 50,000-message mailbox: 500 requests, each a database read on the server, a few
 minutes. This is the fast stage.
@@ -240,44 +268,59 @@ and does not touch the server. That sentence is not decoration. A user who belie
 We store sanitised HTML rather than raw MIME, and no attachment payloads, which is what
 keeps these numbers as low as they are — attachments are most of a mailbox's bytes.
 
-The per-message costs below are measured, by
-`PerformanceTests.sizingOfAMirrorOnDisk` against a real SQLite file, after `VACUUM`,
-counting pages rather than the file so a leftover write-ahead log does not flatter or
-inflate the figure. Run it with `NCMAIL_SIZING=1 swift test --filter sizingOfAMirrorOnDisk`.
+Two measurements, taken differently, and both worth having.
 
-| Per message | Measured | Was estimated |
+**One recorded body, exactly.** `PerformanceTests.sizingOfAMirrorOnDisk` (WS-03) writes a
+real SQLite file, `VACUUM`s it and counts pages rather than the file, so a leftover
+write-ahead log neither flatters nor inflates it. Run it with
+`NCMAIL_SIZING=1 swift test --filter sizingOfAMirrorOnDisk`.
+
+**A whole account, averaged.** `MirrorLiveMeasurementTests.mirrorsAWholeAccount` (WS-04)
+mirrors a live server to a file and divides. Run it with
+
+```
+NCMAIL_LIVE_MIRROR=http://nextcloud.local NCMAIL_LIVE_USER=… NCMAIL_LIVE_PASSWORD=… \
+NCMAIL_LIVE_KEEP=1 swift test --filter mirrorsAWholeAccount
+```
+
+and ask `sqlite3 … 'SELECT name, sum(pgsize) FROM dbstat GROUP BY name'` where the bytes
+went. The account is 155 messages across five subscribed mailboxes — small, and the only
+real corpus this repository has. **It is not the 5,000-message account the WS-04 brief asks
+for; nobody has run this against one yet.**
+
+| Per message | One marketing email (WS-03) | Averaged over 155 real messages (WS-04) |
 | --- | --- | --- |
-| Envelope, addresses and every index on them | **593 bytes** | ~1.2 KB |
-| Body row, from 30 KB of sanitised HTML | **34.8 KB** | ~12 KB |
-| Its search index, stored copy included | **7.1 KB**, 24% of the body | ~20% of the body |
-| All in | **43.6 KB** | ~16 KB |
+| Envelope, addresses and every index on them | 593 bytes | **2.3 KB** |
+| Body row | 34.8 KB, from 30.1 KB of HTML | **31.5 KB**, from 28.7 KB of HTML |
+| Its search index, stored copy included | 7.1 KB, 24% of the body | **6.3 KB**, 22% of the body |
+| All in | 43.6 KB | **41.0 KB** |
 
-Envelopes cost half what the estimate said. Bodies cost three times it, and that is the
-number to be careful with: it comes from the one body this repository has recorded from a
-real server, `message-html-plain.html`, which is a 31.5 KB marketing email. Real mail is a
-mix of those and two-line replies, so an average mailbox will land below this.
+The envelope row is the surprise, and it is four times what the synthetic measurement said.
+`MailStoreFixtures` writes `rawJSON = "{}"`; a real envelope's `rawJSON` is about 1 KB of
+its own, so the column ADR-0020 added is most of an envelope's cost. It is still the right
+trade at 2.3 KB.
 
-Multiplying the measured costs, which is arithmetic and not a measurement:
+Multiplying the averaged costs, which is arithmetic and not a measurement:
 
 | Mailbox | Envelopes | Bodies | Search index | Total |
 | --- | --- | --- | --- | --- |
-| 10,000 messages | 5.7 MB | 340 MB | 71 MB | **416 MB** |
-| 50,000 messages | 29 MB | 1.7 GB | 355 MB | **2.1 GB** |
-| 250,000 messages | 145 MB | 8.5 GB | 1.8 GB | **10.4 GB** |
+| 10,000 messages | 23 MB | 315 MB | 63 MB | **401 MB** |
+| 50,000 messages | 115 MB | 1.6 GB | 315 MB | **2.0 GB** |
+| 250,000 messages | 575 MB | 7.9 GB | 1.6 GB | **10.1 GB** |
 
-**WS-04 still owes the corpus figure.** One recorded body measured exactly is better than
-an estimate, and it is not the same thing as the average over somebody's actual mail. When
-a full mirror of a live account exists, divide its file size by its message count and
-replace the per-message body row above.
+Three findings from taking the measurements, all already fixed in the code:
 
-Two findings from taking the measurement, both already fixed in the code:
-
-- The search index is 24% of the body, which is what
+- **Every message's text was on disk twice.** `messageBody.rawJSON` held the `/body`
+  response including its `body` field, which is the same text as the `html` column:
+  4,447,526 bytes of 4,785,035, and 41% of the whole file. The mapping now drops that one
+  key ([ADR-0032](../decisions/0032-body-text-is-not-kept-twice.md)) and the same account
+  went from 70.8 KB per message to 41.0 KB. The rows above are after the fix.
+- The search index is 22–24% of the body, which is what
   [ADR-0011](../decisions/0011-fts5-standalone-index.md) predicted — but only after the
   indexer learned to drop the contents of `<style>`. The server's sanitiser keeps style
   blocks, a marketing email is mostly CSS, and indexing it made the index 2.2× the body
   instead of a quarter of it.
-- `messageBody` costs 34.8 KB to store 30.1 KB of HTML. The 15% is SQLite overflow pages,
+- `messageBody` costs about 10% more than the text in it. That is SQLite overflow pages,
   which is what a 30 KB text value costs on a 4 KB page, and there is nothing to do about
   it short of compressing bodies.
 
@@ -299,11 +342,29 @@ Two findings from taking the measurement, both already fixed in the code:
 For an honest conversation with Nextcloud about whether this is acceptable, and for the
 first thing to measure:
 
-- Stage 1: `ceil(messages / 100)` cheap database reads per mailbox, once.
+- Stage 1: `ceil(messages / 100)` cheap database reads per mailbox, once, plus one
+  `POST /sync {"ids": [], "init": true}` per mailbox to prime.
 - Stage 2: one IMAP fetch + parse + sanitise per message, once, at a maximum of four
-  concurrent per client.
+  concurrent per client. Plus one `/html?plain=true` per message that has an HTML part —
+  cheap by comparison, since the server has the parsed message by then.
 - Steady state: one `POST /sync` per mailbox per interval, plus one `/body` per message
   actually opened that was not already mirrored (which, once backfill completes, is none).
+
+Measured, on a first full mirror of the live account (155 messages, five subscribed
+mailboxes, WS-04):
+
+| | Measured |
+| --- | --- |
+| Requests, whole backfill | **277** — 2 bootstrap, 5 primes, 5 pages, 155 `/body`, 110 `/html` |
+| Requests per message | **1.71** (110 of 155 messages had an HTML part; 45 were plain text and cost one request) |
+| Wall clock | **213 s**, at two concurrent body fetches — 1.37 s per message |
+
+The wall clock is the server's, not the client's: the mirror spends it waiting. Two earlier
+runs of the identical code over the identical mailbox took 183 s and 1,498 s, and the
+eight-fold spread is IMAP fetch latency on a cold cache. It is the strongest argument in
+this document for the bulk-body endpoint in
+[../feedback/server-findings.md](../feedback/server-findings.md): the request count is
+modest and the per-request cost is not, and only the server can fix the second.
 
 The steady state is **cheaper** than the web client, which re-fetches bodies it has already
 shown whenever its 600-second server-side cache expires. The one-time backfill is the
