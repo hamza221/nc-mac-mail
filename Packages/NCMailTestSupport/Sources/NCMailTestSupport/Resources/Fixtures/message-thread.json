@@ -1,0 +1,59 @@
+[
+  {
+    "databaseId": 166,
+    "uid": 103,
+    "remoteId": null,
+    "subject": "Subject redacted",
+    "dateInt": 1789920932,
+    "flags": {
+      "seen": false,
+      "flagged": false,
+      "answered": false,
+      "deleted": false,
+      "draft": false,
+      "forwarded": false,
+      "hasAttachments": false,
+      "important": false,
+      "$junk": false,
+      "$notjunk": true,
+      "$mdnsent": false
+    },
+    "tags": {
+      "notjunk": {
+        "id": 6,
+        "userId": "admin",
+        "displayName": "Notjunk",
+        "imapLabel": "notjunk",
+        "color": "#fff",
+        "isDefaultTag": false
+      }
+    },
+    "from": [
+      {
+        "label": "Wear The Peace",
+        "email": "user@example.com"
+      }
+    ],
+    "to": [
+      {
+        "label": "hamza mahjoubi",
+        "email": "user@example.com"
+      }
+    ],
+    "cc": [],
+    "bcc": [],
+    "mailboxId": 5,
+    "messageId": "<IbBSj4zaReK1GOa5wHvukA@geopod-ismtpd-72>",
+    "inReplyTo": null,
+    "references": [],
+    "threadRootId": "<IbBSj4zaReK1GOa5wHvukA@geopod-ismtpd-72>",
+    "imipMessage": false,
+    "previewText": "Preview redacted",
+    "summary": null,
+    "encrypted": false,
+    "mentionsMe": 0,
+    "avatar": null,
+    "fetchAvatarFromClient": false,
+    "attachments": []
+  }
+]

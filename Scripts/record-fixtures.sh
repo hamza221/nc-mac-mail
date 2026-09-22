@@ -28,7 +28,7 @@ PASSWORD="$3"
 SCRUB_CONTENT="${4:-}"
 
 API="$SERVER/index.php/apps/mail/api"
-OUT="$(cd "$(dirname "$0")/.." && pwd)/Packages/NCMailTestSupport/Sources/NCMailTestSupport/Fixtures"
+OUT="$(cd "$(dirname "$0")/.." && pwd)/Packages/NCMailTestSupport/Sources/NCMailTestSupport/Resources/Fixtures"
 mkdir -p "$OUT"
 
 command -v jq >/dev/null 2>&1 || { echo "jq is required" >&2; exit 69; }
@@ -44,7 +44,21 @@ scrub() {
         -e 's#"(appPassword|token|hmac|requesttoken)":[[:space:]]*"[^"]*"#"\1":"REDACTED"#g' \
         -e 's#(hmac=)[A-Za-z0-9%+/=_-]+#\1REDACTED#g' \
         -e 's#https?://[^/"]*:[^@"]*@#https://REDACTED@#g' \
-        -e 's#[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}#user@example.com#g'
+        -e 's#[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}#user@example.com#g' \
+        -e 's#[A-Za-z0-9._+-]+%40[A-Za-z0-9.-]+\.[A-Za-z]{2,}#user%40example.com#g' \
+        -e 's#"(imapHost|smtpHost)":[[:space:]]*"[^"]*"#"\1":"mail.example.com"#g'
+}
+
+# Per-recipient tracking tokens. A marketing mail's links carry an opaque id
+# that identifies the recipient to the sender's click tracker. The URL shape is
+# what a WebView test needs; the token is not. Structure kept, token replaced.
+scrub_tracking() {
+    python3 -c '
+import re, sys
+# 24+ url-safe characters containing at least one digit. The digit requirement
+# is what keeps CSS keywords such as -webkit-text-size-adjust intact.
+sys.stdout.write(re.sub(r"(?=[A-Za-z0-9_-]*[0-9])[A-Za-z0-9_-]{24,}", "TRACKINGID", sys.stdin.read()))
+'
 }
 
 scrub_content() {
@@ -69,9 +83,9 @@ fetch() {
         "$url" || true)"
 
     if [ "$mode" = "json" ] && jq -e . >/dev/null 2>&1 < "$tmp"; then
-        jq '.' < "$tmp" | scrub_content | scrub > "$out"
+        jq '.' < "$tmp" | scrub_content | scrub | scrub_tracking > "$out"
     else
-        scrub < "$tmp" > "$out"
+        scrub < "$tmp" | scrub_tracking > "$out"
     fi
     printf '  %-38s HTTP %s  %s\n' "$1" "$status" "$(wc -c < "$out" | tr -d ' ') bytes"
     rm -f "$tmp"
@@ -89,9 +103,9 @@ post() {
         -H 'User-Agent: Nextcloud Mail (macOS)/fixtures' \
         -d "$3" "$2" || true)"
     if jq -e . >/dev/null 2>&1 < "$tmp"; then
-        jq '.' < "$tmp" | scrub_content | scrub > "$out"
+        jq '.' < "$tmp" | scrub_content | scrub | scrub_tracking > "$out"
     else
-        scrub < "$tmp" > "$out"
+        scrub < "$tmp" | scrub_tracking > "$out"
     fi
     printf '  %-38s HTTP %s  %s\n' "$1" "$status" "$(wc -c < "$out" | tr -d ' ') bytes"
     rm -f "$tmp"

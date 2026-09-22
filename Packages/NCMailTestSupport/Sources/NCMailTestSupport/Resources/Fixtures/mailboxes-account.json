@@ -1,0 +1,150 @@
+{
+  "id": 1,
+  "email": "user@example.com",
+  "mailboxes": [
+    {
+      "databaseId": 1,
+      "id": "QVNCQQ==",
+      "name": "ASBA",
+      "accountId": 1,
+      "displayName": "ASBA",
+      "attributes": [],
+      "delimiter": "/",
+      "specialUse": [],
+      "specialRole": 0,
+      "mailboxes": [],
+      "syncInBackground": false,
+      "unread": 0,
+      "myAcls": "rliteswkxpa",
+      "shared": false,
+      "cacheBuster": "TRACKINGID"
+    },
+    {
+      "databaseId": 2,
+      "id": "QVNCQS9aRUI=",
+      "name": "ASBA/ZEB",
+      "accountId": 1,
+      "displayName": "ASBA/ZEB",
+      "attributes": [],
+      "delimiter": "/",
+      "specialUse": [],
+      "specialRole": 0,
+      "mailboxes": [],
+      "syncInBackground": false,
+      "unread": 0,
+      "myAcls": "rliteswkxpa",
+      "shared": false,
+      "cacheBuster": "TRACKINGID"
+    },
+    {
+      "databaseId": 3,
+      "id": "RGVsZXRlZCBJdGVtcw==",
+      "name": "Deleted Items",
+      "accountId": 1,
+      "displayName": "Deleted Items",
+      "attributes": [
+        "\\subscribed",
+        "\\trash"
+      ],
+      "delimiter": "/",
+      "specialUse": [
+        "trash"
+      ],
+      "specialRole": "trash",
+      "mailboxes": [],
+      "syncInBackground": false,
+      "unread": 0,
+      "myAcls": "rliteswkxpa",
+      "shared": false,
+      "cacheBuster": "TRACKINGID"
+    },
+    {
+      "databaseId": 4,
+      "id": "RHJhZnRz",
+      "name": "Drafts",
+      "accountId": 1,
+      "displayName": "Drafts",
+      "attributes": [
+        "\\subscribed",
+        "\\drafts"
+      ],
+      "delimiter": "/",
+      "specialUse": [
+        "drafts"
+      ],
+      "specialRole": "drafts",
+      "mailboxes": [],
+      "syncInBackground": false,
+      "unread": 0,
+      "myAcls": "rliteswkxpa",
+      "shared": false,
+      "cacheBuster": "TRACKINGID"
+    },
+    {
+      "databaseId": 5,
+      "id": "SU5CT1g=",
+      "name": "INBOX",
+      "accountId": 1,
+      "displayName": "INBOX",
+      "attributes": [
+        "\\subscribed"
+      ],
+      "delimiter": "/",
+      "specialUse": [
+        "inbox"
+      ],
+      "specialRole": "inbox",
+      "mailboxes": [],
+      "syncInBackground": false,
+      "unread": 23,
+      "myAcls": "rliteswkxpa",
+      "shared": false,
+      "cacheBuster": "TRACKINGID"
+    },
+    {
+      "databaseId": 6,
+      "id": "SnVuayBNYWls",
+      "name": "Junk Mail",
+      "accountId": 1,
+      "displayName": "Junk Mail",
+      "attributes": [
+        "\\subscribed",
+        "\\junk"
+      ],
+      "delimiter": "/",
+      "specialUse": [
+        "junk"
+      ],
+      "specialRole": "junk",
+      "mailboxes": [],
+      "syncInBackground": false,
+      "unread": 0,
+      "myAcls": "rliteswkxpa",
+      "shared": false,
+      "cacheBuster": "TRACKINGID"
+    },
+    {
+      "databaseId": 7,
+      "id": "U2VudCBJdGVtcw==",
+      "name": "Sent Items",
+      "accountId": 1,
+      "displayName": "Sent Items",
+      "attributes": [
+        "\\subscribed",
+        "\\sent"
+      ],
+      "delimiter": "/",
+      "specialUse": [
+        "sent"
+      ],
+      "specialRole": "sent",
+      "mailboxes": [],
+      "syncInBackground": false,
+      "unread": 0,
+      "myAcls": "rliteswkxpa",
+      "shared": false,
+      "cacheBuster": "TRACKINGID"
+    }
+  ],
+  "delimiter": "/"
+}
