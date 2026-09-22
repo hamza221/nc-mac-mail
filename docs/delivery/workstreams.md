@@ -46,7 +46,7 @@ shape.
 | ID | Title | Depends on | Owns | Size |
 | --- | --- | --- | --- | --- |
 | [WS-00](briefs/WS-00-project-skeleton.md) | Project skeleton, packages, CI, lint | — | `NextcloudMail.xcodeproj`, all `Package.swift`, `.github/`, `Makefile`, `.swiftlint.yml`, `.swift-format` | M |
-| [WS-01](briefs/WS-01-auth.md) | Login Flow v2, Keychain, session | WS-00 | `NCMailNet/Auth/**` | M |
+| [WS-01](briefs/WS-01-auth.md) | Login Flow v2, Keychain, session | WS-00 | `NCMailNet/Auth/**`, `NextcloudMail/Views/Login/**` | M |
 | [WS-02](briefs/WS-02-http-client.md) | HTTP client, endpoints, models, decoding | WS-00 | `NCMailNet/Client/**`, `NCMailNet/Endpoints/**`, `NCMailCore/Models/**` | L |
 | [WS-03](briefs/WS-03-store.md) | GRDB stack, schema, migrations, DAOs, FTS | WS-00 | `NCMailStore/**` | L |
 | [WS-04](briefs/WS-04-mirror.md) | Mirror coordinator and two-stage backfill | 01,02,03 | `NCMailSync/Mirror/**` | L |

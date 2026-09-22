@@ -27,7 +27,15 @@ against routes that otherwise demand a CSRF token.
     → 404 while the user is still in the browser
     → 200 {"server": "…", "loginName": "…", "appPassword": "…"}
 
-4.  Keychain: kSecClassInternetPassword, keyed by host + loginName
+3b. GET {server}/index.php/apps/mail/api/accounts, with the app password just returned.
+    A 404 here — not a 401 — is the only signal that distinguishes "right credential, no
+    Mail app" from every other failure, so `LoginFlow` checks it before reporting success
+    rather than leaving it for the mirror coordinator to discover later. See
+    [ADR-0019](../decisions/0019-login-flow-verifies-the-mail-app.md).
+
+4.  Keychain: kSecClassInternetPassword, keyed by host + loginName. `LoginFlow` never
+    writes this itself — it hands back `Credentials`, and the caller decides whether the
+    sign-in counts as complete before storing it.
 ```
 
 ### Every subsequent request
@@ -62,15 +70,25 @@ improvising — that change would reshape several workstreams.
 
 ```swift
 public struct MailClient: Sendable {
-    public init(server: URL, credentials: Credentials, session: URLSession = .mail)
+    public init(server: URL, credentials: any MailCredentials,
+                transport: any MailTransport = URLSessionTransport(),
+                retryPolicy: RetryPolicy = .standard)
 
-    public func get<T: Decodable>(_ endpoint: Endpoint<T>) async throws -> T
-    public func post<T: Decodable>(_ endpoint: Endpoint<T>, body: some Encodable) async throws -> T
-    public func put<T: Decodable>(_ endpoint: Endpoint<T>, body: some Encodable) async throws -> T
-    public func delete<T: Decodable>(_ endpoint: Endpoint<T>) async throws -> T
-    public func data(_ endpoint: Endpoint<Data>) async throws -> (Data, HTTPURLResponse)
+    public func get<T: Decodable & Sendable>(_ endpoint: Endpoint<T>) async throws -> T
+    public func post<T: Decodable & Sendable>(_ endpoint: Endpoint<T>, body: (some Encodable & Sendable)?) async throws -> T
+    public func put<T: Decodable & Sendable>(_ endpoint: Endpoint<T>, body: (some Encodable & Sendable)?) async throws -> T
+    public func delete<T: Decodable & Sendable>(_ endpoint: Endpoint<T>) async throws -> T
+    public func bytes(_ endpoint: Endpoint<Data>) async throws -> (Data, HTTPURLResponse)
 }
 ```
+
+`credentials` is `any MailCredentials`, a protocol with `loginName` and `appPassword`.
+WS-01's `Credentials` conforms to it, so a value loaded from the Keychain goes straight in.
+The protocol exists so the client half and the auth half of `NCMailNet` could be built at
+the same time without depending on each other's concrete types.
+
+The client takes a `MailTransport` rather than a `URLSession`, so a test never reaches the
+network; `URLSession.mail` is what the default transport wraps.
 
 A value type, `Sendable`, no shared mutable state, cheap to hand to an actor. Paths are
 relative to `{server}/index.php/apps/mail/api/`; OCS endpoints and
@@ -132,7 +150,14 @@ question worth answering first.
 ## Retry and rate limits
 
 - **Retry** only idempotent reads automatically: `GET`, and `POST /sync` (which is a read
-  dressed as a write). 2 s, 8 s, 30 s, jittered, three attempts.
+  dressed as a write). Three retries, waiting 2 s, 8 s and 30 s, so at most four sends.
+  Full jitter: each wait is a uniform pick between zero and the figure above, which spreads
+  a herd better than adding a small random tail. Retryability is a property of the endpoint
+  rather than of the verb, because `POST …/sync` retries and `POST …/move` must not.
+- **Retry only what another attempt could fix**: a transport failure, a 429 or 503, or a
+  5xx. A 403 or a 404 will answer the same way forever, and a **202 is not retried by the
+  client** — it surfaces as `.syncInProgress` and the sync engine decides when to ask again,
+  because only it knows what window it sent.
 - **Never auto-retry a mutation.** That is the drainer's job, with its own policy
   ([offline-queue.md](offline-queue.md)), because only it knows what was already applied
   locally.

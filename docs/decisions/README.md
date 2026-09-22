@@ -31,6 +31,13 @@ old one stays.*
 | [0016](0016-warnings-as-errors-at-the-build-command.md) | Ask for warnings-as-errors at the build command, not in the manifests | Accepted |
 | [0017](0017-file-system-synchronized-group.md) | The app target reads its sources from a synchronised folder | Accepted |
 | [0018](0018-ad-hoc-signature-in-the-checked-in-project.md) | The checked-in project signs ad hoc | Accepted |
+| [0019](0019-login-flow-verifies-the-mail-app.md) | `LoginFlow` proves the Mail app exists before reporting success | Accepted |
+| [0020](0020-raw-json-in-a-wrapper.md) | Carry the server's JSON in a `RawBacked` wrapper, not in every model | Accepted |
+| [0021](0021-one-message-flags-type.md) | One `MessageFlags` type for the envelope and the body | Accepted |
+| [0022](0022-fixtures-by-path-not-bundle.md) | Tests read fixtures by path, not through `Bundle.module` | Accepted |
+| [0023](0023-store-records-are-not-wire-models.md) | Store records are their own types, and a write is narrower than a row | Accepted |
+| [0024](0024-fts-deletes-in-a-trigger.md) | Delete the search index row from a trigger, not from Swift | Accepted |
+| [0025](0025-rowid-tables-for-anything-observed.md) | Only unobserved tables may be `WITHOUT ROWID` | Accepted |
 
 ## Which ones matter most
 

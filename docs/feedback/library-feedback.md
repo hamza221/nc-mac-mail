@@ -175,3 +175,114 @@ beyond that it was uneventful, which is the point of a token system.
 That is the premise of [ADR-0001](../decisions/0001-xcode-project-in-git.md) confirmed for
 an unsigned debug build. Question 4 in the list above — whether the glyphs survive a
 sandboxed, hardened, signed Release build — is still open and still WS-13's.
+
+---
+
+## From WS-01 (login flow, Keychain, session)
+
+Nothing new. `NCButtonStyle` (`.primary`, `.tertiary`), `NCNoteCard(.error, title:, message:)`
+and `NCProgressStyle.normal` covered `LoginView` exactly as
+[ui-components.md](../reference/ui-components.md) describes them — a server field, a
+Continue button, a waiting state and an error banner needed no workaround and no custom
+view. `.ncAccessibilityLabel(.text(...))` labelled the plain `TextField` and `ProgressView`
+this screen uses that are not library components themselves, which is not something the
+component map called out but worked exactly like the library's own controls.
+
+One thing worth recording precisely because it is not a complaint: `LoginView` is not yet
+reachable from the running app. `RootSplitView` is still WS-00's three-column placeholder,
+and wiring a sign-in screen in ahead of it belongs to WS-13, not to this workstream — see
+"For the next workstream" in the WS-01 report.
+
+---
+
+## From WS-02 (HTTP client, endpoints, models, decoding)
+
+Nothing new about `NextcloudUI`: this workstream builds no view and imports no library
+component. What it has instead is feedback about the packaging of this repository's own
+test-support package and about the Mail server's JSON, so it is recorded here rather than
+lost.
+
+### `NCMailTestSupport` cannot be used by the tests it was created for
+**Workstream:** WS-02 · **Component:** `Packages/NCMailTestSupport/Package.swift` · **Severity:** blocking, worked around
+
+The package depends on `NCMailCore`, `NCMailNet` and `NCMailStore`, so none of their test
+targets can depend on it: SwiftPM rejects the cycle. `Bundle.module`, which
+[testing-strategy.md](../delivery/testing-strategy.md) tells every package to load fixtures
+through, is therefore reachable only from `NCMailTestSupportTests`.
+
+WS-02 works around it by resolving the fixture directory from `#filePath`
+([ADR-0022](../decisions/0022-fixtures-by-path-not-bundle.md)). The fix is to make the
+fixture-vending part a leaf: either drop the three dependencies from `NCMailTestSupport`, or
+add a `NCMailFixtures` target inside it with no dependencies and let `FakeTransport` depend
+on that. WS-14 and WS-00 own the change between them.
+
+### `swift format` disagrees with `#expect` about trailing closures
+**Workstream:** WS-02 · **Component:** toolchain, Swift Testing · **Severity:** polish
+
+`#expect(list.allSatisfy(\.isSelectable))` does not compile: the macro expands the key path
+into a position where the `rethrows` overload is selected and the call is not marked `try`.
+`#expect(list.allSatisfy { $0.isSelectable })` is fine. Worth knowing before the third time
+it happens.
+
+`Testing.Tag` also collides with this project's `Tag` model, so a test that names the model
+in a type annotation has to qualify it as `NCMailCore.Tag`.
+
+### The Mail server's JSON needs a lenient decoder in four specific places
+**Workstream:** WS-02 · **Component:** `nextcloud/mail` 5.12.0-rc.1 · **Severity:** upstream
+
+Each is documented and corrected in
+[api-payloads.md](../reference/api-payloads.md), and each is a decoding failure for anyone
+who writes the obvious `Codable` conformance. An empty `tags` dictionary serialises as `[]`
+rather than `{}`; `mentionsMe` is `0`/`1` rather than a boolean; `specialRole` is the
+integer `0` when there is no special use; and an unknown id answers 403 with a body of `[]`
+rather than the documented error envelope. The first two are PHP's array/object ambiguity
+reaching the wire, and both would be fixed upstream by casting at the point of
+serialisation. WS-15 should decide whether any of it is worth an issue against
+`nextcloud/mail`.
+
+---
+
+## From WS-03 (GRDB stack, schema, migrations, DAOs)
+
+Nothing new about `NextcloudUI`. This workstream is `NCMailStore`, which by
+[ADR-0013](../decisions/0013-module-layout.md) must not import SwiftUI at all, so it never
+touched a component. The three things worth writing down are about GRDB and SQLite, and the
+first two cost a working day between them.
+
+### SQLite's update hook skips `WITHOUT ROWID` tables, so `ValueObservation` never fires
+**Workstream:** WS-03 · **Component:** GRDB `ValueObservation` · **Severity:** trap
+**Where:** `docs/decisions/0025-rowid-tables-for-anything-observed.md`
+
+`ValueObservation` is built on `sqlite3_update_hook`, and
+[SQLite does not call that hook for `WITHOUT ROWID` tables](https://www.sqlite.org/c3ref/update_hook.html).
+An observation of such a table delivers its first value and then waits forever. No error, no
+warning, no timeout — the first symptom was a test that hung. Four tables in `schema.sql` were
+`WITHOUT ROWID` and three of them were things a view would want to watch.
+
+Worth an upstream note: GRDB could detect this at observation start, when it already resolves
+the tracked region against the schema, and trap with "cannot observe WITHOUT ROWID table
+`avatar`". The information is all there and the failure mode is silence.
+
+### FTS5 virtual tables reject `ON CONFLICT`, so there is no upsert
+**Workstream:** WS-03 · **Component:** SQLite FTS5 · **Severity:** friction
+
+`messageSearch` is written from two places: an envelope supplies subject, preview and people,
+a body supplies the text. Neither may clobber the other's columns, and there is no
+`INSERT … ON CONFLICT DO UPDATE` on a virtual table to express that. The shape that works is
+`UPDATE …; if changesCount == 0 { INSERT … }`, which reads like a mistake until you know why.
+It is in `SearchIndexWriter` with a comment, and WS-11 will read that file before it writes a
+query.
+
+### An index helps only if the predicate lets the planner choose it
+**Workstream:** WS-03 · **Component:** SQLite query planner · **Severity:** —
+
+The threaded list took 196 ms for its first fifty rows out of fifty thousand, against 0.5 ms
+for the flat one. Nothing was missing: `idxMessageThread` existed and the plan used it for two
+of the three subqueries. The unread count was written
+`count(*) … WHERE mailboxId = ? AND threadRootId = ? AND isSeen = 0`, and that third term made
+`idxMessageMailboxSeen` look attractive, so the planner took it — matching every unread message
+in the mailbox and filtering by thread afterwards. Rewriting it as
+`sum(CASE WHEN isSeen THEN 0 ELSE 1 END)` over the same two-column predicate took it to 0.8 ms.
+
+Recorded here because the lesson generalises past this query: `EXPLAIN QUERY PLAN` saying
+"uses an index" is not the assertion worth making. Which index, and over how many rows, is.
