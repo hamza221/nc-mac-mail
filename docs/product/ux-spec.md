@@ -31,8 +31,13 @@ One `NavigationSplitView`, three columns, the macOS shape every mail client uses
 └───────────────┴──────────────────────┴──────────────────────────────────┘
 ```
 
-Column widths persist. Collapsing the sidebar is the system's behaviour, not ours. Window
-size and the selected mailbox restore on launch — state restoration, not a preference.
+Column widths persist, approximately: SwiftUI's `navigationSplitViewColumnWidth(min:ideal:max:)`
+has no binding that reports back what a drag resized a column to, so WS-13 tracks each
+column's rendered width with a `GeometryReader` and feeds it back in as the next launch's
+`ideal`. It is a measurement, not a restoration the framework promises, and it was not
+verified against a live drag in this environment (no GUI). Collapsing the sidebar is the
+system's behaviour, not ours. Window size and the selected mailbox restore on launch — state
+restoration, not a preference.
 
 ## Sidebar
 
