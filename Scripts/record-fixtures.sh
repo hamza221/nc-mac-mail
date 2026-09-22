@@ -63,8 +63,19 @@ sys.stdout.write(re.sub(r"(?=[A-Za-z0-9_-]*[0-9])[A-Za-z0-9_-]{24,}", "TRACKINGI
 
 scrub_content() {
     if [ "$SCRUB_CONTENT" = "--scrub-content" ]; then
+        # Everything a human wrote or was named in. Addresses are handled by
+        # scrub(); these are the fields that carry a person's NAME rather than
+        # their address -- display labels, attachment filenames (a CV filename
+        # is as identifying as an address), and the body text itself. The
+        # shapes all survive: a label is still a string, an attachment still
+        # has a fileName with its real extension.
         jq '(.. | objects | select(has("subject")) | .subject) |= "Subject redacted"
-            | (.. | objects | select(has("previewText")) | .previewText) |= "Preview redacted"'
+            | (.. | objects | select(has("previewText")) | .previewText) |= "Preview redacted"
+            | (.. | objects | select(has("summary")) | .summary) |= "Summary redacted"
+            | (.. | objects | select(has("label")) | .label) |= "Name redacted"
+            | (.. | objects | select(has("body")) | .body) |= "Body redacted"
+            | (.. | objects | select(has("fileName")) | .fileName) |=
+                (if test("\\.") then "attachment." + (split(".") | last) else "attachment" end)'
     else
         cat
     fi
@@ -145,6 +156,22 @@ if [ -n "$HTML_ID" ]; then
     fetch "message-html-plain.html" "$API/messages/$HTML_ID/html?plain=true" raw
     fetch "message-thread.json" "$API/messages/$HTML_ID/thread"
 fi
+
+# A body that carries an attachment. The attachment entries inside an envelope
+# are a reduced shape -- id, fileName, mime, downloadUrl, mimeUrl -- and only
+# the body endpoint returns the full one with size, cid, disposition, isImage
+# and isCalendarEvent. Attachment is decoded from both, so both are recorded.
+ATTACHMENT_MESSAGE_ID="$(jq -r 'if type == "array" then ([.[] | select((.attachments | length) > 0)][0].databaseId // empty) else empty end' < "$OUT/messages-inbox-page1.json")"
+if [ -n "$ATTACHMENT_MESSAGE_ID" ]; then
+    fetch "message-body-attachments.json" "$API/messages/$ATTACHMENT_MESSAGE_ID/body"
+fi
+
+# Small payloads with their own models: MailboxStats, Preference and the
+# trusted-sender list, which arrives wrapped in the JsonResponse success
+# envelope rather than as a bare array.
+fetch "mailbox-stats.json" "$API/mailboxes/$MAILBOX_ID/stats"
+fetch "preference-sort-order.json" "$API/preferences/sort-order"
+fetch "trustedsenders.json" "$API/trustedsenders"
 
 # Error shapes. These are the fixtures nobody has when they need them.
 fetch "error-mailbox-not-found.json" "$API/mailboxes/99999999/stats"

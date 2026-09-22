@@ -8,6 +8,12 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 *The exact shapes this app decodes, and the endpoint behaviour that is not obvious from the
 shapes. Every claim cites `nextcloud/mail` at app version 5.12.0-rc.1.*
 
+**Verified against a live server by WS-02**, Nextcloud 36.0.0 running Mail 5.12.0-rc.1, in
+September 2026. Where the reading of the source and the running server disagreed, the
+server won and the paragraph was rewritten; each of those is marked **corrected**. The
+recorded responses are in
+`Packages/NCMailTestSupport/Sources/NCMailTestSupport/Resources/Fixtures/`.
+
 The complete endpoint map — including everything v1 does not use — is
 [../../plan/API.md](../../plan/API.md). This document covers only what v1 touches, plus the
 traps.
@@ -21,6 +27,9 @@ if it is met in a debugger instead of a document.
 the message table to itself on `thread_root_id` and keeps rows with no newer sibling
 (`lib/Db/MessageMapper.php::findIdsByQuery`). Enumerate with `view=singleton` or silently
 lose every reply. [ADR-0014](../decisions/0014-singleton-enumeration.md)
+
+Measured: the test server's inbox of 95 messages returns 95 envelopes with `view=singleton`
+and 87 with `view=threaded`. Eight replies, gone, with a 200.
 
 **2. `POST /sync`'s `ids` is a window, not an inventory.** "New" means not in `ids` *and*
 newer than the oldest `sent_at` among them. `changedMessages` returns every id you sent
@@ -41,6 +50,11 @@ spellings.
 And one more, cheaper but sharp: **`mailbox.id` is not an id.** It is
 `base64_encode(name)`. The numeric key every other endpoint wants is `databaseId`.
 
+**Corrected.** This document used to warn, under [Message body](#message-body), that `flags`
+is an object on the envelope and an array on the body, and the WS-02 brief repeated it as a
+trap. It is an object on both. What the two really differ in is their keys, and that
+section now says so.
+
 ## Account
 
 `GET /api/accounts` → array; `GET /api/accounts/{id}` → one.
@@ -55,7 +69,7 @@ Source: `lib/Db/MailAccount.php::toJson`.
   "authMethod": "password",
   "imapHost": "imap.example", "imapPort": 993, "imapUser": "…", "imapSslMode": "ssl",
   "smtpHost": "…", "smtpPort": 587, "smtpUser": "…", "smtpSslMode": "tls",  // absent if no outbound host
-  "signature": null, "signatureMode": null, "signatureAboveQuote": false,
+  "signature": "…", "signatureMode": 0, "signatureAboveQuote": false,   // signatureMode is an INTEGER
   "editorMode": "richtext",
   "provisioningId": null,
   "showSubscribedOnly": false,
@@ -72,14 +86,22 @@ Source: `lib/Db/MailAccount.php::toJson`.
   "classificationEnabled": true,
   "imipCreate": true,
   "protocol": "imap",
-  "path": null
+  "path": null,
+  "aliases": [],                     // present on 5.12; absent from earlier revisions of this document
+  "isDelegated": false
 }
 ```
 
 v1 needs: `id`, `name`, `emailAddress`, `order`, and the six special mailbox ids. The rest
 is stored in `account.rawJSON` against future use.
 
-Special mailbox ids may be `null` on a freshly provisioned account. Triage actions that
+**Corrected.** `signatureMode` is an integer, not null, and the payload also carries
+`aliases` and `isDelegated`. `trashRetentionDays` is null on an account that never set one.
+None of it is modelled; all of it survives in `rawJSON`.
+
+Special mailbox ids may be `null` on a freshly provisioned account — and on an
+established one: the test account has no archive mailbox at all, so `archiveMailboxId` is
+null against a server that has been in use for months. Triage actions that
 depend on one (archive, junk) must be disabled rather than crash — and that state is worth
 a decent empty-state message, not a greyed button with no explanation.
 
@@ -103,7 +125,7 @@ Source: `lib/Db/Mailbox.php::jsonSerialize`.
   "mailboxes": [],                   // always empty; the list is flat
   "syncInBackground": true,
   "unread": 7,
-  "myAcls": null,
+  "myAcls": "rliteswkxpa",           // a string when the server reports ACLs; null when it does not
   "shared": false,
   "cacheBuster": "…"
 }
@@ -120,7 +142,8 @@ Four things to handle:
   the mailbox cannot be opened; the `selectable` column exists server-side but is **not**
   serialised, so derive it. [ADR-0007](../decisions/0007-subscribed-mailboxes-only.md)
 - **`specialRole` is `specialUse[0] ?? 0`**, so it is a string or the integer `0`. Decode
-  it leniently.
+  it leniently. Confirmed live: two of the test server's seven folders send the integer.
+  The integer means *no role*, not the role `"0"`.
 
 ## Message envelope
 
@@ -139,7 +162,9 @@ Source: `lib/Db/Message.php::jsonSerialize`.
     "draft": false, "forwarded": false, "hasAttachments": true,
     "important": false, "$junk": false, "$notjunk": false, "$mdnsent": false
   },
-  "tags": { "$label1": { "id": 1, "displayName": "Important", "color": "#ff0000", … } },
+  "tags": { "$label1": { "id": 1, "userId": "…", "displayName": "Important",
+                         "imapLabel": "$label1", "color": "#ff0000", "isDefaultTag": true } },
+                                      // …or [] — see below
   "from": [{ "label": "Sookie St. James", "email": "sookie@dragonfly.example" }],
   "to": [...], "cc": [...], "bcc": [...],
   "mailboxId": 42,
@@ -148,21 +173,30 @@ Source: `lib/Db/Message.php::jsonSerialize`.
   "references": null,                 // null or an array
   "threadRootId": "…",
   "imipMessage": false,
+  "mentionsMe": 0,                    // an INTEGER 0 or 1, not a boolean
   "previewText": "I moved the risotto…",
   "summary": null,
   "encrypted": false,
-  "mentionsMe": false,
   "avatar": { "isExternal": false, "mime": "image/jpeg", "url": "…" },   // or null
   "fetchAvatarFromClient": false,
-  "attachments": []
+  "attachments": []                   // the REDUCED attachment shape — see Message body
 }
 ```
 
 - **`flags` keys include `$junk`, `$notjunk`, `$mdnsent`** — leading `$`, so
   `CodingKeys` must spell them explicitly.
-- **`tags` is a dictionary keyed by IMAP label**, not an array.
+- **`tags` is a dictionary keyed by IMAP label**, not an array — *except* when it is empty.
+  **Corrected:** PHP serialises an empty associative array as `[]`, so an envelope with no
+  tags sends `"tags": []` and one with tags sends an object. Seven of the 95 envelopes in
+  `messages-inbox-page1.json` take the array form. A decoder that only accepts an object
+  fails on a perfectly ordinary message.
+- **`mentionsMe` is the integer `0` or `1`**, not a boolean. **Corrected:** it is written by
+  a `COUNT(*)` and never cast.
 - **`dateInt` is the cursor** for `GET /api/messages`: pass the oldest one you have seen.
-- **`references` is `null` or an array**, never a string.
+- **`references` is `null` or an array**, never a string. Always an array on 5.12.
+- **`remoteId` is null** on every envelope the test server produced; treat it as optional.
+- **`attachments` inside an envelope is the reduced shape**: `id`, `fileName`, `mime`,
+  `downloadUrl`, `mimeUrl`, and nothing else. `enrichAttachment` runs only on the body.
 
 ## Message body
 
@@ -173,16 +207,17 @@ Source: `lib/Db/Message.php::jsonSerialize`.
 {
   "uid": 4711, "messageId": "<…>", "subject": "…", "dateInt": 1737100000,
   "from": [...], "to": [...], "cc": [...], "bcc": [...], "replyTo": [...],
-  "flags": [...],                     // NOTE: an ARRAY here, an object on the envelope
+  "flags": {...},                     // an OBJECT, same as the envelope — see below
   "hasHtmlBody": true,
   "body": "<div>…</div>",             // sanitised HTML, or plain text when hasHtmlBody is false
   "signature": "…",                   // plain-text messages only
   "attachments": [...], "inlineAttachments": [...],
   "dispositionNotificationTo": null,
-  "hasDkimSignature": true, "dkimValid": true,
+  "hasDkimSignature": true,           // "dkimValid" appears only after GET .../dkim has run
   "phishingDetails": {...},
   "unsubscribeUrl": null, "unsubscribeMailto": null, "isOneClickUnsubscribe": false,
   "scheduling": [...],
+  "replyTo": [...],
   "isPgpMimeEncrypted": false,
   "hasAiGeneratedHeader": false,
   "itineraries": [...],               // only when cached
@@ -192,18 +227,43 @@ Source: `lib/Db/Message.php::jsonSerialize`.
 }
 ```
 
-**`flags` is an array here and an object on the envelope.** Two types, one name. Decode
-them separately and do not share a model.
+**Corrected: `flags` is an object here too.** An earlier revision of this document said it
+was an array. Against Mail 5.12.0-rc.1 — the version this document cites —
+`GET /api/messages/{id}/body` returns
 
-Attachment entries (`enrichAttachment`):
+```json
+{"seen":true,"flagged":false,"answered":false,"deleted":false,"draft":false,
+ "forwarded":false,"hasAttachments":true,"$mdnsent":false,"important":true}
+```
+
+`IMAPMessage::getFlags()` builds a PHP associative array, and an associative array is a
+JSON object. What the two responses really differ in is their **keys**: the body omits
+`$junk` and `$notjunk`, which the envelope has. So one model covers both, with those two
+defaulting to false, and a decoder that requires them fails on every body.
+
+Also **corrected**: `signature`, `dkimValid` and `itineraries` are documented above but do
+not appear at all unless the feature that produces them has run. `replyTo` does appear and
+was missing from the list. Treat all four as optional.
+
+Attachment entries come in two shapes, and only the body's is the full one.
 
 ```jsonc
-{ "id": "2", "messageId": 90210, "fileName": "menu.pdf", "mime": "application/pdf",
-  "size": 183422, "cid": null, "disposition": "attachment",
+// GET /api/messages/{id}/body — enrichAttachment has run
+{ "id": "2", "messageId": 48, "fileName": "menu.pdf", "mime": "application/pdf",
+  "size": 183422, "cid": "f_mquymsb20", "disposition": "attachment",
   "downloadUrl": "https://…", "mimeUrl": "…", "isImage": false, "isCalendarEvent": false }
+
+// inside an envelope — five keys, and that is all
+{ "id": "2", "fileName": "menu.pdf", "mime": "application/pdf",
+  "downloadUrl": "https://…", "mimeUrl": "…" }
 ```
 
 `id` is a **string** (`"2"`, `"2.1"`), not a number.
+
+**Corrected**, twice. The envelope's reduced shape was not documented, so `size`, `cid`,
+`disposition`, `isImage` and `isCalendarEvent` all have to be optional. And `messageId` on
+the body shape is the **IMAP uid**, not the `databaseId` the surrounding payload uses — the
+attachment of message 66 reports `"messageId": 48`. It is not a key to look a message up by.
 
 ## Message HTML
 
@@ -244,6 +304,11 @@ Traps 2 and 3 above. Statuses: **200** fine; **202** with a `fail` envelope mean
 `IncompleteSyncException` (still working, retry); **428** means the mailbox is not cached —
 re-send with `init: true` (`lib/Controller/MailboxesController.php:186`).
 
+Neither 202 nor 428 could be provoked on the test server: a sync against a mailbox that had
+never been synced answered **200** with four empty arrays rather than 428. So the client
+handles both statuses, and both paths are covered by fake-transport tests rather than by a
+recorded fixture. If you can make a real server emit either, record it.
+
 `lastMessageTimestamp` only affects the oldest-first sort order
 (`MessageMapper::findNewIds`). With `sortOrder: "newest"` it is ignored; send it anyway for
 forward compatibility.
@@ -254,8 +319,14 @@ forward compatibility.
 GET /api/messages?mailboxId=42&view=singleton&limit=100&cursor=1737000000
 ```
 
-- `limit` clamped server-side to 1…100 (`MessagesController::index`).
-- `cursor` = `dateInt` of the oldest envelope received so far.
+- `limit` clamped server-side to 1…100 (`MessagesController::index`). Confirmed: `limit=500`
+  returns at most 100.
+- `cursor` = `dateInt` of the oldest envelope received so far, and it is **exclusive**.
+  Confirmed on a 95-message inbox: `limit=50` gives 50, then the same call with
+  `cursor=<min dateInt>` gives the remaining 45 with no overlap and no repeat.
+  `messages-inbox-page2.json` is `[]` for the boring reason that it was recorded at
+  `limit=100` against those 95 messages, so page one already had everything. It is still a
+  useful fixture: an empty page is how enumeration learns it is finished.
 - `view`: `singleton` or `threaded` — trap 1.
 - `filter` takes the search filter string (`plan/API.md`); v1 searches locally and does not
   use it, except in the one place noted in [../architecture/sync-engine.md](../architecture/sync-engine.md).
@@ -264,7 +335,8 @@ GET /api/messages?mailboxId=42&view=singleton&limit=100&cursor=1737000000
   Read `GET /api/preferences/sort-order` at startup and pass the matching `sortOrder` to
   sync.
 - An uncached mailbox throws `MailboxNotCachedException` → **400** with a
-  `{"status":"error"}` body. Prime with `init: true` first.
+  `{"status":"error"}` body. Prime with `init: true` first. Not reproduced on the test
+  server, which answered 200 with `[]`; the 400 path is still handled.
 
 ## Mutations
 
@@ -284,6 +356,29 @@ while the envelope reports `$junk`.
 `{id}` on the thread routes is *any* message id in the thread; the root is resolved
 server-side.
 
+## What a missing thing actually answers
+
+**Corrected.** This document implied that a bad id produces the `JsonResponse::fail`
+envelope. It does not. Against 5.12.0-rc.1 every one of these returns **HTTP 403** with a
+body of exactly `[]`:
+
+```
+GET /api/mailboxes/99999999/stats   → 403  []
+GET /api/messages/99999999          → 403  []
+GET /api/messages/99999999/body     → 403  []
+```
+
+`DelegationService` resolves the effective user for every id before the controller runs, and
+an id that does not exist cannot be resolved to one the caller may see, so "gone" and
+"never yours" are the same answer. Two consequences. There is no message to parse, so a
+client must not wait for one; and **403 does not mean the account lost its delegation** —
+it is the ordinary answer to a stale id, which a mirror hands the server all the time after
+someone deletes a message in the web client. Treat 403 as "this id is gone", not as a
+reason to sign the user out.
+
+`POST /api/mailboxes/{id}/sync` on a non-existent mailbox answers **405** with an HTML body,
+because the route only matches an existing id.
+
 ## Avatars
 
 - `GET /api/avatars/image/{urlencoded email}` → image bytes, or 404.
@@ -294,14 +389,18 @@ Both are `#[NoCSRFRequired]` and work with app-password auth
 character in a real address.
 
 A 404 is normal and means "draw initials". Record it (`avatar.missing`) so the client does
-not re-ask every launch.
+not re-ask every launch. The 404 body is `text/html`, not JSON, so do not try to decode it.
 
 ## Capabilities (theming)
 
 ```http
 GET {server}/ocs/v2.php/cloud/capabilities
 ```
-→ `data.capabilities.theming.color` → `NCBrand(primaryHex:)` → `NCTheme(brand:)`.
+→ `ocs.data.capabilities.theming.color` → `NCBrand(primaryHex:)` → `NCTheme(brand:)`.
+
+The whole payload sits under an OCS envelope, `{"ocs": {"meta": {…}, "data": {…}}}`, so the
+path has one more component than the line above used to show. `theming` also carries
+`primaryColor`, `backgroundColor` and `cacheBuster`; `color` is the one to read.
 
 Outside the Mail app's routes, so it takes the OCS prefix. Cache the colour in `meta`;
 apply it at launch before the first frame to avoid a visible re-theme.
@@ -311,3 +410,11 @@ apply it at launch before the first frame to avoid a visible re-theme.
 `GET /api/preferences/{key}`: `sort-order` (changes cursor semantics — see above),
 `layout-message-view` (`threaded` or `singleton` default), `external-avatars`,
 `auto-mark-as-read`. v1 reads them; it does not write them.
+
+The response is `{"value": …}`, not the bare value, and `value` is **null** for any key the
+user never set — which is all four of them on a fresh instance. Null means "the server
+default", so `sort-order` unset is `newest`. Do not treat the null as a failure.
+
+`GET /api/trustedsenders` is the other read v1 makes, and it answers with the
+`JsonResponse::success` envelope, `{"status": "success", "data": [...]}`, rather than a bare
+array. The element shape is unverified: the test server's list is empty.

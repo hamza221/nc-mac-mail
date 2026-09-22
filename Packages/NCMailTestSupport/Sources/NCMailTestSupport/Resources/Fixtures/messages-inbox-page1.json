@@ -30,13 +30,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -49,15 +49,11 @@
     "threadRootId": "<IbBSj4zaReK1GOa5wHvukA@geopod-ismtpd-72>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -91,13 +87,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -110,15 +106,11 @@
     "threadRootId": "<rBpe0vDxTlemAdCajEVUxA@geopod-ismtpd-16>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -152,13 +144,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -171,15 +163,11 @@
     "threadRootId": "<n8X5wzuCSUqgabCgIvRp_g@geopod-ismtpd-23>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -213,13 +201,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -232,15 +220,11 @@
     "threadRootId": "<y5gNBrJzTk6Gsp_05SX7Ag@geopod-ismtpd-60>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -274,13 +258,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -293,15 +277,11 @@
     "threadRootId": "<4e80ZawkSxGDDp0opF8EyA@geopod-ismtpd-78>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -335,13 +315,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -354,15 +334,11 @@
     "threadRootId": "<kOGtUgIzSWe0T25qwy17oQ@geopod-ismtpd-63>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -396,13 +372,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -415,15 +391,11 @@
     "threadRootId": "<I0-66DSTRCSMRxNHGE5hVA@geopod-ismtpd-25>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -457,13 +429,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -476,15 +448,11 @@
     "threadRootId": "<ga36083_QIKzbwTKLaEkOA@geopod-ismtpd-12>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -518,13 +486,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -537,15 +505,11 @@
     "threadRootId": "<LjS0tYopTVCgMT_InS2VIQ@geopod-ismtpd-66>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -579,13 +543,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -598,15 +562,11 @@
     "threadRootId": "<sTk4uQ6jReCPaeIKVHbTUQ@geopod-ismtpd-92>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -640,13 +600,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -659,15 +619,11 @@
     "threadRootId": "<7kGotnYhS8alYywsYNN8Fg@geopod-ismtpd-38>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -701,13 +657,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -720,15 +676,11 @@
     "threadRootId": "<cCU2tcjZR92LgYsEWaFfhw@geopod-ismtpd-49>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -753,13 +705,13 @@
     "tags": [],
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -772,15 +724,11 @@
     "threadRootId": "<_EyOM8R7SyqJuWvd4haL8A@geopod-ismtpd-47>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -805,13 +753,13 @@
     "tags": [],
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -824,15 +772,11 @@
     "threadRootId": "<LLZzppraSe-0YwXPZUEGGw@geopod-ismtpd-45>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -857,13 +801,13 @@
     "tags": [],
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -876,15 +820,11 @@
     "threadRootId": "<ZhLKYlfsRqu2lbRD1DfdYQ@geopod-ismtpd-24>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -909,13 +849,13 @@
     "tags": [],
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -928,15 +868,11 @@
     "threadRootId": "<Bgs8CQRySu2AX3Ulfd_gMw@geopod-ismtpd-22>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -961,13 +897,13 @@
     "tags": [],
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -980,15 +916,11 @@
     "threadRootId": "<P8lhPRDoRZqL9Mld5lDiCg@geopod-ismtpd-64>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -1022,13 +954,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -1041,15 +973,11 @@
     "threadRootId": "<61JqP6RDQgWj-coe1PD5aA@geopod-ismtpd-22>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -1083,13 +1011,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -1102,15 +1030,11 @@
     "threadRootId": "<ZtGXggZSSkyv4_q8YRz_og@geopod-ismtpd-23>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -1144,13 +1068,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -1163,15 +1087,11 @@
     "threadRootId": "<7inDRQxKRwS5BMKyNZ9QVQ@geopod-ismtpd-112>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -1205,13 +1125,13 @@
     },
     "from": [
       {
-        "label": "Mustafa from Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -1224,15 +1144,11 @@
     "threadRootId": "<1dJEtZvbQbyV2LUdyJjW4g@geopod-ismtpd-27>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -1266,13 +1182,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -1285,15 +1201,11 @@
     "threadRootId": "<3G47-DmmTju_ddxOmRPeUw@geopod-ismtpd-74>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -1327,13 +1239,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -1346,15 +1258,11 @@
     "threadRootId": "<kydAmP2TTniYs-K28S_qgQ@geopod-ismtpd-canary-0>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -1388,13 +1296,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -1407,15 +1315,11 @@
     "threadRootId": "<sDV-L3EuTLOtgth83zv2sQ@geopod-ismtpd-2>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -1449,13 +1353,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -1468,15 +1372,11 @@
     "threadRootId": "<iEsD1hrHRISBlNGXnvyilw@geopod-ismtpd-80>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -1510,13 +1410,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -1529,15 +1429,11 @@
     "threadRootId": "<zGd4amajQgKyXavLSpolRQ@geopod-ismtpd-90>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -1571,13 +1467,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -1590,15 +1486,11 @@
     "threadRootId": "<TP1hkkonSqmxs6EUIOcABQ@geopod-ismtpd-51>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -1632,13 +1524,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -1651,15 +1543,11 @@
     "threadRootId": "<APQlq43TSJG9meTEP1mRHw@geopod-ismtpd-70>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -1693,13 +1581,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -1712,15 +1600,11 @@
     "threadRootId": "<hhgmdM2kTZe6x9PtPyzTMw@geopod-ismtpd-61>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -1754,13 +1638,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -1773,15 +1657,11 @@
     "threadRootId": "<IbBDPHNDSoyP8b6EwjMcPg@geopod-ismtpd-31>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -1815,13 +1695,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -1834,15 +1714,11 @@
     "threadRootId": "<WfBjIy3DTOyqIkP7P44KhQ@geopod-ismtpd-40>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -1876,13 +1752,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -1895,15 +1771,11 @@
     "threadRootId": "<ihJMmTbtSDSCQZFjapF1QA@geopod-ismtpd-107>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -1937,13 +1809,13 @@
     },
     "from": [
       {
-        "label": "admin",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "admin",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -1956,7 +1828,7 @@
     "threadRootId": "<user@example.com>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
     "avatar": null,
@@ -1994,13 +1866,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -2013,15 +1885,11 @@
     "threadRootId": "<sSFv97xFQBSFZXpVcOJAHQ@geopod-ismtpd-96>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -2055,13 +1923,13 @@
     },
     "from": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "admin",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -2074,7 +1942,7 @@
     "threadRootId": "<user@example.com>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
     "avatar": null,
@@ -2112,13 +1980,13 @@
     },
     "from": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "admin",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -2131,7 +1999,7 @@
     "threadRootId": "<CAOFMF9H2X5_=user@example.com>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
     "avatar": null,
@@ -2169,13 +2037,13 @@
     },
     "from": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "admin",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -2188,7 +2056,7 @@
     "threadRootId": "<user@example.com>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
     "avatar": null,
@@ -2226,13 +2094,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -2245,15 +2113,11 @@
     "threadRootId": "<fU2iij82QDGztwZkN3XJEQ@geopod-ismtpd-67>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -2287,13 +2151,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -2306,15 +2170,11 @@
     "threadRootId": "<b5E9h0knTRmHpbmskNLdFg@geopod-ismtpd-22>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -2348,13 +2208,13 @@
     },
     "from": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "admin",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -2374,7 +2234,7 @@
     "threadRootId": "<user@example.com>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 1,
     "avatar": null,
@@ -2403,13 +2263,13 @@
     "tags": [],
     "from": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "admin",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -2428,7 +2288,7 @@
     "threadRootId": "<user@example.com>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 1,
     "avatar": null,
@@ -2466,13 +2326,13 @@
     },
     "from": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "admin",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -2490,7 +2350,7 @@
     "threadRootId": "<user@example.com>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 1,
     "avatar": null,
@@ -2519,13 +2379,13 @@
     "tags": [],
     "from": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "admin",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -2542,7 +2402,7 @@
     "threadRootId": "<user@example.com>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 1,
     "avatar": null,
@@ -2580,13 +2440,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -2599,15 +2459,11 @@
     "threadRootId": "<Fwo-GAQbQ7ysbNmwGwGUOg@geopod-ismtpd-39>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -2641,13 +2497,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -2660,15 +2516,11 @@
     "threadRootId": "<RUzVnhMsSECQxbFqcvZqlw@geopod-ismtpd-51>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -2702,13 +2554,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -2721,15 +2573,11 @@
     "threadRootId": "<YacIPaDGQAKg3NQQriEnog@geopod-ismtpd-35>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -2763,13 +2611,13 @@
     },
     "from": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "admin",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -2785,7 +2633,7 @@
     "threadRootId": "<user@example.com>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 1,
     "avatar": null,
@@ -2823,13 +2671,13 @@
     },
     "from": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "admin",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -2845,7 +2693,7 @@
     "threadRootId": "<user@example.com>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 1,
     "avatar": null,
@@ -2883,13 +2731,13 @@
     },
     "from": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "admin",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -2905,7 +2753,7 @@
     "threadRootId": "<user@example.com>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 1,
     "avatar": null,
@@ -2943,13 +2791,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -2962,15 +2810,11 @@
     "threadRootId": "<aFSOgbOrQaWgo4W0FBXGSw@geopod-ismtpd-98>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -3012,13 +2856,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -3031,15 +2875,11 @@
     "threadRootId": "<nwARN4ZhQzyeZ_lT7RWwYw@geopod-ismtpd-55>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -3073,13 +2913,13 @@
     },
     "from": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "admin",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -3095,7 +2935,7 @@
     "threadRootId": "<user@example.com>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 1,
     "avatar": null,
@@ -3103,7 +2943,7 @@
     "attachments": [
       {
         "id": "2",
-        "fileName": "Hamza_Mahjoubi_CV.docx",
+        "fileName": "attachment.docx",
         "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         "downloadUrl": "http://cloud.example.com/index.php/apps/mail/api/messages/66/attachment/2",
         "mimeUrl": "/index.php/apps/theming/img/core/filetypes/x-office-document.svg?v=dcc46f9a"
@@ -3141,13 +2981,13 @@
     },
     "from": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "admin",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -3162,7 +3002,7 @@
     "threadRootId": "<user@example.com>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 1,
     "avatar": null,
@@ -3170,7 +3010,7 @@
     "attachments": [
       {
         "id": "2",
-        "fileName": "Hamza_Mahjoubi_CV.pdf",
+        "fileName": "attachment.pdf",
         "mime": "application/pdf",
         "downloadUrl": "http://cloud.example.com/index.php/apps/mail/api/messages/65/attachment/2",
         "mimeUrl": "/index.php/apps/theming/img/core/filetypes/application-pdf.svg?v=dcc46f9a"
@@ -3208,13 +3048,13 @@
     },
     "from": [
       {
-        "label": "Mustafa from Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -3227,15 +3067,11 @@
     "threadRootId": "<bn_c2IE3QsGuXkLq11LSeA@geopod-ismtpd-100>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -3269,13 +3105,13 @@
     },
     "from": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "admin",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -3288,7 +3124,7 @@
     "threadRootId": "<user@example.com>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
     "avatar": null,
@@ -3326,13 +3162,13 @@
     },
     "from": [
       {
-        "label": "Mustafa from Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -3345,7 +3181,7 @@
     "threadRootId": "<MABmralvQHqX0WQ-F6k1ug@geopod-ismtpd-61>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
     "avatar": null,
@@ -3383,13 +3219,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -3402,15 +3238,11 @@
     "threadRootId": "<n7PnRaBiRHSa-eYCMmcDtw@geopod-ismtpd-8>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -3444,13 +3276,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -3463,15 +3295,11 @@
     "threadRootId": "<L5pRIEomQAyEQ-CHHv7VKg@geopod-ismtpd-10>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -3513,13 +3341,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -3532,15 +3360,11 @@
     "threadRootId": "<PhHhvCCOR2-EcMnnvu8P3Q@geopod-ismtpd-110>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -3574,13 +3398,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -3593,15 +3417,11 @@
     "threadRootId": "<SBUPdnImSGC3oW44ocDsRA@geopod-ismtpd-65>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -3643,13 +3463,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -3662,15 +3482,11 @@
     "threadRootId": "<xXkU_B-nRt2Zf8jTeF9v9Q@geopod-ismtpd-100>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -3712,13 +3528,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -3731,15 +3547,11 @@
     "threadRootId": "<OxRmmeb-TtyHgb-ynclt3A@geopod-ismtpd-25>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -3781,13 +3593,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -3800,15 +3612,11 @@
     "threadRootId": "<7p4iDY--RZ-QYcOxUxMqLg@geopod-ismtpd-88>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -3850,13 +3658,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -3869,15 +3677,11 @@
     "threadRootId": "<IYI8XhMjSnGJrmKYZBEFMA@geopod-ismtpd-14>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -3919,13 +3723,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -3938,15 +3742,11 @@
     "threadRootId": "<Q66QUR_9TEqR2kmC9_ztaQ@geopod-ismtpd-94>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -3988,13 +3788,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -4007,15 +3807,11 @@
     "threadRootId": "<PUoVassTQtef8HvmDEUAGw@geopod-ismtpd-3>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -4057,13 +3853,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -4076,15 +3872,11 @@
     "threadRootId": "<u8Hk-UdMQR6jaBbDGZ4CyQ@geopod-ismtpd-62>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -4118,13 +3910,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -4137,15 +3929,11 @@
     "threadRootId": "<ppbP-VsyTz6Ys-PQ7ztHUQ@geopod-ismtpd-94>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -4179,13 +3967,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -4198,15 +3986,11 @@
     "threadRootId": "<7YBy41N_SJqW52aFWNEnsg@geopod-ismtpd-14>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -4240,13 +4024,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -4259,15 +4043,11 @@
     "threadRootId": "<By2Ebe0yQ_KBAMk3TaLjlg@geopod-ismtpd-87>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -4301,13 +4081,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -4320,15 +4100,11 @@
     "threadRootId": "<3IZa5V0cTiK_lInVo661gw@geopod-ismtpd-39>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -4362,13 +4138,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -4381,15 +4157,11 @@
     "threadRootId": "<ltyiUdHxRjS1SY3duWmhsQ@geopod-ismtpd-55>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -4423,109 +4195,109 @@
     },
     "from": [
       {
-        "label": "admin",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "admin",
+        "label": "Name redacted",
         "email": "user@example.com"
       },
       {
-        "label": "user@example.com",
+        "label": "Name redacted",
         "email": "user@example.com"
       },
       {
-        "label": "user@example.com",
+        "label": "Name redacted",
         "email": "user@example.com"
       },
       {
-        "label": "user@example.com",
+        "label": "Name redacted",
         "email": "user@example.com"
       },
       {
-        "label": "user@example.com",
+        "label": "Name redacted",
         "email": "user@example.com"
       },
       {
-        "label": "user@example.com",
+        "label": "Name redacted",
         "email": "user@example.com"
       },
       {
-        "label": "user@example.com",
+        "label": "Name redacted",
         "email": "user@example.com"
       },
       {
-        "label": "user@example.com",
+        "label": "Name redacted",
         "email": "user@example.com"
       },
       {
-        "label": "user@example.com",
+        "label": "Name redacted",
         "email": "user@example.com"
       },
       {
-        "label": "user@example.com",
+        "label": "Name redacted",
         "email": "user@example.com"
       },
       {
-        "label": "user@example.com",
+        "label": "Name redacted",
         "email": "user@example.com"
       },
       {
-        "label": "user@example.com",
+        "label": "Name redacted",
         "email": "user@example.com"
       },
       {
-        "label": "user@example.com",
+        "label": "Name redacted",
         "email": "user@example.com"
       },
       {
-        "label": "user@example.com",
+        "label": "Name redacted",
         "email": "user@example.com"
       },
       {
-        "label": "user@example.com",
+        "label": "Name redacted",
         "email": "user@example.com"
       },
       {
-        "label": "user@example.com",
+        "label": "Name redacted",
         "email": "user@example.com"
       },
       {
-        "label": "user@example.com",
+        "label": "Name redacted",
         "email": "user@example.com"
       },
       {
-        "label": "user@example.com",
+        "label": "Name redacted",
         "email": "user@example.com"
       },
       {
-        "label": "user@example.com",
+        "label": "Name redacted",
         "email": "user@example.com"
       },
       {
-        "label": "user@example.com",
+        "label": "Name redacted",
         "email": "user@example.com"
       },
       {
-        "label": "user@example.com",
+        "label": "Name redacted",
         "email": "user@example.com"
       },
       {
-        "label": "user@example.com",
+        "label": "Name redacted",
         "email": "user@example.com"
       },
       {
-        "label": "user@example.com",
+        "label": "Name redacted",
         "email": "user@example.com"
       },
       {
-        "label": "user@example.com",
+        "label": "Name redacted",
         "email": "user@example.com"
       },
       {
-        "label": "user@example.com",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -4538,7 +4310,7 @@
     "threadRootId": "<user@example.com>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
     "avatar": null,
@@ -4576,13 +4348,13 @@
     },
     "from": [
       {
-        "label": "Mail Delivery Subsystem",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "user@example.com",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -4595,7 +4367,7 @@
     "threadRootId": "<user@example.com>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
     "avatar": null,
@@ -4641,13 +4413,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -4660,15 +4432,11 @@
     "threadRootId": "<IlNz8BJeTjmXXgT2lt4_LA@geopod-ismtpd-142>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -4710,13 +4478,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -4729,7 +4497,7 @@
     "threadRootId": "<3ZpkQFKISxuFJEy26Vz4ng@geopod-ismtpd-85>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
     "avatar": null,
@@ -4767,13 +4535,13 @@
     },
     "from": [
       {
-        "label": "Microsoft account team",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "user@example.com",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -4786,7 +4554,7 @@
     "threadRootId": "<UD890UHF7TU4.561LEW9MXVV13@sn1pepf0003b6eb>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
     "avatar": null,
@@ -4824,13 +4592,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -4843,15 +4611,11 @@
     "threadRootId": "<TjA1yl2PTPC3dBFdQDOHXg@geopod-ismtpd-67>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -4893,13 +4657,13 @@
     },
     "from": [
       {
-        "label": "Murad from Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -4912,7 +4676,7 @@
     "threadRootId": "<LEfVDf6wS7u9kT88Aj8Wbg@geopod-ismtpd-11>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
     "avatar": null,
@@ -4950,37 +4714,37 @@
     },
     "from": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "admin",
+        "label": "Name redacted",
         "email": "user@example.com"
       },
       {
-        "label": "Hamza Mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       },
       {
-        "label": "user@example.com",
+        "label": "Name redacted",
         "email": "user@example.com"
       },
       {
-        "label": "user@example.com",
+        "label": "Name redacted",
         "email": "user@example.com"
       },
       {
-        "label": "hamza.mahjoubi221",
+        "label": "Name redacted",
         "email": "user@example.com"
       },
       {
-        "label": "user@example.com",
+        "label": "Name redacted",
         "email": "user@example.com"
       },
       {
-        "label": "Hamza Mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -4993,7 +4757,7 @@
     "threadRootId": "<TRACKINGID=user@example.com>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
     "avatar": null,
@@ -5031,13 +4795,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -5050,15 +4814,11 @@
     "threadRootId": "<HX49WkKwR8-XKZeDp13Z1g@geopod-ismtpd-20>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -5092,13 +4852,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -5111,15 +4871,11 @@
     "threadRootId": "<OSxRdlUpSp-ajJQXsZ2Thw@geopod-ismtpd-50>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -5161,13 +4917,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -5180,15 +4936,11 @@
     "threadRootId": "<brkqBfgHQ-Cb8p5MzxZ0qw@geopod-ismtpd-36>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -5230,13 +4982,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -5249,15 +5001,11 @@
     "threadRootId": "<8J0g01MgRtuPj5PQEg9RnQ@geopod-ismtpd-56>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -5299,13 +5047,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -5318,15 +5066,11 @@
     "threadRootId": "<7G9t6q7VRKy7pCD2o6woyg@geopod-ismtpd-94>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -5360,13 +5104,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -5379,15 +5123,11 @@
     "threadRootId": "<2JQ1Y9rYQcCyHfWt62q2bw@geopod-ismtpd-63>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -5421,13 +5161,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -5440,15 +5180,11 @@
     "threadRootId": "<kK8p8HbSQXCMVNG16_pCwQ@geopod-ismtpd-10>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -5482,13 +5218,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -5501,15 +5237,11 @@
     "threadRootId": "<ViPeQchgQLm1R7Uzpmu8lQ@geopod-ismtpd-71>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -5543,13 +5275,13 @@
     },
     "from": [
       {
-        "label": "Mustafa from Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -5562,7 +5294,7 @@
     "threadRootId": "<vpHg_Q_JT7aNtRC9XBON0g@geopod-ismtpd-74>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
     "avatar": null,
@@ -5608,13 +5340,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -5627,15 +5359,11 @@
     "threadRootId": "<mmLHBUGTQVaB3uCXZfGVhQ@geopod-ismtpd-16>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -5677,13 +5405,13 @@
     },
     "from": [
       {
-        "label": "Murad from Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -5696,7 +5424,7 @@
     "threadRootId": "<w_Gs__kkSveZCO7OrGkueA@geopod-ismtpd-10>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
     "avatar": null,
@@ -5742,13 +5470,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -5761,15 +5489,11 @@
     "threadRootId": "<ZKcmsFe7S1eAsOwCRam5dw@geopod-ismtpd-93>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -5811,13 +5535,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -5830,15 +5554,11 @@
     "threadRootId": "<vlRUfyHHR1abiGm1-9RSqA@geopod-ismtpd-23>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -5880,13 +5600,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "user@example.com",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -5899,15 +5619,11 @@
     "threadRootId": "<13nOyfjyQN2i93zgAQCoiw@geopod-ismtpd-47>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
@@ -5941,13 +5657,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "user@example.com",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -5960,15 +5676,11 @@
     "threadRootId": "<aCQAM97ZSKW8zi23NqsUfA@geopod-ismtpd-9>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
-    "avatar": {
-      "isExternal": true,
-      "mime": "image/png",
-      "url": "https://wearthepeace.com/cdn/shop/files/TRACKINGID.png?v=1626307223"
-    },
-    "fetchAvatarFromClient": false,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
     "attachments": []
   }
 ]

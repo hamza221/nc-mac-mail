@@ -1,6 +1,6 @@
 {
-  "uid": 103,
-  "messageId": "<IbBSj4zaReK1GOa5wHvukA@geopod-ismtpd-72>",
+  "uid": 48,
+  "messageId": "<CAOFMF9HH7hRsepLY8BA2Yb+ZZY8gYQcnz3gmkdxov=user@example.com>",
   "from": [
     {
       "label": "Name redacted",
@@ -22,17 +22,17 @@
   "cc": [],
   "bcc": [],
   "subject": "Subject redacted",
-  "dateInt": 1789920932,
+  "dateInt": 1782480125,
   "flags": {
-    "seen": false,
+    "seen": true,
     "flagged": false,
     "answered": false,
     "deleted": false,
     "draft": false,
     "forwarded": false,
-    "hasAttachments": false,
+    "hasAttachments": true,
     "$mdnsent": false,
-    "important": false
+    "important": true
   },
   "hasHtmlBody": true,
   "dispositionNotificationTo": "",
@@ -66,18 +66,32 @@
     ],
     "warning": false
   },
-  "unsubscribeUrl": "https://manage.kmail-lists.com/subscriptions/unsubscribe?a=U45QAK&c=TRACKINGID&k=TRACKINGID&se=user%40example.com&m=TRACKINGID&r=TRACKINGID",
-  "isOneClickUnsubscribe": true,
+  "unsubscribeUrl": null,
+  "isOneClickUnsubscribe": false,
   "unsubscribeMailto": null,
   "scheduling": [],
   "isPgpMimeEncrypted": false,
   "hasAiGeneratedHeader": false,
   "body": "Body redacted",
-  "attachments": [],
+  "attachments": [
+    {
+      "id": "2",
+      "messageId": 48,
+      "fileName": "attachment.docx",
+      "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "size": 27607,
+      "cid": "f_mquymsb20",
+      "disposition": "attachment",
+      "downloadUrl": "http://cloud.example.com/index.php/apps/mail/api/messages/66/attachment/2",
+      "mimeUrl": "/index.php/apps/theming/img/core/filetypes/x-office-document.svg?v=dcc46f9a",
+      "isImage": false,
+      "isCalendarEvent": false
+    }
+  ],
   "inlineAttachments": [],
   "accountId": 1,
   "mailboxId": 5,
-  "databaseId": 166,
+  "databaseId": 66,
   "isSenderTrusted": false,
   "smime": {
     "isSigned": false,

@@ -30,13 +30,13 @@
     },
     "from": [
       {
-        "label": "Wear The Peace",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
     "to": [
       {
-        "label": "hamza mahjoubi",
+        "label": "Name redacted",
         "email": "user@example.com"
       }
     ],
@@ -49,7 +49,7 @@
     "threadRootId": "<IbBSj4zaReK1GOa5wHvukA@geopod-ismtpd-72>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": null,
+    "summary": "Summary redacted",
     "encrypted": false,
     "mentionsMe": 0,
     "avatar": null,
