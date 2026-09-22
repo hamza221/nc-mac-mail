@@ -19,11 +19,15 @@ struct BodyBackfillTests {
     /// leaves things.
     private func seededStore(messages: Int = 6) async throws -> (MailStore, MailStoreFixtures.SeedResult) {
         let store = try MailStore.inMemory()
-        let seed = try await MailStoreFixtures.seed(store, messages: messages, accountId: 1, mailboxId: 5)
-        try await store.setEnvelopeCursor(1, complete: true, mailboxId: 5, lastSyncAt: 1)
-        try await store.write { database in
-            try database.execute(sql: "UPDATE mailbox SET lastPrimedAt = 1 WHERE id = 5")
-        }
+        let seed = try await MailStoreFixtures.seed(
+            store,
+            messages: messages,
+            identity: MirrorTest.identity,
+            remoteAccountId: 1,
+            remoteMailboxId: 5
+        )
+        try await store.setEnvelopeCursor(1, complete: true, mailboxId: seed.mailboxId, lastSyncAt: 1)
+        try await store.setLastPrimedAt(1, mailboxId: seed.mailboxId)
         return (store, seed)
     }
 
@@ -288,6 +292,7 @@ struct BodyBackfillTests {
     @Test("Low Power Mode holds stage 2 and lets stage 1 finish")
     func lowPowerModeHoldsBodiesOnly() async throws {
         let store = try MailStore.inMemory()
+        _ = try await MirrorTest.mirroredAccount(store)
         let transport = FakeTransport()
         try await MirrorTest.stubBootstrap(transport)
         try await MirrorTest.stubQuietMailboxes(transport, except: 5)

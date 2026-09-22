@@ -28,7 +28,7 @@ struct PerformanceTests {
         for id in Int64(1)...messageCount {
             batch.append(
                 Seed.envelope(
-                    id: id,
+                    remoteId: id,
                     sentAt: 1_600_000_000 + id,
                     subject: "Message \(id) about \(topics[Int(id) % topics.count])",
                     preview: "The quick brown fox \(id) jumped over the lazy dog",
@@ -91,13 +91,39 @@ struct PerformanceTests {
         _ = try await Self.seed(store)
         // A second account with nothing downloaded, which is the case the index ordering was
         // changed for: without `accountId` leading, its rows are walked before account 1's.
-        try await store.upsert(accounts: [AccountWrite(id: 2, name: "Other", emailAddress: "b@example.invalid")])
-        try await store.upsert(
-            mailboxes: [MailboxWrite(id: 20, accountId: 2, name: "INBOX", displayName: "INBOX", isSubscribed: true)],
-            accountId: 2)
+        let others = try await store.upsert(
+            accounts: [
+                AccountWrite(
+                    identity: ServerIdentity(serverURL: "https://two.example.invalid/", loginName: "grace"),
+                    remoteId: 1,
+                    name: "Other",
+                    emailAddress: "b@example.invalid"
+                )
+            ]
+        )
+        // The same `remoteId` as the seeded account, from a different server. Before
+        // ADR-0033 this overwrote the first account's row instead of adding a second.
+        let other = try #require(others.first)
+        let otherMailboxes = try await store.upsert(
+            mailboxes: [
+                MailboxWrite(
+                    accountId: other.id,
+                    remoteId: 10,
+                    name: "INBOX",
+                    displayName: "INBOX",
+                    isSubscribed: true
+                )
+            ],
+            accountId: other.id)
+        let otherMailbox = try #require(otherMailboxes.first)
         try await store.upsert(
             envelopes: (1...2000).map {
-                Seed.envelope(id: 900_000 + $0, mailboxId: 20, accountId: 2, sentAt: 1_900_000_000 + $0)
+                Seed.envelope(
+                    remoteId: 900_000 + $0,
+                    mailboxId: otherMailbox.id,
+                    accountId: other.id,
+                    sentAt: 1_900_000_000 + $0
+                )
             }
         )
         try await store.setBodyState(.present, messageIds: Array(Int64(1)...Int64(49_000)))
@@ -139,7 +165,7 @@ struct PerformanceTests {
         try await store.upsert(
             envelopes: (1...count).map {
                 Seed.envelope(
-                    id: $0,
+                    remoteId: $0,
                     sentAt: 1_600_000_000 + $0,
                     subject: "Message \($0) about \(Self.topics[Int($0) % Self.topics.count])",
                     threadRootId: "thread-\($0 / Self.threadSize)",

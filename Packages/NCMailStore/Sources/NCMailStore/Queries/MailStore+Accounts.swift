@@ -1,16 +1,44 @@
 // SPDX-FileCopyrightText: Hamza Mahjoubi
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-public import GRDB
+internal import GRDB
 
 extension MailStore {
-    /// Inserts or refreshes accounts, leaving every mirror-bookkeeping column alone.
-    public func upsert(accounts: [AccountWrite]) async throws {
-        guard !accounts.isEmpty else { return }
-        try await dbQueue.write { db in
-            for account in accounts {
-                try account.upsert(db)
-            }
+    /// Inserts or refreshes accounts, leaving every mirror-bookkeeping column alone, and
+    /// answers with the rows as they now stand.
+    ///
+    /// The rows are what the caller wants. An ``AccountWrite`` carries the server's id and
+    /// the login it came from; the local id that scopes every mailbox and message under it
+    /// is the mirror's to assign. `UNIQUE (serverURL, loginName, remoteId)` is the conflict
+    /// target, so the same account from the same login updates its row, and the same numeric
+    /// id from a second server inserts a new one (ADR-0033).
+    @discardableResult
+    public func upsert(accounts: [AccountWrite]) async throws -> [AccountRecord] {
+        guard !accounts.isEmpty else { return [] }
+        return try await dbQueue.write { db in
+            try accounts.map { try $0.upsertAndFetch(db, as: AccountRecord.self) }
+        }
+    }
+
+    /// One account by its local id, for a caller that has an id and needs the server and
+    /// login it belongs to.
+    public func account(id: Int64) async throws -> AccountRecord? {
+        try await dbQueue.read { db in
+            try AccountRecord.fetchOne(db, sql: "SELECT * FROM account WHERE id = ?", arguments: [id])
+        }
+    }
+
+    /// Every account mirrored for one signed-in login, in sidebar order.
+    public func accounts(identity: ServerIdentity) async throws -> [AccountRecord] {
+        let sql =
+            "SELECT * FROM account WHERE serverURL = :serverURL AND loginName = :loginName"
+            + " ORDER BY sortOrder, id"
+        return try await dbQueue.read { db in
+            try AccountRecord.fetchAll(
+                db,
+                sql: sql,
+                arguments: ["serverURL": identity.serverURL, "loginName": identity.loginName]
+            )
         }
     }
 
@@ -21,12 +49,10 @@ extension MailStore {
     }
 
     /// The sidebar's account sections, live.
-    public func observeAccounts() -> AsyncValueObservation<[AccountRecord]> {
-        ValueObservation
-            .tracking { db in
-                try AccountRecord.fetchAll(db, sql: "SELECT * FROM account ORDER BY sortOrder, id")
-            }
-            .values(in: dbQueue, scheduling: .mainActor)
+    public func observeAccounts() -> StoreObservation<[AccountRecord]> {
+        observation { db in
+            try AccountRecord.fetchAll(db, sql: "SELECT * FROM account ORDER BY sortOrder, id")
+        }
     }
 
     /// Records where the account's mirror has got to.

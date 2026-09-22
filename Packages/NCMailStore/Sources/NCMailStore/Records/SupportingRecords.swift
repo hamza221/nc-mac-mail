@@ -5,16 +5,30 @@ public import Foundation
 public import GRDB
 
 /// A row of `tag` — an IMAP keyword with the display name and colour the server gave it.
+///
+/// `id` is local and `remoteId` is the server's, for the reason in ADR-0033: tags belong to
+/// an account server-side, so two accounts both numbering a tag 1 are two rows here.
 public struct TagRecord: Codable, FetchableRecord, PersistableRecord, Sendable, Identifiable, Equatable {
     public static let databaseTableName = "tag"
 
     public var id: Int64
+    public var accountId: Int64
+    public var remoteId: Int64
     public var imapLabel: String
     public var displayName: String
     public var color: String?
 
-    public init(id: Int64, imapLabel: String, displayName: String, color: String? = nil) {
+    public init(
+        id: Int64,
+        accountId: Int64,
+        remoteId: Int64,
+        imapLabel: String,
+        displayName: String,
+        color: String? = nil
+    ) {
         self.id = id
+        self.accountId = accountId
+        self.remoteId = remoteId
         self.imapLabel = imapLabel
         self.displayName = displayName
         self.color = color

@@ -37,7 +37,7 @@ struct SearchIndexTests {
         try await store.upsert(
             envelopes: [
                 Seed.envelope(
-                    id: 1,
+                    remoteId: 1,
                     sentAt: 100,
                     subject: "Quarterly hedgehog census",
                     preview: "Numbers are up in the eastern hedgerow",
@@ -61,7 +61,7 @@ struct SearchIndexTests {
         try await store.upsert(
             envelopes: [
                 Seed.envelope(
-                    id: 1,
+                    remoteId: 1,
                     sentAt: 100,
                     addresses: [EnvelopeAddress(kind: .from, email: "z@example.invalid", label: "Zoë")]
                 )
@@ -79,7 +79,7 @@ struct SearchIndexTests {
         try await store.upsert(
             envelopes: [
                 Seed.envelope(
-                    id: 1,
+                    remoteId: 1,
                     sentAt: 100,
                     addresses: [
                         EnvelopeAddress(kind: .from, email: "ada@example.invalid", label: "Ada"),
@@ -104,12 +104,12 @@ struct SearchIndexTests {
     @Test func reIndexingAnEnvelopeKeepsTheBodyText() async throws {
         let store = try MailStore.inMemory()
         try await Seed.base(store)
-        try await store.upsert(envelopes: [Seed.envelope(id: 1, sentAt: 100, subject: "Original")])
+        try await store.upsert(envelopes: [Seed.envelope(remoteId: 1, sentAt: 100, subject: "Original")])
         try await store.upsert(
             body: MessageBodyWrite(fetchedAt: 200, plainBody: "pangolins and their habits"),
             for: 1
         )
-        try await store.upsert(envelopes: [Seed.envelope(id: 1, sentAt: 100, subject: "Edited", isSeen: true)])
+        try await store.upsert(envelopes: [Seed.envelope(remoteId: 1, sentAt: 100, subject: "Edited", isSeen: true)])
 
         let rows = try await store.read { db -> [String] in
             try String.fetchAll(
@@ -125,7 +125,7 @@ struct SearchIndexTests {
     @Test func indexingABodyKeepsTheEnvelopeText() async throws {
         let store = try MailStore.inMemory()
         try await Seed.base(store)
-        try await store.upsert(envelopes: [Seed.envelope(id: 1, sentAt: 100, subject: "Marmots")])
+        try await store.upsert(envelopes: [Seed.envelope(remoteId: 1, sentAt: 100, subject: "Marmots")])
         try await store.upsert(body: MessageBodyWrite(fetchedAt: 200, plainBody: "burrows"), for: 1)
 
         let hits = try await store.read { db in
@@ -140,7 +140,7 @@ struct SearchIndexTests {
     @Test func markupIsStrippedBeforeIndexing() async throws {
         let store = try MailStore.inMemory()
         try await Seed.base(store)
-        try await store.upsert(envelopes: [Seed.envelope(id: 1, sentAt: 100, subject: "S")])
+        try await store.upsert(envelopes: [Seed.envelope(remoteId: 1, sentAt: 100, subject: "S")])
         try await store.upsert(
             body: MessageBodyWrite(
                 fetchedAt: 200,
@@ -160,7 +160,7 @@ struct SearchIndexTests {
     @Test func deletingAMessageRemovesItsIndexRow() async throws {
         let store = try MailStore.inMemory()
         try await Seed.base(store)
-        try await store.upsert(envelopes: (1...5).map { Seed.envelope(id: $0, sentAt: 100 + $0) })
+        try await store.upsert(envelopes: (1...5).map { Seed.envelope(remoteId: $0, sentAt: 100 + $0) })
         try await store.deleteMessages(ids: [2, 4])
 
         let remaining = try await store.read { db in
@@ -176,7 +176,7 @@ struct SearchIndexTests {
     @Test func styleAndScriptContentsAreNotIndexed() async throws {
         let store = try MailStore.inMemory()
         try await Seed.base(store)
-        try await store.upsert(envelopes: [Seed.envelope(id: 1, sentAt: 100, subject: "S", preview: "P")])
+        try await store.upsert(envelopes: [Seed.envelope(remoteId: 1, sentAt: 100, subject: "S", preview: "P")])
         try await store.upsert(
             body: MessageBodyWrite(
                 fetchedAt: 1,
@@ -209,8 +209,8 @@ struct SearchIndexTests {
         try await store.upsert(mailboxes: [Seed.mailbox(id: 11, name: "Archive")], accountId: 1)
         try await store.upsert(
             envelopes: [
-                Seed.envelope(id: 1, mailboxId: 10, sentAt: 100),
-                Seed.envelope(id: 2, mailboxId: 11, sentAt: 200),
+                Seed.envelope(remoteId: 1, mailboxId: 10, sentAt: 100),
+                Seed.envelope(remoteId: 2, mailboxId: 11, sentAt: 200),
             ]
         )
         try await store.write { db in
@@ -226,7 +226,7 @@ struct SearchIndexTests {
     @Test func removingLocalCopiesEmptiesBodiesAndLeavesEnvelopesSearchable() async throws {
         let store = try MailStore.inMemory()
         try await Seed.base(store)
-        try await store.upsert(envelopes: [Seed.envelope(id: 1, sentAt: 100, subject: "Ospreys")])
+        try await store.upsert(envelopes: [Seed.envelope(remoteId: 1, sentAt: 100, subject: "Ospreys")])
         try await store.upsert(body: MessageBodyWrite(fetchedAt: 200, plainBody: "nesting platform"), for: 1)
 
         try await store.removeLocalCopies(accountId: 1, resetBodyState: true)
@@ -251,7 +251,7 @@ struct SearchIndexTests {
     @Test func theIndexSurvivesConcurrentWriters() async throws {
         let store = try MailStore.inMemory()
         try await Seed.base(store)
-        try await store.upsert(envelopes: (1...200).map { Seed.envelope(id: $0, sentAt: 1000 + $0) })
+        try await store.upsert(envelopes: (1...200).map { Seed.envelope(remoteId: $0, sentAt: 1000 + $0) })
 
         try await withThrowingTaskGroup(of: Void.self) { group in
             for id in Int64(1)...200 {
@@ -266,11 +266,11 @@ struct SearchIndexTests {
                         )
                     case 2:
                         try await store.upsert(
-                            envelopes: [Seed.envelope(id: id, sentAt: 1000 + id, subject: "again \(id)")]
+                            envelopes: [Seed.envelope(remoteId: id, sentAt: 1000 + id, subject: "again \(id)")]
                         )
                     default:
                         try await store.upsert(
-                            envelopes: [Seed.envelope(id: 1000 + id, sentAt: 2000 + id, subject: "new \(id)")]
+                            envelopes: [Seed.envelope(remoteId: 1000 + id, sentAt: 2000 + id, subject: "new \(id)")]
                         )
                     }
                 }

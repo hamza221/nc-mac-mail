@@ -21,7 +21,31 @@ enum MirrorTest {
     static let server = "https://cloud.example.invalid"
     static let apiRoot = "/index.php/apps/mail/api"
 
-    enum SetupError: Error { case badServerURL }
+    /// The signed-in login every mirrored row here is filed under. A coordinator takes a
+    /// local account id, and a local account id only exists once a row does (ADR-0033), so
+    /// every test that runs one calls ``mirroredAccount(_:remoteId:)`` first.
+    static let identity = ServerIdentity(serverURL: server + "/", loginName: "alice")
+
+    /// The account row a coordinator is built for, and its local id.
+    ///
+    /// `remoteId` matches the first entry of `accounts.json`, so the refresh in `bootstrap`
+    /// updates this row rather than adding another.
+    static func mirroredAccount(_ store: MailStore, remoteId: Int64 = 1) async throws -> Int64 {
+        let records = try await store.upsert(
+            accounts: [
+                AccountWrite(
+                    identity: identity,
+                    remoteId: remoteId,
+                    name: "Test",
+                    emailAddress: "alice@example.invalid"
+                )
+            ]
+        )
+        guard let account = records.first else { throw SetupError.accountNotWritten }
+        return account.id
+    }
+
+    enum SetupError: Error { case badServerURL, accountNotWritten }
 
     static func client(_ transport: FakeTransport) throws -> MailClient {
         guard let url = URL(string: server) else { throw SetupError.badServerURL }
@@ -138,8 +162,23 @@ extension MailStore {
         try await mirrorProgress(accountId: accountId)
     }
 
-    func mailbox(id: Int64, accountId: Int64 = 1) async throws -> MailboxRecord? {
-        try await mailboxes(accountId: accountId).first { $0.id == id }
+    /// A mailbox by the id the fixtures and the routes use — the server's, not the
+    /// mirror's. Keeping the two apart is the point of ADR-0033, so a test that means one
+    /// has to say which.
+    func mailbox(remoteId: Int64, accountId: Int64 = 1) async throws -> MailboxRecord? {
+        try await mailboxes(accountId: accountId).first { $0.remoteId == remoteId }
+    }
+
+    /// A message by the server's id, for an assertion about something a recording contains.
+    func message(remoteId: Int64, accountId: Int64 = 1) async throws -> MessageRecord? {
+        let mailboxIds = Set(try await mailboxes(accountId: accountId).map(\.id))
+        for mailboxId in mailboxIds.sorted() {
+            let rows = try await messages(mailboxId: mailboxId, view: .flat, range: 0..<10_000)
+            if let row = rows.first(where: { $0.remoteId == remoteId }) {
+                return try await message(id: row.id)
+            }
+        }
+        return nil
     }
 }
 

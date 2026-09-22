@@ -27,9 +27,16 @@ as in the web client.
 UI says folder; the code says mailbox. The one exception is the message move parameter,
 which upstream spells `destFolderId`.
 
-**`databaseId`** — the numeric primary key the API wants everywhere. On a mailbox payload
-it is the field literally called `databaseId`; the field called `id` is
-`base64_encode(name)` and is not an identifier for anything we do.
+**`databaseId`** — the numeric id the API wants everywhere. On a mailbox payload it is the
+field literally called `databaseId`; the field called `id` is `base64_encode(name)` and is
+not an identifier for anything we do. It is a counter in one Nextcloud instance's own
+tables and means nothing across two, so the mirror stores it as `remoteId` rather than as a
+primary key.
+
+**`remoteId`** — a server's `databaseId` (or account id) as the mirror stores it, unique
+only within the account or the login that scopes it. Every request is built from a
+`remoteId`; every row points at a local `id`. See
+[ADR-0033](../decisions/0033-accounts-have-a-local-identity.md).
 
 **`dateInt`** — the message's sent time, unix seconds. Doubles as the pagination cursor for
 `GET /api/messages`.

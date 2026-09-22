@@ -119,8 +119,9 @@ enumerated — the live inbox has such a pair, ids 44 and 45 at 1778515439, and 
 as written dropped id 45.
 
 The fix is one character: send **`oldest dateInt + 1`**, not `oldest dateInt`. The next page
-then starts with the boundary message again, whose upsert by primary key is a no-op, and
-costs at most one duplicated row per page. Verified against the same pair:
+then starts with the boundary message again, whose upsert finds the existing row through
+`idxMessageAccountRemote` and changes nothing, and costs at most one duplicated row per
+page. Verified against the same pair:
 `cursor=1778515440` returns both 44 and 45. WS-04 does this;
 [ADR-0030](../decisions/0030-stage-one-owns-its-cursor.md) records it, and
 `mailbox.envelopeCursor` therefore holds the exclusive upper bound for the *next* page

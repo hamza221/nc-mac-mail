@@ -11,7 +11,9 @@ import GRDB
 /// to a hand-written one, and the comparison is the point: it is what stops the document and
 /// the code drifting apart between two releases.
 ///
-/// Never edit a registered migration. Add the next one.
+/// Never edit a registered migration. Add the next one. `v1` itself was changed in place
+/// once, by the identity fix in ADR-0033, and only because nothing had shipped: there was
+/// no installed mirror anywhere for a `v2` to migrate.
 enum MailStoreMigrations {
     static let currentVersion = "v1"
 
@@ -26,7 +28,10 @@ enum MailStoreMigrations {
     /// Keep in step with `docs/reference/schema.sql`, statement for statement.
     private static let v1 = """
         CREATE TABLE account (
-            id                 INTEGER PRIMARY KEY,
+            id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+            serverURL          TEXT    NOT NULL,
+            loginName          TEXT    NOT NULL,
+            remoteId           INTEGER NOT NULL,
             name               TEXT    NOT NULL,
             emailAddress       TEXT    NOT NULL,
             sortOrder          INTEGER NOT NULL DEFAULT 0,
@@ -42,12 +47,14 @@ enum MailStoreMigrations {
             mirrorState        TEXT    NOT NULL DEFAULT 'idle',
             lastSyncAt         INTEGER,
             lastDeepReconcileAt INTEGER,
-            rawJSON            TEXT    NOT NULL
+            rawJSON            TEXT    NOT NULL,
+            UNIQUE (serverURL, loginName, remoteId)
         );
 
         CREATE TABLE mailbox (
-            id                 INTEGER PRIMARY KEY,
+            id                 INTEGER PRIMARY KEY AUTOINCREMENT,
             accountId          INTEGER NOT NULL REFERENCES account(id) ON DELETE CASCADE,
+            remoteId           INTEGER NOT NULL,
             name               TEXT    NOT NULL,
             delimiter          TEXT,
             displayName        TEXT    NOT NULL,
@@ -74,9 +81,11 @@ enum MailStoreMigrations {
         CREATE INDEX idxMailboxAccount   ON mailbox(accountId);
         CREATE INDEX idxMailboxMirrored  ON mailbox(isMirrored, envelopesComplete, bodiesComplete);
         CREATE UNIQUE INDEX idxMailboxAccountName ON mailbox(accountId, name);
+        CREATE UNIQUE INDEX idxMailboxAccountRemote ON mailbox(accountId, remoteId);
 
         CREATE TABLE message (
-            id             INTEGER PRIMARY KEY,
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            remoteId       INTEGER NOT NULL,
             mailboxId      INTEGER NOT NULL REFERENCES mailbox(id) ON DELETE CASCADE,
             accountId      INTEGER NOT NULL REFERENCES account(id) ON DELETE CASCADE,
             uid            INTEGER,
@@ -115,6 +124,7 @@ enum MailStoreMigrations {
         CREATE INDEX idxMessageMailboxSeen  ON message(mailboxId, isSeen);
         CREATE INDEX idxMessageMailboxFlagged ON message(mailboxId, isFlagged, sentAt DESC);
         CREATE INDEX idxMessageAccount      ON message(accountId, sentAt DESC);
+        CREATE UNIQUE INDEX idxMessageAccountRemote ON message(accountId, remoteId);
 
         CREATE TABLE messageAddress (
             messageId INTEGER NOT NULL REFERENCES message(id) ON DELETE CASCADE,
@@ -170,11 +180,14 @@ enum MailStoreMigrations {
         CREATE INDEX idxAttachmentCid ON attachment(messageId, cid);
 
         CREATE TABLE tag (
-            id          INTEGER PRIMARY KEY,
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            accountId   INTEGER NOT NULL REFERENCES account(id) ON DELETE CASCADE,
+            remoteId    INTEGER NOT NULL,
             imapLabel   TEXT NOT NULL,
             displayName TEXT NOT NULL,
             color       TEXT,
-            UNIQUE (imapLabel)
+            UNIQUE (accountId, remoteId),
+            UNIQUE (accountId, imapLabel)
         );
 
         CREATE TABLE messageTag (

@@ -371,3 +371,39 @@ have it than the ordering argument.
 is the only writer of. It is set through `store.write { }` with a one-line `UPDATE`, which
 works and is the documented escape hatch, but it is `NCMailSync` naming a column in another
 package's table. `setPrimed(mailboxId:at:)` next to `setEnvelopeCursor` would close it.
+
+### `mailbox.lastPrimedAt` now has a DAO
+**Workstream:** wave-2 fixes · **Component:** `NCMailStore` · **Severity:** resolved
+**Where:** `MailStore.setLastPrimedAt(_:mailboxId:)`
+
+WS-04's entry above asked for `setPrimed(mailboxId:at:)` next to `setEnvelopeCursor`. It
+exists as `setLastPrimedAt(_:mailboxId:)`, and `MirrorCoordinator.storePrimed` uses it.
+This was not a courtesy: `MailStore.read`/`write` are internal now
+([ADR-0034](../decisions/0034-the-store-returns-its-own-sequence.md)), so the raw-SQL
+escape hatch WS-04 used is gone and the DAO had to exist for the coordinator to compile.
+The general form of WS-04's other entry stands — a caller outside the package that wants
+two store calls in one transaction still cannot have one.
+
+### Nothing new from `NextcloudUI` — the wave-2 fixes draw nothing
+**Workstream:** wave-2 fixes · **Component:** — · **Severity:** —
+
+Both changes are below the view layer: a package boundary and a schema. No view, no symbol,
+no colour, and `NextcloudMail/**` changed by nothing at all — `AppSession`'s
+`for try await hex in store.observeMetaValue(…)` compiles unchanged against the new
+sequence type, which was the point of matching GRDB's semantics rather than inventing
+easier ones. Recorded rather than left blank, because "nothing new" is only an acceptable
+answer if somebody checked.
+
+### GRDB's `ValueObservation.start` has two overloads and picks the wrong one
+**Workstream:** wave-2 fixes · **Component:** GRDB, not `NextcloudUI` · **Severity:** friction
+**Where:** `MailStore.swift`, `startTracking(_:in:scheduling:onError:onChange:)`
+
+GRDB 7 declares `start(in:scheduling:onError:onChange:)` twice: a `nonisolated` one taking
+`some ValueObservationScheduler`, and a `@MainActor` one taking
+`some ValueObservationMainActorScheduler`. `.mainActor` satisfies both, and passing it from
+a `nonisolated` context selects the `@MainActor` overload and fails with "call to main
+actor-isolated instance method in a synchronous nonisolated context" — which reads as a
+concurrency mistake rather than an overload-resolution one. The workaround is a helper
+whose scheduler parameter is an opaque `some ValueObservationScheduler`, which the
+main-actor overload cannot match. Noted here for whoever meets it next; it is a GRDB API
+shape, not something this project can fix.

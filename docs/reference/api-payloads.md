@@ -53,7 +53,8 @@ ending at `dateInt` 1789590490 followed by `&cursor=1789590490` returns only mes
 than it. Two messages can share a `dateInt` — the test inbox has ids 44 and 45 both at
 1778515439 — so when a page boundary falls between them, the second is unreachable by
 pagination, with no error and no gap anyone can see. Send **`oldest dateInt + 1`** and let
-the boundary message repeat; the upsert is by primary key, so it costs nothing.
+the boundary message repeat; the upsert finds the row it already has through
+`(accountId, remoteId)`, so it costs nothing.
 [ADR-0030](../decisions/0030-stage-one-owns-its-cursor.md), and finding 11 in
 [../feedback/server-findings.md](../feedback/server-findings.md).
 

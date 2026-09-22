@@ -152,14 +152,29 @@ enum SchemaDump {
 /// literal string "Subject redacted". A search index tested against a corpus with one distinct
 /// subject proves nothing, so the text in these tests is written for the test.
 enum Seed {
-    static func account(id: Int64 = 1) -> AccountWrite {
-        AccountWrite(id: id, name: "Test", emailAddress: "test@example.invalid", rawJSON: "{}")
+    static let identity = ServerIdentity(serverURL: "https://one.example.invalid/", loginName: "ada")
+
+    static func account(remoteId: Int64 = 1, identity: ServerIdentity = Seed.identity) -> AccountWrite {
+        AccountWrite(
+            identity: identity,
+            remoteId: remoteId,
+            name: "Test",
+            emailAddress: "test@example.invalid",
+            rawJSON: "{}"
+        )
     }
+
+    /// The server id a mailbox with local id `id` is seeded under.
+    ///
+    /// Deliberately not the same number. Since ADR-0033 the two are independent, and a
+    /// fixture that made them equal would let code that confuses one for the other pass
+    /// every test in this package.
+    static func mailboxRemoteId(for id: Int64) -> Int64 { 1000 + id }
 
     static func mailbox(id: Int64, name: String = "INBOX", subscribed: Bool = true) -> MailboxWrite {
         MailboxWrite(
-            id: id,
             accountId: 1,
+            remoteId: mailboxRemoteId(for: id),
             name: name,
             delimiter: ".",
             displayName: name,
@@ -168,7 +183,7 @@ enum Seed {
     }
 
     static func envelope(
-        id: Int64,
+        remoteId: Int64,
         mailboxId: Int64 = 10,
         accountId: Int64 = 1,
         sentAt: Int64,
@@ -181,7 +196,7 @@ enum Seed {
         var flags = MessageFlags()
         flags.isSeen = isSeen
         return EnvelopeWrite(
-            id: id,
+            remoteId: remoteId,
             mailboxId: mailboxId,
             accountId: accountId,
             sentAt: sentAt,
@@ -196,10 +211,27 @@ enum Seed {
         )
     }
 
-    /// An account with one mailbox, ready for envelopes.
+    /// An account with one mailbox, ready for envelopes, with both local ids pinned.
+    ///
+    /// The mailbox row is inserted directly rather than through `upsert(mailboxes:)`,
+    /// because local ids are the mirror's to assign since ADR-0033 and these tests are
+    /// about queries over rows with known ids. The insert also sets `sqlite_sequence`, so a
+    /// later `upsert` of `mailbox(id: 11)` really does land on 11. `remoteId` is
+    /// deliberately a different number — see ``mailboxRemoteId(for:)``.
     static func base(_ store: MailStore, mailboxId: Int64 = 10) async throws {
         try await store.upsert(accounts: [account()])
-        try await store.upsert(mailboxes: [mailbox(id: mailboxId)], accountId: 1)
+        try await store.write { db in
+            try MailboxRecord(
+                id: mailboxId,
+                accountId: 1,
+                remoteId: mailboxRemoteId(for: mailboxId),
+                name: "INBOX",
+                delimiter: ".",
+                displayName: "INBOX",
+                isSubscribed: true,
+                isMirrored: true
+            ).insert(db)
+        }
     }
 }
 

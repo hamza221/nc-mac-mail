@@ -69,7 +69,7 @@ without a GUI, and so that workstreams own directories rather than fighting over
 | --- | --- | --- |
 | `NCMailCore` | Value types for every server payload, their `Decodable` conformances, the mailbox tree builder, thread grouping rules, the filter-string builder, pure formatting | Import `Foundation.URLSession`, GRDB, or SwiftUI |
 | `NCMailNet` | `MailClient`, `LoginFlow`, `Keychain`, endpoint definitions, the error envelope, retry and backoff policy | Know that a database exists; know what a view is |
-| `NCMailStore` | The GRDB stack, migrations, records, every query, `ValueObservation` publishers, the storage-size accounting | Make a network request; contain product logic ("archive means move to…") |
+| `NCMailStore` | The GRDB stack, migrations, records, every query, the `StoreObservation` sequences, the storage-size accounting | Make a network request; contain product logic ("archive means move to…"); name a GRDB type in a public signature |
 | `NCMailSync` | Mirror state machine, backfill scheduler, incremental sync, deep reconcile, the mutation queue and its drainer, conflict rules | Import SwiftUI; hold a reference to a view |
 | `NextcloudMail` | Scenes, views, `@Observable` stores, the WKWebView host and scheme handler, keyboard commands, Settings | Make a network request outside `NCMailNet`; read a JSON payload directly |
 
@@ -77,6 +77,12 @@ Dependencies point downward only. `NCMailStore` does not know `NCMailNet` exists
 module is where the two meet. This is what makes "the network only writes to the database"
 enforceable rather than aspirational: a store test cannot accidentally hit a server, and a
 view has no type in scope that could.
+
+The rule runs the other way too, and it is not free. `NCMailStore` owns GRDB, so no GRDB
+type may appear in a signature the app or the sync engine can call — not as a return type,
+not as a parameter, not as an enum payload. It went wrong once and cost the app its link
+line ([ADR-0034](../decisions/0034-the-store-returns-its-own-sequence.md)); anything above
+the store that needs the database needs a method on `MailStore`.
 
 ### Why packages instead of folders
 
@@ -184,3 +190,5 @@ See [concurrency.md](concurrency.md) for the rules. The short version:
 | Five packages, one app target | [ADR-0013](../decisions/0013-module-layout.md) |
 | Enumerate with `view=singleton`, thread locally | [ADR-0014](../decisions/0014-singleton-enumeration.md) |
 | Bounded sync window plus deep reconcile | [ADR-0015](../decisions/0015-bounded-sync-window.md) |
+| Local ids, with the server's kept as `remoteId` | [ADR-0033](../decisions/0033-accounts-have-a-local-identity.md) |
+| The store's own `AsyncSequence`, and no GRDB in its public API | [ADR-0034](../decisions/0034-the-store-returns-its-own-sequence.md) |

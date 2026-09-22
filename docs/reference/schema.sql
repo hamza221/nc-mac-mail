@@ -10,8 +10,10 @@
 --
 -- Conventions
 --   * Column names are camelCase so GRDB records need no CodingKeys.
---   * `id` on a server-owned row is the server's `databaseId`. Never the base64 `id`
---     the mailbox payload also carries -- see docs/reference/api-payloads.md.
+--   * `id` is always local to this mirror. The server's own id is `remoteId`, and it
+--     is unique on one Nextcloud instance and meaningless across two (ADR-0033).
+--     `remoteId` is never the base64 `id` the mailbox payload also carries -- see
+--     docs/reference/api-payloads.md.
 --   * Times are INTEGER unix seconds, matching the server's `dateInt`/`sentAt`.
 --   * Booleans are INTEGER 0/1.
 --   * Anything the app has not modelled yet survives in a `rawJSON` column, so a
@@ -25,7 +27,12 @@ PRAGMA journal_mode = WAL;
 -- ---------------------------------------------------------------------------
 
 CREATE TABLE account (
-    id                 INTEGER PRIMARY KEY,       -- server account id
+    -- Local identity. The server's own account id is `remoteId`, which is unique on
+    -- one Nextcloud instance and says nothing across two -- see ADR-0033.
+    id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+    serverURL          TEXT    NOT NULL,       -- normalised, as the Keychain item holds it
+    loginName          TEXT    NOT NULL,
+    remoteId           INTEGER NOT NULL,       -- server account id
     name               TEXT    NOT NULL,
     emailAddress       TEXT    NOT NULL,
     sortOrder          INTEGER NOT NULL DEFAULT 0,
@@ -44,7 +51,10 @@ CREATE TABLE account (
     mirrorState        TEXT    NOT NULL DEFAULT 'idle',   -- idle|priming|envelopes|bodies|complete|paused|failed
     lastSyncAt         INTEGER,
     lastDeepReconcileAt INTEGER,
-    rawJSON            TEXT    NOT NULL
+    rawJSON            TEXT    NOT NULL,
+    -- One row per Mail account per signed-in login. Two Nextcloud instances that each
+    -- have an account id 1 are two rows here, not one overwritten twice.
+    UNIQUE (serverURL, loginName, remoteId)
 );
 
 -- ---------------------------------------------------------------------------
@@ -52,8 +62,9 @@ CREATE TABLE account (
 -- ---------------------------------------------------------------------------
 
 CREATE TABLE mailbox (
-    id                 INTEGER PRIMARY KEY,       -- server `databaseId`
+    id                 INTEGER PRIMARY KEY AUTOINCREMENT,   -- local
     accountId          INTEGER NOT NULL REFERENCES account(id) ON DELETE CASCADE,
+    remoteId           INTEGER NOT NULL,          -- server `databaseId`
     name               TEXT    NOT NULL,          -- full IMAP path, e.g. "INBOX.Work.2024"
     delimiter          TEXT,                      -- may be NULL on a flat namespace
     displayName        TEXT    NOT NULL,          -- last path component, decoded
@@ -85,13 +96,17 @@ CREATE TABLE mailbox (
 CREATE INDEX idxMailboxAccount   ON mailbox(accountId);
 CREATE INDEX idxMailboxMirrored  ON mailbox(isMirrored, envelopesComplete, bodiesComplete);
 CREATE UNIQUE INDEX idxMailboxAccountName ON mailbox(accountId, name);
+-- The conflict target every mailbox upsert relies on, and what stops one server's
+-- mailbox 5 overwriting another's.
+CREATE UNIQUE INDEX idxMailboxAccountRemote ON mailbox(accountId, remoteId);
 
 -- ---------------------------------------------------------------------------
 -- Messages (envelopes)
 -- ---------------------------------------------------------------------------
 
 CREATE TABLE message (
-    id             INTEGER PRIMARY KEY,           -- server `databaseId`
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,  -- local
+    remoteId       INTEGER NOT NULL,              -- server `databaseId`
     mailboxId      INTEGER NOT NULL REFERENCES mailbox(id) ON DELETE CASCADE,
     accountId      INTEGER NOT NULL REFERENCES account(id) ON DELETE CASCADE,
     uid            INTEGER,                       -- IMAP UID, for diagnostics only
@@ -139,6 +154,9 @@ CREATE INDEX idxMessageBodyState    ON message(accountId, bodyState, sentAt DESC
 CREATE INDEX idxMessageMailboxSeen  ON message(mailboxId, isSeen);
 CREATE INDEX idxMessageMailboxFlagged ON message(mailboxId, isFlagged, sentAt DESC);
 CREATE INDEX idxMessageAccount      ON message(accountId, sentAt DESC);
+-- The conflict target every envelope upsert relies on. Unique per account, never
+-- globally: `databaseId` is one server's counter.
+CREATE UNIQUE INDEX idxMessageAccountRemote ON message(accountId, remoteId);
 
 -- ---------------------------------------------------------------------------
 -- Addresses
@@ -223,11 +241,15 @@ CREATE INDEX idxAttachmentCid ON attachment(messageId, cid);
 -- ---------------------------------------------------------------------------
 
 CREATE TABLE tag (
-    id          INTEGER PRIMARY KEY,
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,  -- local
+    accountId   INTEGER NOT NULL REFERENCES account(id) ON DELETE CASCADE,
+    remoteId    INTEGER NOT NULL,
     imapLabel   TEXT NOT NULL,
     displayName TEXT NOT NULL,
     color       TEXT,
-    UNIQUE (imapLabel)
+    -- Tags belong to an account server-side, so both keys are scoped to one.
+    UNIQUE (accountId, remoteId),
+    UNIQUE (accountId, imapLabel)
 );
 
 CREATE TABLE messageTag (

@@ -8,10 +8,14 @@ public import GRDB
 /// Read this when you need the envelope in full. The message list does not: it reads
 /// ``MessageRow``, which is a third of the columns and the reason a 50,000-row mailbox
 /// scrolls.
+///
+/// `id` is local; `remoteId` is the server's `databaseId` and is what every request about
+/// this message takes (ADR-0033).
 public struct MessageRecord: Codable, FetchableRecord, PersistableRecord, Sendable, Identifiable, Equatable {
     public static let databaseTableName = "message"
 
     public var id: Int64
+    public var remoteId: Int64
     public var mailboxId: Int64
     public var accountId: Int64
     public var uid: Int64?
@@ -95,7 +99,11 @@ public struct EnvelopeAddress: Sendable, Equatable {
 public struct EnvelopeWrite: Encodable, PersistableRecord, Sendable {
     public static let databaseTableName = "message"
 
-    public var id: Int64
+    /// The server's `databaseId`. There is no local `id` here: the upsert finds an existing
+    /// row through `idxMessageAccountRemote`, which is what stops one server's message 1
+    /// overwriting another's (ADR-0033).
+    public var remoteId: Int64
+    /// Local, not the server's. The caller knows which mailbox row it enumerated.
     public var mailboxId: Int64
     public var accountId: Int64
     public var uid: Int64?
@@ -130,7 +138,7 @@ public struct EnvelopeWrite: Encodable, PersistableRecord, Sendable {
     public var addresses: [EnvelopeAddress]
 
     enum CodingKeys: String, CodingKey {
-        case id, mailboxId, accountId, uid, messageId, threadRootId, inReplyTo, referencesJSON
+        case remoteId, mailboxId, accountId, uid, messageId, threadRootId, inReplyTo, referencesJSON
         case subject, previewText, summary, sentAt
         case isSeen, isFlagged, isAnswered, isDeleted, isDraft, isForwarded, isImportant
         case isJunk, isNotJunk, isMdnSent, hasAttachments, mentionsMe, isEncrypted, isImipMessage
@@ -138,7 +146,7 @@ public struct EnvelopeWrite: Encodable, PersistableRecord, Sendable {
     }
 
     public init(
-        id: Int64,
+        remoteId: Int64,
         mailboxId: Int64,
         accountId: Int64,
         sentAt: Int64,
@@ -157,7 +165,7 @@ public struct EnvelopeWrite: Encodable, PersistableRecord, Sendable {
         addresses: [EnvelopeAddress] = [],
         rawJSON: String = "{}"
     ) {
-        self.id = id
+        self.remoteId = remoteId
         self.mailboxId = mailboxId
         self.accountId = accountId
         self.uid = uid

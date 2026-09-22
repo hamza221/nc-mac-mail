@@ -13,6 +13,10 @@
 		1A0000000000000000000033 /* NCMailSync in Frameworks */ = {isa = PBXBuildFile; productRef = 1A0000000000000000000023 /* NCMailSync */; };
 		1A0000000000000000000034 /* NextcloudUI in Frameworks */ = {isa = PBXBuildFile; productRef = 1A0000000000000000000024 /* NextcloudUI */; };
 		1A0000000000000000000060 /* NCMailFixtures in Frameworks */ = {isa = PBXBuildFile; productRef = 1A0000000000000000000054 /* NCMailFixtures */; };
+		1A0000000000000000000061 /* NCMailCore in Frameworks */ = {isa = PBXBuildFile; productRef = 1A0000000000000000000055 /* NCMailCore */; };
+		1A0000000000000000000062 /* NCMailNet in Frameworks */ = {isa = PBXBuildFile; productRef = 1A0000000000000000000056 /* NCMailNet */; };
+		1A0000000000000000000063 /* NCMailStore in Frameworks */ = {isa = PBXBuildFile; productRef = 1A0000000000000000000057 /* NCMailStore */; };
+		1A0000000000000000000064 /* NextcloudUI in Frameworks */ = {isa = PBXBuildFile; productRef = 1A0000000000000000000058 /* NextcloudUI */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -61,6 +65,10 @@
 			buildActionMask = 2147483647;
 			files = (
 				1A0000000000000000000060 /* NCMailFixtures in Frameworks */,
+				1A0000000000000000000061 /* NCMailCore in Frameworks */,
+				1A0000000000000000000062 /* NCMailNet in Frameworks */,
+				1A0000000000000000000063 /* NCMailStore in Frameworks */,
+				1A0000000000000000000064 /* NextcloudUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -134,6 +142,10 @@
 			name = NextcloudMailTests;
 			packageProductDependencies = (
 				1A0000000000000000000054 /* NCMailFixtures */,
+				1A0000000000000000000055 /* NCMailCore */,
+				1A0000000000000000000056 /* NCMailNet */,
+				1A0000000000000000000057 /* NCMailStore */,
+				1A0000000000000000000058 /* NextcloudUI */,
 			);
 			productName = NextcloudMailTests;
 			productReference = 1A0000000000000000000041 /* NextcloudMailTests.xctest */;
@@ -411,7 +423,6 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_INCLUDE_PATHS = "$(BUILT_PRODUCTS_DIR)";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/NextcloudMail.app/Contents/MacOS/NextcloudMail";
 			};
 			name = Debug;
@@ -430,7 +441,6 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_INCLUDE_PATHS = "$(BUILT_PRODUCTS_DIR)";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/NextcloudMail.app/Contents/MacOS/NextcloudMail";
 			};
 			name = Release;
@@ -526,6 +536,23 @@
 		1A0000000000000000000054 /* NCMailFixtures */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = NCMailFixtures;
+		};
+		1A0000000000000000000055 /* NCMailCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = NCMailCore;
+		};
+		1A0000000000000000000056 /* NCMailNet */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = NCMailNet;
+		};
+		1A0000000000000000000057 /* NCMailStore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = NCMailStore;
+		};
+		1A0000000000000000000058 /* NextcloudUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1A0000000000000000000014 /* XCRemoteSwiftPackageReference "nextcloud-swiftui" */;
+			productName = NextcloudUI;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

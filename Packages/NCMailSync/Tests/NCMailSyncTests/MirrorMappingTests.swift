@@ -16,6 +16,13 @@ import Testing
 /// the payload looked like, which is the thing most likely to be wrong.
 @Suite("Mirror mapping")
 struct MirrorMappingTests {
+    /// One signed-in login, the thing that makes a server's numeric ids mean something
+    /// (ADR-0033).
+    private static let identity = ServerIdentity(
+        serverURL: "https://cloud.example.invalid/",
+        loginName: "user"
+    )
+
     private func decode<T: Decodable>(_ type: T.Type, _ name: String) throws -> T {
         try JSONDecoder().decode(T.self, from: try FixtureBytes.data(name))
     }
@@ -25,11 +32,13 @@ struct MirrorMappingTests {
     @Test("an account maps id, addresses and every special mailbox, archive included when it is null")
     func accountMapping() throws {
         let accounts = try decode([RawBacked<Account>].self, "accounts.json")
-        let writes = try accounts.map(MirrorMapping.accountWrite)
+        let writes = try accounts.map { try MirrorMapping.accountWrite($0, identity: Self.identity) }
 
         #expect(writes.count == accounts.count)
         let first = try #require(writes.first)
-        #expect(first.id == 1)
+        #expect(first.remoteId == 1)
+        #expect(first.serverURL == Self.identity.serverURL)
+        #expect(first.loginName == "user")
         #expect(first.emailAddress == "user@example.com")
         // The live test account has no archive folder. Nothing may assume this is set.
         #expect(first.archiveMailboxId == nil)
@@ -39,7 +48,7 @@ struct MirrorMappingTests {
     @Test("rawJSON keeps the fields no model names, so nothing needs a refetch to read them later")
     func accountRawJSONKeepsUnmodelledFields() throws {
         let accounts = try decode([RawBacked<Account>].self, "accounts.json")
-        let write = try MirrorMapping.accountWrite(try #require(accounts.first))
+        let write = try MirrorMapping.accountWrite(try #require(accounts.first), identity: Self.identity)
         let parsed = try #require(
             try JSONSerialization.jsonObject(with: Data(write.rawJSON.utf8)) as? [String: Any]
         )
@@ -53,17 +62,18 @@ struct MirrorMappingTests {
     @Test("subscription and selectability come off the raw IMAP attributes, case-folded")
     func mailboxSubscription() throws {
         let list = try decode(MailboxList.self, "mailboxes-account.json")
-        let writes = try list.entries.map(MirrorMapping.mailboxWrite)
+        let writes = try list.entries.map { try MirrorMapping.mailboxWrite($0, accountId: 42) }
 
         #expect(writes.count == 7)
-        let subscribed = writes.filter(\.isSubscribed).map(\.id).sorted()
+        let subscribed = writes.filter(\.isSubscribed).map(\.remoteId).sorted()
         // ADR-0007's test case, and not a bug in the recording: two folders the user hid.
         #expect(subscribed == [3, 4, 5, 6, 7])
         #expect(writes.allSatisfy { $0.isSelectable })
 
-        let inbox = try #require(writes.first { $0.id == 5 })
+        let inbox = try #require(writes.first { $0.remoteId == 5 })
         #expect(inbox.specialRole == "inbox")
-        #expect(inbox.accountId == 1)
+        // The local account id it was mapped for, never the one in the payload (ADR-0033).
+        #expect(inbox.accountId == 42)
         #expect(inbox.unreadCount == 23)
         #expect(inbox.attributesJSON.contains("subscribed"))
     }
@@ -71,8 +81,8 @@ struct MirrorMappingTests {
     @Test("a specialRole the server sends as the integer 0 becomes null, not \"0\"")
     func mailboxSpecialRoleFallback() throws {
         let list = try decode(MailboxList.self, "mailboxes-account.json")
-        let writes = try list.entries.map(MirrorMapping.mailboxWrite)
-        let unsubscribed = try #require(writes.first { $0.id == 1 })
+        let writes = try list.entries.map { try MirrorMapping.mailboxWrite($0, accountId: 1) }
+        let unsubscribed = try #require(writes.first { $0.remoteId == 1 })
         #expect(unsubscribed.specialRole == nil)
         #expect(unsubscribed.isSubscribed == false)
     }
@@ -80,7 +90,7 @@ struct MirrorMappingTests {
     @Test("a mailbox write has no isMirrored to get wrong: the store derives it")
     func mailboxWriteCannotSetMirrored() throws {
         let list = try decode(MailboxList.self, "mailboxes-account.json")
-        let write = try MirrorMapping.mailboxWrite(try #require(list.entries.first))
+        let write = try MirrorMapping.mailboxWrite(try #require(list.entries.first), accountId: 1)
         let columns = try #require(
             try JSONSerialization.jsonObject(with: try JSONEncoder().encode(write)) as? [String: Any]
         )
@@ -94,12 +104,15 @@ struct MirrorMappingTests {
     @Test("an envelope maps its flags, its sender and its addresses, and takes sentAt from dateInt")
     func envelopeMapping() throws {
         let page = try decode([RawBacked<Envelope>].self, "messages-inbox-page1.json")
-        let writes = try page.map { try MirrorMapping.envelopeWrite($0, accountId: 1, syncedAt: 1_700_000_000) }
+        let writes = try page.map {
+            try MirrorMapping.envelopeWrite($0, accountId: 1, mailboxId: 77, syncedAt: 1_700_000_000)
+        }
 
         #expect(writes.count == 95)
         let newest = try #require(writes.first)
-        #expect(newest.id == 166)
-        #expect(newest.mailboxId == 5)
+        #expect(newest.remoteId == 166)
+        // The mailbox the caller was enumerating, not the id in the payload (ADR-0033).
+        #expect(newest.mailboxId == 77)
         #expect(newest.accountId == 1)
         #expect(newest.sentAt == 1_789_920_932)
         #expect(newest.syncedAt == 1_700_000_000)
@@ -112,7 +125,7 @@ struct MirrorMappingTests {
     @Test("every recorded envelope keeps at least one address, and none of them is blank")
     func envelopeAddressesAreUsable() throws {
         let page = try decode([RawBacked<Envelope>].self, "messages-inbox-page1.json")
-        let writes = try page.map { try MirrorMapping.envelopeWrite($0, accountId: 1, syncedAt: 1) }
+        let writes = try page.map { try MirrorMapping.envelopeWrite($0, accountId: 1, mailboxId: 5, syncedAt: 1) }
         // `messageAddress.email` is NOT NULL, so an address with no email must be dropped
         // rather than written as "".
         #expect(writes.allSatisfy { $0.addresses.allSatisfy { !$0.email.isEmpty } })
@@ -122,7 +135,7 @@ struct MirrorMappingTests {
     @Test("an envelope with no references stores null rather than an empty array")
     func envelopeReferences() throws {
         let page = try decode([RawBacked<Envelope>].self, "messages-inbox-page1.json")
-        let writes = try page.map { try MirrorMapping.envelopeWrite($0, accountId: 1, syncedAt: 1) }
+        let writes = try page.map { try MirrorMapping.envelopeWrite($0, accountId: 1, mailboxId: 5, syncedAt: 1) }
         let unreferenced = writes.filter { $0.referencesJSON == nil }
         #expect(!unreferenced.isEmpty)
         for write in writes {
@@ -133,7 +146,7 @@ struct MirrorMappingTests {
     @Test("hasAttachments is true when the envelope lists attachments even if the flag does not")
     func envelopeAttachmentFlag() throws {
         let page = try decode([RawBacked<Envelope>].self, "messages-inbox-page1.json")
-        let writes = try page.map { try MirrorMapping.envelopeWrite($0, accountId: 1, syncedAt: 1) }
+        let writes = try page.map { try MirrorMapping.envelopeWrite($0, accountId: 1, mailboxId: 5, syncedAt: 1) }
         for (raw, write) in zip(page, writes) where !raw.value.attachments.isEmpty {
             #expect(write.hasAttachments)
         }

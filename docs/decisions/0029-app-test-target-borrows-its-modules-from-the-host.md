@@ -5,9 +5,28 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 # ADR-0029: The app's test target borrows its modules from the host app
 
-**Status:** Accepted
+**Status:** Accepted; the workaround it describes was removed by
+[ADR-0034](0034-the-store-returns-its-own-sequence.md) on 2026-09-22
 **Date:** 2026-09-22
 **Decided by:** WS-00 follow-up, after `xcodebuild test` broke the app's own link
+
+## What changed
+
+This record's diagnosis was right and its workaround is gone. `NCMailStore` no longer
+returns `AsyncValueObservation` or any other GRDB type from a public signature
+([ADR-0034](0034-the-store-returns-its-own-sequence.md)), so the app has no GRDB symbol to
+resolve and the linkage rule below no longer has anything to break.
+
+`NextcloudMailTests` now declares `NCMailCore`, `NCMailNet`, `NCMailStore`, `NextcloudUI`
+and `NCMailFixtures` as ordinary package products, and `SWIFT_INCLUDE_PATHS` is deleted
+from both of its build configurations. `BUNDLE_LOADER` and `TEST_HOST` stay: the bundle is
+app-hosted because it `@testable import`s the app, which is a separate reason from the one
+below. Xcode now does build the products as dynamic frameworks — a cold `xcodebuild test`
+produces `PackageFrameworks/NCMailStore_…_PackageProduct.framework` and
+`GRDB_…_PackageProduct.framework` — and the app links and the tests run, which is the
+condition that used to fail.
+
+The rest of this record stands as the account of why it failed and how it was found.
 
 ## Context
 
@@ -82,10 +101,11 @@ tests that need a transport use a twenty-line `ReplayTransport` in the test targ
   `NCMailTestSupport`-shaped dependency — will hit the same link failure. The fix at that
   point is to give the app target an explicit GRDB dependency, or to stop returning
   `AsyncValueObservation` from `NCMailStore`'s public interface. This record exists so that
-  debugging session is five minutes rather than an afternoon.
+  debugging session is five minutes rather than an afternoon. *(The second fix is the one
+  that was taken — ADR-0034.)*
 - `SWIFT_INCLUDE_PATHS` is an unusual setting to find in a test target and looks like
   something a generator left behind. It is load-bearing; removing it breaks the build with a
-  "no such module" that does not explain itself.
+  "no such module" that does not explain itself. *(No longer present.)*
 - The test bundle is app-hosted, so `xcodebuild test` launches `NextcloudMail.app`.
   `NextcloudMailApp.init` opens the real mirror in the sandbox container and reads the
   Keychain. That is a slower and more stateful test run than a package's, which is a reason
@@ -113,6 +133,6 @@ linkage, because the linkage is Xcode's rule and not the generator's. It also re
 
 ## Revisit when
 
-`NCMailStore` stops returning GRDB types from its public interface, or the app target gains
-GRDB explicitly. Either one lets `NextcloudMailTests` declare its package products the
-ordinary way, and `SWIFT_INCLUDE_PATHS` can come out.
+Already revisited. `NCMailStore` stopped returning GRDB types from its public interface,
+`NextcloudMailTests` declares its package products the ordinary way, and
+`SWIFT_INCLUDE_PATHS` came out. See [ADR-0034](0034-the-store-returns-its-own-sequence.md).

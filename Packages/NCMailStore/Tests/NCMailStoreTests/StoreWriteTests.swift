@@ -11,6 +11,11 @@ import Testing
 struct StoreWriteTests {
     /// Every table, counted. A cascade that misses one leaves rows nothing can reach and
     /// nothing will ever delete, and the only way to know is to count them all.
+    ///
+    /// `tag` is in the list now. It used to be excluded as "a per-server list of IMAP
+    /// keywords", which was wrong twice over: a keyword belongs to an account server-side,
+    /// and "per server" stopped meaning anything once two servers could share this file
+    /// (ADR-0033). It has an `accountId` and cascades with everything else.
     @Test func deletingAnAccountLeavesNothingBehind() async throws {
         let store = try MailStore.inMemory()
         try await Seed.base(store)
@@ -18,7 +23,7 @@ struct StoreWriteTests {
         try await store.upsert(
             envelopes: (1...5).map {
                 Seed.envelope(
-                    id: $0,
+                    remoteId: $0,
                     mailboxId: $0 % 2 == 0 ? 11 : 10,
                     sentAt: 100 + $0,
                     addresses: [
@@ -39,7 +44,8 @@ struct StoreWriteTests {
             )
         }
         try await store.write { db in
-            try TagRecord(id: 1, imapLabel: "$label1", displayName: "Important").insert(db)
+            try TagRecord(id: 1, accountId: 1, remoteId: 1, imapLabel: "$label1", displayName: "Important")
+                .insert(db)
             try MessageTagRecord(messageId: 1, tagId: 1).insert(db)
             var operation = PendingOperationRecord(
                 kind: "setFlags",
@@ -66,11 +72,85 @@ struct StoreWriteTests {
             return counts
         }
 
-        for (table, count) in counts.sorted(by: { $0.key < $1.key }) where table != "tag" {
+        for (table, count) in counts.sorted(by: { $0.key < $1.key }) {
             #expect(count == 0, "\(table) still has \(count) rows after the account was deleted")
         }
-        // `tag` is a per-server list of IMAP keywords, not per-account data, so it stays.
-        #expect(counts["tag"] == 1)
+    }
+
+    /// The collision ADR-0033 exists for: two Nextcloud instances, each with an account 1,
+    /// a mailbox 5 and a message 100.
+    ///
+    /// Before local ids, the second server's rows overwrote the first's — same primary key,
+    /// `upsert`, no error, no warning. The live test instance has one account and cannot
+    /// show this, so the two servers here are two `ServerIdentity` values and the same
+    /// numbers written twice.
+    @Test func twoServersWithTheSameNumericIdsDoNotCollide() async throws {
+        let store = try MailStore.inMemory()
+        let one = ServerIdentity(serverURL: "https://one.example.invalid/", loginName: "ada")
+        let two = ServerIdentity(serverURL: "https://two.example.invalid/", loginName: "ada")
+
+        var accountIds: [Int64] = []
+        var messageIds: [Int64] = []
+        for (identity, subject) in [(one, "from one"), (two, "from two")] {
+            let accounts = try await store.upsert(
+                accounts: [
+                    AccountWrite(identity: identity, remoteId: 1, name: "Mail", emailAddress: "ada@example.invalid")
+                ]
+            )
+            let account = try #require(accounts.first)
+            accountIds.append(account.id)
+
+            let mailboxes = try await store.upsert(
+                mailboxes: [
+                    MailboxWrite(
+                        accountId: account.id,
+                        remoteId: 5,
+                        name: "INBOX",
+                        displayName: "INBOX",
+                        isSubscribed: true
+                    )
+                ],
+                accountId: account.id
+            )
+            let mailbox = try #require(mailboxes.first)
+
+            messageIds.append(
+                contentsOf: try await store.upsert(
+                    envelopes: [
+                        Seed.envelope(
+                            remoteId: 100,
+                            mailboxId: mailbox.id,
+                            accountId: account.id,
+                            sentAt: 500,
+                            subject: subject
+                        )
+                    ]
+                )
+            )
+        }
+
+        #expect(Set(accountIds).count == 2)
+        #expect(Set(messageIds).count == 2)
+        #expect(try await store.accounts().count == 2)
+        #expect(try await store.accounts(identity: one).count == 1)
+        #expect(try await store.accounts(identity: two).count == 1)
+
+        // Both messages are still here, each under its own account, with its own subject.
+        let firstId = try #require(messageIds.first)
+        let secondId = try #require(messageIds.last)
+        let first = try #require(try await store.message(id: firstId))
+        let second = try #require(try await store.message(id: secondId))
+        #expect(first.remoteId == 100)
+        #expect(second.remoteId == 100)
+        #expect(first.subject == "from one")
+        #expect(second.subject == "from two")
+        #expect(first.accountId != second.accountId)
+
+        // And deleting one server's account leaves the other's untouched.
+        let firstAccountId = try #require(accountIds.first)
+        try await store.deleteAccount(id: firstAccountId)
+        #expect(try await store.accounts().count == 1)
+        #expect(try await store.message(id: second.id) != nil)
     }
 
     /// The reason ``EnvelopeWrite`` is a different type from ``MessageRecord``. A flag change
@@ -78,11 +158,11 @@ struct StoreWriteTests {
     @Test func reSyncingAnEnvelopeKeepsTheBodyState() async throws {
         let store = try MailStore.inMemory()
         try await Seed.base(store)
-        try await store.upsert(envelopes: [Seed.envelope(id: 1, sentAt: 100)])
+        try await store.upsert(envelopes: [Seed.envelope(remoteId: 1, sentAt: 100)])
         try await store.upsert(body: MessageBodyWrite(fetchedAt: 200, plainBody: "kept"), for: 1)
         #expect(try await store.message(id: 1)?.bodyState == .present)
 
-        try await store.upsert(envelopes: [Seed.envelope(id: 1, sentAt: 100, isSeen: true)])
+        try await store.upsert(envelopes: [Seed.envelope(remoteId: 1, sentAt: 100, isSeen: true)])
 
         let message = try await store.message(id: 1)
         #expect(message?.bodyState == .present)
@@ -111,7 +191,7 @@ struct StoreWriteTests {
         try await store.upsert(
             envelopes: [
                 Seed.envelope(
-                    id: 1,
+                    remoteId: 1,
                     sentAt: 100,
                     addresses: [
                         EnvelopeAddress(kind: .to, email: "one@example.invalid"),
@@ -123,7 +203,7 @@ struct StoreWriteTests {
         try await store.upsert(
             envelopes: [
                 Seed.envelope(
-                    id: 1,
+                    remoteId: 1,
                     sentAt: 100,
                     addresses: [EnvelopeAddress(kind: .to, email: "one@example.invalid")]
                 )
@@ -139,7 +219,7 @@ struct StoreWriteTests {
     @Test func aBodyIsStoredWithItsAttachmentsAndAMeasuredSize() async throws {
         let store = try MailStore.inMemory()
         try await Seed.base(store)
-        try await store.upsert(envelopes: [Seed.envelope(id: 1, sentAt: 100)])
+        try await store.upsert(envelopes: [Seed.envelope(remoteId: 1, sentAt: 100)])
         try await store.upsert(
             body: MessageBodyWrite(
                 fetchedAt: 900,
@@ -168,7 +248,7 @@ struct StoreWriteTests {
     @Test func anInlineImageIsKeptOnceFetched() async throws {
         let store = try MailStore.inMemory()
         try await Seed.base(store)
-        try await store.upsert(envelopes: [Seed.envelope(id: 1, sentAt: 100)])
+        try await store.upsert(envelopes: [Seed.envelope(remoteId: 1, sentAt: 100)])
         try await store.upsert(
             body: MessageBodyWrite(fetchedAt: 1, attachments: [AttachmentWrite(attachmentId: "2", isInline: true)]),
             for: 1
@@ -188,7 +268,7 @@ struct StoreWriteTests {
         let store = try MailStore.inMemory()
         try await Seed.base(store)
         try await store.upsert(mailboxes: [Seed.mailbox(id: 11, name: "Sent")], accountId: 1)
-        try await store.upsert(envelopes: (1...10).map { Seed.envelope(id: $0, sentAt: 100 + $0) })
+        try await store.upsert(envelopes: (1...10).map { Seed.envelope(remoteId: $0, sentAt: 100 + $0) })
         try await store.upsert(body: MessageBodyWrite(fetchedAt: 1, plainBody: "x"), for: 1)
         try await store.setBodyState(.failed, messageIds: [2])
         try await store.setEnvelopeCursor(nil, complete: true, mailboxId: 10, lastSyncAt: 1)
@@ -204,7 +284,7 @@ struct StoreWriteTests {
     @Test func theStorageFootprintAddsUpWhatIsActuallyStored() async throws {
         let store = try MailStore.inMemory()
         try await Seed.base(store)
-        try await store.upsert(envelopes: (1...3).map { Seed.envelope(id: $0, sentAt: 100 + $0) })
+        try await store.upsert(envelopes: (1...3).map { Seed.envelope(remoteId: $0, sentAt: 100 + $0) })
         try await store.upsert(
             body: MessageBodyWrite(
                 fetchedAt: 1,
@@ -235,12 +315,13 @@ struct StoreWriteTests {
     @Test func everyRecordRoundTrips() async throws {
         let store = try MailStore.inMemory()
         try await Seed.base(store)
-        try await store.upsert(envelopes: [Seed.envelope(id: 1, sentAt: 100)])
+        try await store.upsert(envelopes: [Seed.envelope(remoteId: 1, sentAt: 100)])
 
         try await store.write { db in
             try AvatarRecord(email: "a@example.invalid", data: Data([1, 2]), mime: "image/png", fetchedAt: 9)
                 .insert(db)
-            try TagRecord(id: 1, imapLabel: "$seen", displayName: "Seen", color: "#ff0000").insert(db)
+            try TagRecord(id: 1, accountId: 1, remoteId: 1, imapLabel: "$seen", displayName: "Seen", color: "#ff0000")
+                .insert(db)
             var operation = PendingOperationRecord(
                 kind: "move",
                 accountId: 1,

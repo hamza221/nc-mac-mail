@@ -4,11 +4,15 @@
 public import GRDB
 
 /// A row of `mailbox`, as read.
+///
+/// `id` is local and `remoteId` is the server's `databaseId`. Every request about this
+/// mailbox takes `remoteId`; every row that points at it takes `id` (ADR-0033).
 public struct MailboxRecord: Codable, FetchableRecord, PersistableRecord, Sendable, Identifiable, Equatable {
     public static let databaseTableName = "mailbox"
 
     public var id: Int64
     public var accountId: Int64
+    public var remoteId: Int64
     /// The full IMAP path, delimiter and all. The tree builder in `NCMailCore` splits it.
     public var name: String
     public var delimiter: String?
@@ -37,6 +41,7 @@ public struct MailboxRecord: Codable, FetchableRecord, PersistableRecord, Sendab
     public init(
         id: Int64,
         accountId: Int64,
+        remoteId: Int64,
         name: String,
         delimiter: String? = nil,
         displayName: String,
@@ -61,6 +66,7 @@ public struct MailboxRecord: Codable, FetchableRecord, PersistableRecord, Sendab
     ) {
         self.id = id
         self.accountId = accountId
+        self.remoteId = remoteId
         self.name = name
         self.delimiter = delimiter
         self.displayName = displayName
@@ -90,11 +96,14 @@ public struct MailboxRecord: Codable, FetchableRecord, PersistableRecord, Sendab
 /// `isMirrored`, `envelopeCursor`, `envelopesComplete`, `bodiesComplete`, `lastPrimedAt`,
 /// `syncFailureCount` and `lastSyncError` are absent on purpose. They are the mirror's own
 /// progress, and a folder refresh must not roll it back to zero. See ADR-0023.
+///
+/// No local `id` either: the upsert finds an existing row through
+/// `idxMailboxAccountRemote`, so the mirror keeps assigning the local ids (ADR-0033).
 public struct MailboxWrite: Codable, PersistableRecord, Sendable, Equatable {
     public static let databaseTableName = "mailbox"
 
-    public var id: Int64
     public var accountId: Int64
+    public var remoteId: Int64
     public var name: String
     public var delimiter: String?
     public var displayName: String
@@ -110,8 +119,8 @@ public struct MailboxWrite: Codable, PersistableRecord, Sendable, Equatable {
     public var rawJSON: String
 
     public init(
-        id: Int64,
         accountId: Int64,
+        remoteId: Int64,
         name: String,
         delimiter: String? = nil,
         displayName: String,
@@ -126,8 +135,8 @@ public struct MailboxWrite: Codable, PersistableRecord, Sendable, Equatable {
         cacheBuster: String? = nil,
         rawJSON: String = "{}"
     ) {
-        self.id = id
         self.accountId = accountId
+        self.remoteId = remoteId
         self.name = name
         self.delimiter = delimiter
         self.displayName = displayName

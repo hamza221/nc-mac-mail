@@ -13,7 +13,7 @@ struct MessageQueryTests {
         let store = try MailStore.inMemory()
         try await Seed.base(store)
         try await store.upsert(
-            envelopes: (1...10).map { Seed.envelope(id: $0, sentAt: 1_700_000_000 + $0) }
+            envelopes: (1...10).map { Seed.envelope(remoteId: $0, sentAt: 1_700_000_000 + $0) }
         )
 
         let firstPage = try await store.messages(mailboxId: 10, view: .flat, range: 0..<3)
@@ -30,8 +30,8 @@ struct MessageQueryTests {
         try await Seed.base(store)
         try await store.upsert(
             envelopes: [
-                Seed.envelope(id: 1, sentAt: 100, isSeen: true),
-                Seed.envelope(id: 2, sentAt: 200, isSeen: false),
+                Seed.envelope(remoteId: 1, sentAt: 100, isSeen: true),
+                Seed.envelope(remoteId: 2, sentAt: 200, isSeen: false),
             ]
         )
         // Newest first, so the unseen message with the later `sentAt` leads.
@@ -46,10 +46,10 @@ struct MessageQueryTests {
         try await Seed.base(store)
         try await store.upsert(
             envelopes: [
-                Seed.envelope(id: 1, sentAt: 100, threadRootId: "t1", isSeen: true),
-                Seed.envelope(id: 2, sentAt: 200, threadRootId: "t1", isSeen: false),
-                Seed.envelope(id: 3, sentAt: 300, threadRootId: "t1", isSeen: false),
-                Seed.envelope(id: 4, sentAt: 250, threadRootId: "t2", isSeen: true),
+                Seed.envelope(remoteId: 1, sentAt: 100, threadRootId: "t1", isSeen: true),
+                Seed.envelope(remoteId: 2, sentAt: 200, threadRootId: "t1", isSeen: false),
+                Seed.envelope(remoteId: 3, sentAt: 300, threadRootId: "t1", isSeen: false),
+                Seed.envelope(remoteId: 4, sentAt: 250, threadRootId: "t2", isSeen: true),
             ]
         )
 
@@ -67,9 +67,9 @@ struct MessageQueryTests {
         try await Seed.base(store)
         try await store.upsert(
             envelopes: [
-                Seed.envelope(id: 1, sentAt: 100, threadRootId: nil),
-                Seed.envelope(id: 2, sentAt: 200, threadRootId: nil, isSeen: true),
-                Seed.envelope(id: 3, sentAt: 300, threadRootId: "t1"),
+                Seed.envelope(remoteId: 1, sentAt: 100, threadRootId: nil),
+                Seed.envelope(remoteId: 2, sentAt: 200, threadRootId: nil, isSeen: true),
+                Seed.envelope(remoteId: 3, sentAt: 300, threadRootId: "t1"),
             ]
         )
         let rows = try await store.messages(mailboxId: 10, view: .threaded, range: 0..<10)
@@ -83,7 +83,7 @@ struct MessageQueryTests {
         try await Seed.base(store)
         try await store.upsert(
             envelopes: (1...20).map {
-                Seed.envelope(id: $0, sentAt: 1_700_000_000 + $0, threadRootId: "t\($0 % 4)")
+                Seed.envelope(remoteId: $0, sentAt: 1_700_000_000 + $0, threadRootId: "t\($0 % 4)")
             }
         )
         let rows = try await store.messages(mailboxId: 10, view: .threaded, range: 0..<2)
@@ -101,7 +101,7 @@ struct MessageQueryTests {
         let store = try MailStore.inMemory()
         try await Seed.base(store)
         try await store.upsert(
-            envelopes: (1...50).map { Seed.envelope(id: $0, sentAt: 100 + $0, threadRootId: "t\($0 % 7)") })
+            envelopes: (1...50).map { Seed.envelope(remoteId: $0, sentAt: 100 + $0, threadRootId: "t\($0 % 7)") })
 
         let plan = try await store.read { db in
             try Row.fetchAll(
@@ -119,7 +119,7 @@ struct MessageQueryTests {
     @Test func theFlatListUsesTheMailboxSentIndex() async throws {
         let store = try MailStore.inMemory()
         try await Seed.base(store)
-        try await store.upsert(envelopes: (1...50).map { Seed.envelope(id: $0, sentAt: 100 + $0) })
+        try await store.upsert(envelopes: (1...50).map { Seed.envelope(remoteId: $0, sentAt: 100 + $0) })
 
         let plan = try await store.read { db in
             try Row.fetchAll(
@@ -137,7 +137,7 @@ struct MessageQueryTests {
     @Test func theBackfillPickerUsesItsIndex() async throws {
         let store = try MailStore.inMemory()
         try await Seed.base(store)
-        try await store.upsert(envelopes: (1...50).map { Seed.envelope(id: $0, sentAt: 100 + $0) })
+        try await store.upsert(envelopes: (1...50).map { Seed.envelope(remoteId: $0, sentAt: 100 + $0) })
 
         let plan = try await store.read { db in
             try Row.fetchAll(
@@ -160,10 +160,10 @@ struct MessageQueryTests {
         try await Seed.base(store)
         try await store.upsert(
             envelopes: [
-                Seed.envelope(id: 1, sentAt: 300, threadRootId: "t1"),
-                Seed.envelope(id: 2, sentAt: 100, threadRootId: "t1"),
-                Seed.envelope(id: 3, sentAt: 200, threadRootId: "t1"),
-                Seed.envelope(id: 4, sentAt: 150, threadRootId: "other"),
+                Seed.envelope(remoteId: 1, sentAt: 300, threadRootId: "t1"),
+                Seed.envelope(remoteId: 2, sentAt: 100, threadRootId: "t1"),
+                Seed.envelope(remoteId: 3, sentAt: 200, threadRootId: "t1"),
+                Seed.envelope(remoteId: 4, sentAt: 150, threadRootId: "other"),
             ]
         )
         var received: [MessageRow] = []
@@ -177,11 +177,13 @@ struct MessageQueryTests {
     @Test func theBackfillPickerTakesTheNewestMissingBodies() async throws {
         let store = try MailStore.inMemory()
         try await Seed.base(store)
-        try await store.upsert(envelopes: (1...10).map { Seed.envelope(id: $0, sentAt: 100 + $0) })
+        try await store.upsert(envelopes: (1...10).map { Seed.envelope(remoteId: $0, sentAt: 100 + $0) })
         try await store.setBodyState(.present, messageIds: [9, 10])
 
         let batch = try await store.nextBodyBackfillBatch(accountId: 1, limit: 3)
-        #expect(batch == [8, 7, 6])
+        // Both ids, because the fetch needs the server's and the write needs the mirror's.
+        #expect(batch.map(\.id) == [8, 7, 6])
+        #expect(batch.map(\.remoteId) == [8, 7, 6])
         #expect(try await store.nextBodyBackfillBatch(accountId: 2, limit: 3).isEmpty)
     }
 }

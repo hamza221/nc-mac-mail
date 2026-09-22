@@ -43,17 +43,17 @@ extension MirrorCoordinator {
         while !Task.isCancelled {
             if bodyPauseReason != nil { return }
             await releaseThrottleIfExpired()
-            guard let messageId = await claimNextBody() else { return }
+            guard let item = await claimNextBody() else { return }
 
             // Account first, then the process-wide cap, in that order everywhere, so two
             // workers cannot each hold half of what the other needs.
             await accountBudget.acquire()
             await globalBudget.acquire()
-            await fetchAndStoreBody(messageId)
+            await fetchAndStoreBody(item)
             await globalBudget.release()
             await accountBudget.release()
 
-            await finishBody(messageId)
+            await finishBody(item.id)
             // Between items, so a burst of small bodies cannot starve the scroll view.
             await Task.yield()
         }
@@ -62,7 +62,7 @@ extension MirrorCoordinator {
     // MARK: - The queue
 
     private func resetBodyQueue() {
-        pendingBodyIds.removeAll(keepingCapacity: true)
+        pendingBodies.removeAll(keepingCapacity: true)
         isBodyQueueExhausted = false
         bodyFailureCounts.removeAll(keepingCapacity: true)
     }
@@ -70,23 +70,23 @@ extension MirrorCoordinator {
     /// The next message to fetch, refilling from the database when the in-memory slice runs
     /// out. Newest first across every mailbox of the account, because recency is what
     /// people open.
-    private func claimNextBody() async -> Int64? {
-        if pendingBodyIds.isEmpty, !isBodyQueueExhausted {
+    private func claimNextBody() async -> BodyBackfillItem? {
+        if pendingBodies.isEmpty, !isBodyQueueExhausted {
             // Over-fetch by what is in flight: those rows are still `missing` in the
-            // database (deliberately — see the note on `pendingBodyIds`), so without the
+            // database (deliberately — see the note on `pendingBodies`), so without the
             // slack a batch could come back entirely full of work already being done.
             let batch =
                 (try? await store.nextBodyBackfillBatch(
                     accountId: accountId,
                     limit: configuration.bodyBatchSize + inFlightBodyIds.count
                 )) ?? []
-            pendingBodyIds = batch.filter { !inFlightBodyIds.contains($0) }
-            if pendingBodyIds.isEmpty { isBodyQueueExhausted = true }
+            pendingBodies = batch.filter { !inFlightBodyIds.contains($0.id) }
+            if pendingBodies.isEmpty { isBodyQueueExhausted = true }
         }
-        guard !pendingBodyIds.isEmpty else { return nil }
-        let messageId = pendingBodyIds.removeFirst()
-        inFlightBodyIds.insert(messageId)
-        return messageId
+        guard !pendingBodies.isEmpty else { return nil }
+        let item = pendingBodies.removeFirst()
+        inFlightBodyIds.insert(item.id)
+        return item
     }
 
     private func finishBody(_ messageId: Int64) async {
@@ -96,7 +96,7 @@ extension MirrorCoordinator {
         // over `message`, measured at 0.83 ms median on a 50,000-row mirror — small, but
         // spent on the one database queue the list's `ValueObservation`s also want, and the
         // sidebar cannot read a count that changes ten times a second anyway.
-        if bodiesSincePublish >= 10 || pendingBodyIds.isEmpty {
+        if bodiesSincePublish >= 10 || pendingBodies.isEmpty {
             bodiesSincePublish = 0
             await publishProgress()
         }
@@ -106,12 +106,15 @@ extension MirrorCoordinator {
 
     /// `GET /body`, then `GET /html?plain=true` when the message has an HTML part, then one
     /// transaction for the body row, the attachments, the search index and `bodyState`.
-    func fetchAndStoreBody(_ messageId: Int64) async {
+    func fetchAndStoreBody(_ item: BodyBackfillItem) async {
+        let messageId = item.id
         do {
-            let body = try await client.get(.messageBody(id: Int(messageId)))
+            // The request takes the server's id; the write takes the mirror's. They are not
+            // the same number once a second server is signed in (ADR-0033).
+            let body = try await client.get(.messageBody(id: Int(item.remoteId)))
             var html: String?
             if body.value.hasHtmlBody {
-                html = try await fetchSanitisedHTML(messageId: messageId)
+                html = try await fetchSanitisedHTML(item)
             }
             let write = try MirrorMapping.bodyWrite(body, html: html, fetchedAt: configuration.now())
             try await store.upsert(body: write, for: messageId)
@@ -137,13 +140,13 @@ extension MirrorCoordinator {
     /// `/html?plain=true` answers 404 with an HTML error fragment. So the two routes
     /// disagree about the same message, and a 404 here after a successful `/body` is worth
     /// keeping the body for rather than throwing the whole fetch away.
-    private func fetchSanitisedHTML(messageId: Int64) async throws -> String? {
+    private func fetchSanitisedHTML(_ item: BodyBackfillItem) async throws -> String? {
         do {
-            let (data, _) = try await client.bytes(.messageHTML(id: Int(messageId)))
+            let (data, _) = try await client.bytes(.messageHTML(id: Int(item.remoteId)))
             return String(decoding: data, as: UTF8.self)
         } catch MailError.notFound {
             MirrorLog.mirror.info(
-                "message \(messageId, privacy: .public) has a body but no html fragment; storing the body"
+                "message \(item.id, privacy: .public) has a body but no html fragment; storing the body"
             )
             return nil
         }
@@ -225,14 +228,17 @@ extension MirrorCoordinator {
     /// return value.
     public func prioritise(messageId: Int64) async {
         guard !inFlightBodyIds.contains(messageId) else { return }
-        if let record = try? await store.message(id: messageId), record.bodyState == .present {
+        // The row also supplies the server id the request needs, which the view has no
+        // business knowing (ADR-0033).
+        guard let record = try? await store.message(id: messageId), record.bodyState != .present else {
             return
         }
-        pendingBodyIds.removeAll { $0 == messageId }
+        let item = BodyBackfillItem(id: messageId, remoteId: record.remoteId)
+        pendingBodies.removeAll { $0.id == messageId }
         inFlightBodyIds.insert(messageId)
 
         await accountBudget.preempt()
-        await fetchAndStoreBody(messageId)
+        await fetchAndStoreBody(item)
         await accountBudget.release()
 
         inFlightBodyIds.remove(messageId)

@@ -7,10 +7,17 @@ public import GRDB
 ///
 /// The column names are the property names, which is why the schema is camelCase: no
 /// `CodingKeys`, and a column rename is a compile error rather than a silent nil.
+///
+/// `id` is this mirror's own, and `remoteId` is the server's. The server's id is unique on
+/// one instance only, so it identifies an account here only in company with `serverURL` and
+/// `loginName` — see [ADR-0033](../../../../docs/decisions/0033-accounts-have-a-local-identity.md).
 public struct AccountRecord: Codable, FetchableRecord, PersistableRecord, Sendable, Identifiable, Equatable {
     public static let databaseTableName = "account"
 
     public var id: Int64
+    public var serverURL: String
+    public var loginName: String
+    public var remoteId: Int64
     public var name: String
     public var emailAddress: String
     public var sortOrder: Int
@@ -30,8 +37,15 @@ public struct AccountRecord: Codable, FetchableRecord, PersistableRecord, Sendab
     public var lastDeepReconcileAt: Int64?
     public var rawJSON: String
 
+    /// Where this account's credentials live, and what makes ``remoteId`` mean something.
+    public var identity: ServerIdentity {
+        ServerIdentity(serverURL: serverURL, loginName: loginName)
+    }
+
     public init(
         id: Int64,
+        identity: ServerIdentity,
+        remoteId: Int64,
         name: String,
         emailAddress: String,
         sortOrder: Int = 0,
@@ -50,6 +64,9 @@ public struct AccountRecord: Codable, FetchableRecord, PersistableRecord, Sendab
         rawJSON: String = "{}"
     ) {
         self.id = id
+        serverURL = identity.serverURL
+        loginName = identity.loginName
+        self.remoteId = remoteId
         self.name = name
         self.emailAddress = emailAddress
         self.sortOrder = sortOrder
@@ -69,15 +86,20 @@ public struct AccountRecord: Codable, FetchableRecord, PersistableRecord, Sendab
     }
 }
 
-/// The columns of `account` the server owns.
+/// The columns of `account` the server owns, plus the identity that scopes them.
 ///
 /// Writing this rather than a whole ``AccountRecord`` is what keeps a sync from resetting
 /// `mirrorState` and `lastDeepReconcileAt` to whatever the caller happened to have in hand:
 /// a column that is not in the INSERT is not in the `DO UPDATE SET` either. See ADR-0023.
+///
+/// No `id`. The local id is the mirror's to assign, and an upsert finds the existing row
+/// through `UNIQUE (serverURL, loginName, remoteId)` instead (ADR-0033).
 public struct AccountWrite: Codable, PersistableRecord, Sendable, Equatable {
     public static let databaseTableName = "account"
 
-    public var id: Int64
+    public var serverURL: String
+    public var loginName: String
+    public var remoteId: Int64
     public var name: String
     public var emailAddress: String
     public var sortOrder: Int
@@ -93,7 +115,8 @@ public struct AccountWrite: Codable, PersistableRecord, Sendable, Equatable {
     public var rawJSON: String
 
     public init(
-        id: Int64,
+        identity: ServerIdentity,
+        remoteId: Int64,
         name: String,
         emailAddress: String,
         sortOrder: Int = 0,
@@ -108,7 +131,9 @@ public struct AccountWrite: Codable, PersistableRecord, Sendable, Equatable {
         signature: String? = nil,
         rawJSON: String = "{}"
     ) {
-        self.id = id
+        serverURL = identity.serverURL
+        loginName = identity.loginName
+        self.remoteId = remoteId
         self.name = name
         self.emailAddress = emailAddress
         self.sortOrder = sortOrder

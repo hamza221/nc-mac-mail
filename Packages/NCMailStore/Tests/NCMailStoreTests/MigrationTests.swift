@@ -25,7 +25,7 @@ struct MigrationTests {
     /// to the empty string would pass the test above without noticing.
     @Test func referenceSchemaIsNotEmpty() throws {
         let reference = SchemaDump.ofSQL(try ReferenceSchema.load())
-        #expect(reference.count == 26)
+        #expect(reference.count == 28)
         #expect(reference["message"]?.contains("bodyState TEXT NOT NULL DEFAULT 'missing'") == true)
     }
 
@@ -43,8 +43,8 @@ struct MigrationTests {
             try await store.write { db in
                 try db.execute(
                     sql: """
-                        INSERT INTO mailbox (id, accountId, name, displayName, rawJSON)
-                        VALUES (1, 999, 'INBOX', 'INBOX', '{}')
+                        INSERT INTO mailbox (accountId, remoteId, name, displayName, rawJSON)
+                        VALUES (999, 1, 'INBOX', 'INBOX', '{}')
                         """
                 )
             }

@@ -13,6 +13,9 @@ public import GRDB
 /// per-thread numbers in the threaded one, so the row renders the same way in both.
 public struct MessageRow: FetchableRecord, Decodable, Sendable, Identifiable, Equatable {
     public var id: Int64
+    /// The server's `databaseId`, because every triage request is built from a selected row
+    /// and takes the server's id, not the mirror's (ADR-0033).
+    public var remoteId: Int64
     public var mailboxId: Int64
     public var threadRootId: String?
     public var subject: String?
@@ -34,6 +37,7 @@ public struct MessageRow: FetchableRecord, Decodable, Sendable, Identifiable, Eq
     /// threaded view cannot drift into selecting different things.
     static let selection = """
         m.id AS id,
+        m.remoteId AS remoteId,
         m.mailboxId AS mailboxId,
         m.threadRootId AS threadRootId,
         m.subject AS subject,

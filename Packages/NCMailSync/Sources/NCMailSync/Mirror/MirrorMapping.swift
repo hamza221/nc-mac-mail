@@ -11,19 +11,26 @@ public import NCMailStore
 /// pure so that it can be tested against recorded fixtures without a `MailStore` — a
 /// mapping bug and a transaction bug then fail different tests.
 ///
-/// The writes are narrow on purpose. ``envelopeWrite(_:accountId:syncedAt:)`` produces an
+/// The writes are narrow on purpose. ``envelopeWrite(_:accountId:mailboxId:syncedAt:)`` produces an
 /// `EnvelopeWrite`, never a `MessageRecord`: the record carries `bodyState`, so re-syncing
 /// an envelope through it would reset every already-downloaded body to `missing` and the
 /// mirror would re-fetch bodies forever without anything failing. Likewise
-/// ``mailboxWrite(_:)`` does not set `isMirrored` and ``bodyWrite(_:html:fetchedAt:)`` does
+/// ``mailboxWrite(_:accountId:)`` does not set `isMirrored` and ``bodyWrite(_:html:fetchedAt:)`` does
 /// not set `byteSize`; the store owns both.
 public enum MirrorMapping {
     // MARK: - Account
 
-    public static func accountWrite(_ account: RawBacked<Account>) throws -> AccountWrite {
+    /// - Parameter identity: the signed-in login this account was discovered through. The
+    ///   server's numeric id means nothing without it, because a second Nextcloud instance
+    ///   numbers its accounts from 1 as well (ADR-0033).
+    public static func accountWrite(
+        _ account: RawBacked<Account>,
+        identity: ServerIdentity
+    ) throws -> AccountWrite {
         let value = account.value
         return AccountWrite(
-            id: Int64(value.id),
+            identity: identity,
+            remoteId: Int64(value.id),
             name: value.name,
             emailAddress: value.emailAddress,
             sortOrder: value.order,
@@ -48,11 +55,13 @@ public enum MirrorMapping {
     /// `isSubscribed` and `isSelectable` come off the raw IMAP `attributes` array, which is
     /// the only place the server expresses either (ADR-0007). `isMirrored` is absent: the
     /// store derives it from `isSubscribed` so the rule lives in one place.
-    public static func mailboxWrite(_ mailbox: RawBacked<Mailbox>) throws -> MailboxWrite {
+    /// - Parameter accountId: the mirror's own account id, not the server's. The payload
+    ///   carries the server's, which is unique on one instance only (ADR-0033).
+    public static func mailboxWrite(_ mailbox: RawBacked<Mailbox>, accountId: Int64) throws -> MailboxWrite {
         let value = mailbox.value
         return MailboxWrite(
-            id: Int64(value.id),
-            accountId: Int64(value.accountId),
+            accountId: accountId,
+            remoteId: Int64(value.id),
             name: value.name,
             delimiter: value.delimiter.isEmpty ? nil : value.delimiter,
             displayName: value.displayName,
@@ -73,12 +82,18 @@ public enum MirrorMapping {
 
     // MARK: - Envelope
 
-    /// - Parameter syncedAt: when this copy was taken, in unix seconds. Passed in rather
-    ///   than read from the clock so the caller can stamp a whole page identically and a
-    ///   test can stamp it predictably.
+    /// - Parameters:
+    ///   - accountId: the mirror's own account id.
+    ///   - mailboxId: the mirror's own id for the mailbox being enumerated. The payload
+    ///     carries the server's, and the caller is the one holding the row that translates
+    ///     it (ADR-0033).
+    ///   - syncedAt: when this copy was taken, in unix seconds. Passed in rather than read
+    ///     from the clock so the caller can stamp a whole page identically and a test can
+    ///     stamp it predictably.
     public static func envelopeWrite(
         _ envelope: RawBacked<Envelope>,
         accountId: Int64,
+        mailboxId: Int64,
         syncedAt: Int64
     ) throws -> EnvelopeWrite {
         let value = envelope.value
@@ -102,8 +117,8 @@ public enum MirrorMapping {
         flags.isImipMessage = value.imipMessage
 
         return EnvelopeWrite(
-            id: Int64(value.id),
-            mailboxId: Int64(value.mailboxId),
+            remoteId: Int64(value.id),
+            mailboxId: mailboxId,
             accountId: accountId,
             sentAt: Int64(value.dateInt),
             syncedAt: syncedAt,

@@ -24,6 +24,8 @@ public import NCMailStore
 public actor MirrorCoordinator {
     let store: MailStore
     let client: MailClient
+    /// This mirror's own account id, not the server's. Every request the coordinator makes
+    /// is built from ``account``'s `remoteId` instead (ADR-0033).
     let accountId: Int64
     let configuration: MirrorConfiguration
     let accountBudget: MirrorBudget
@@ -39,6 +41,10 @@ public actor MirrorCoordinator {
     public nonisolated let progress: AsyncStream<MirrorProgress>
     nonisolated let progressContinuation: AsyncStream<MirrorProgress>.Continuation
 
+    /// The account row, read once per run. It carries the server id every endpoint takes
+    /// and the login the accounts refresh has to be keyed by.
+    private var account: AccountRecord?
+
     private var runTask: Task<Void, Never>?
     private var powerObserver: Task<Void, Never>?
     private var runGeneration = 0
@@ -50,7 +56,7 @@ public actor MirrorCoordinator {
     /// only claimed in memory goes back to being `missing` for free when the app is killed,
     /// whereas a `queued` row would have to be swept up at the next launch by something
     /// that could itself be interrupted.
-    var pendingBodyIds: [Int64] = []
+    var pendingBodies: [BodyBackfillItem] = []
     var inFlightBodyIds: Set<Int64> = []
     var isBodyQueueExhausted = false
     var bodyFailureCounts: [Int64: Int] = [:]
@@ -91,6 +97,27 @@ public actor MirrorCoordinator {
         (progress, progressContinuation) = AsyncStream.makeStream(
             of: MirrorProgress.self,
             bufferingPolicy: .bufferingNewest(1)
+        )
+    }
+
+    /// The accounts one signed-in Nextcloud login has, mirrored and given local ids.
+    ///
+    /// A coordinator needs a local account id, and a local account id only exists once the
+    /// row does, so this is what runs first: `GET /accounts`, upserted under `identity`,
+    /// answering with the rows. The app builds one coordinator per row it gets back.
+    ///
+    /// - Parameter identity: the server and login name the Keychain item is under. It is
+    ///   passed in rather than read off `client` because `NCMailNet` keeps both private, and
+    ///   because the mirror should record the identity the app signed in with rather than
+    ///   one inferred from a URL.
+    public static func discoverAccounts(
+        store: MailStore,
+        client: MailClient,
+        identity: ServerIdentity
+    ) async throws -> [AccountRecord] {
+        let accounts = try await client.get(.accounts)
+        return try await store.upsert(
+            accounts: try accounts.map { try MirrorMapping.accountWrite($0, identity: identity) }
         )
     }
 
@@ -270,9 +297,19 @@ public actor MirrorCoordinator {
     private func bootstrap() async throws {
         try Task.checkCancellation()
         await setState(.priming)
+
+        // The row first, because everything below needs the server id and the login that
+        // scope this account, and neither is derivable from the local id (ADR-0033).
+        guard let account = try await store.account(id: accountId) else {
+            throw MirrorError.accountNotMirrored(accountId: accountId)
+        }
+        self.account = account
+
         do {
             let accounts = try await client.get(.accounts)
-            try await store.upsert(accounts: accounts.map(MirrorMapping.accountWrite))
+            try await store.upsert(
+                accounts: try accounts.map { try MirrorMapping.accountWrite($0, identity: account.identity) }
+            )
         } catch let error as MailError {
             try rethrowIfUnrecoverable(error)
             MirrorLog.mirror.error("accounts refresh failed: \(describe(error), privacy: .public)")
@@ -280,9 +317,9 @@ public actor MirrorCoordinator {
 
         try Task.checkCancellation()
         do {
-            let list = try await client.get(.mailboxes(accountId: Int(accountId)))
+            let list = try await client.get(.mailboxes(accountId: Int(account.remoteId)))
             try await store.upsert(
-                mailboxes: list.entries.map(MirrorMapping.mailboxWrite),
+                mailboxes: try list.entries.map { try MirrorMapping.mailboxWrite($0, accountId: accountId) },
                 accountId: accountId
             )
             MirrorLog.mirror.info(
@@ -361,7 +398,7 @@ public actor MirrorCoordinator {
     private func mirrorMailbox(_ mailbox: MailboxRecord) async {
         do {
             if mailbox.lastPrimedAt == nil {
-                try await prime(mailboxId: mailbox.id)
+                try await prime(mailbox)
             }
             try await enumerate(mailbox)
         } catch is CancellationError {
@@ -383,7 +420,8 @@ public actor MirrorCoordinator {
     /// is mandatory and not an optimisation. A 202 means it accepted the work and is still
     /// doing it; a 428 means the cache went away again. Both are answered by asking again
     /// with `init: true`, which is why one loop covers them.
-    private func prime(mailboxId: Int64) async throws {
+    private func prime(_ mailbox: MailboxRecord) async throws {
+        let mailboxId = mailbox.id
         for attempt in 0..<max(1, configuration.primeAttempts) {
             if attempt > 0, let delay = configuration.primeDelay(beforeAttempt: attempt) {
                 try await configuration.sleep(delay)
@@ -391,10 +429,10 @@ public actor MirrorCoordinator {
             try Task.checkCancellation()
             do {
                 let response = try await client.post(
-                    .sync(mailboxId: Int(mailboxId)),
+                    .sync(mailboxId: Int(mailbox.remoteId)),
                     body: SyncRequest(ids: [], initialise: true)
                 )
-                try await storePrimed(response, mailboxId: mailboxId)
+                try await storePrimed(response, mailbox: mailbox)
                 return
             } catch MailError.syncInProgress {
                 MirrorLog.mirror.debug(
@@ -419,24 +457,24 @@ public actor MirrorCoordinator {
     /// stored cursor and re-reads its first page, which costs one cheap database read on
     /// the server and removes the need to trust that "all" means all on a mailbox large
     /// enough for the server to decide otherwise.
-    private func storePrimed(_ response: SyncResponse, mailboxId: Int64) async throws {
+    private func storePrimed(_ response: SyncResponse, mailbox: MailboxRecord) async throws {
+        let mailboxId = mailbox.id
         let syncedAt = configuration.now()
         let writes = try response.newMessages.map {
-            try MirrorMapping.envelopeWrite($0, accountId: accountId, syncedAt: syncedAt)
+            try MirrorMapping.envelopeWrite(
+                $0,
+                accountId: accountId,
+                mailboxId: mailboxId,
+                syncedAt: syncedAt
+            )
         }
         if !writes.isEmpty {
             try await store.upsert(envelopes: writes)
         }
-        // `lastPrimedAt` has no DAO of its own — `MailboxWrite` deliberately omits every
-        // mirror-bookkeeping column (ADR-0023) and `setEnvelopeCursor` covers the others.
-        // Raw SQL through the store's own writer rather than a column the folder refresh
-        // could roll back; asked of WS-03 in the report.
-        try await store.write { database in
-            try database.execute(
-                sql: "UPDATE mailbox SET lastPrimedAt = ? WHERE id = ?",
-                arguments: [syncedAt, mailboxId]
-            )
-        }
+        // `lastPrimedAt` is mirror bookkeeping, so `MailboxWrite` deliberately omits it
+        // (ADR-0023) and a folder refresh cannot roll it back. WS-03 added the DAO this
+        // asked for.
+        try await store.setLastPrimedAt(syncedAt, mailboxId: mailboxId)
         MirrorLog.mirror.info(
             "mailbox \(mailboxId, privacy: .public) primed, \(writes.count, privacy: .public) envelopes free"
         )
@@ -457,10 +495,15 @@ public actor MirrorCoordinator {
             try Task.checkCancellation()
             if conditions.stopsEverything { return }
 
-            let page = try await fetchEnvelopePage(mailboxId: mailbox.id, cursor: cursor)
+            let page = try await fetchEnvelopePage(mailbox, cursor: cursor)
             let syncedAt = configuration.now()
             let writes = try page.map {
-                try MirrorMapping.envelopeWrite($0, accountId: accountId, syncedAt: syncedAt)
+                try MirrorMapping.envelopeWrite(
+                    $0,
+                    accountId: accountId,
+                    mailboxId: mailbox.id,
+                    syncedAt: syncedAt
+                )
             }
             var isComplete = page.count < limit
 
@@ -506,9 +549,9 @@ public actor MirrorCoordinator {
     }
 
     /// One page, re-priming once if the server has forgotten the mailbox mid-enumeration.
-    private func fetchEnvelopePage(mailboxId: Int64, cursor: Int64?) async throws -> [RawBacked<Envelope>] {
+    private func fetchEnvelopePage(_ mailbox: MailboxRecord, cursor: Int64?) async throws -> [RawBacked<Envelope>] {
         let endpoint = Endpoint.messages(
-            mailboxId: Int(mailboxId),
+            mailboxId: Int(mailbox.remoteId),
             cursor: cursor.map(Int.init),
             limit: configuration.envelopePageSize
         )
@@ -516,9 +559,9 @@ public actor MirrorCoordinator {
             return try await client.get(endpoint)
         } catch MailError.mailboxNotCached {
             MirrorLog.mirror.info(
-                "mailbox \(mailboxId, privacy: .public) fell out of the server cache mid-page; re-priming"
+                "mailbox \(mailbox.id, privacy: .public) fell out of the server cache mid-page; re-priming"
             )
-            try await prime(mailboxId: mailboxId)
+            try await prime(mailbox)
             return try await client.get(endpoint)
         }
     }
@@ -553,9 +596,14 @@ public enum MirrorError: Error, Sendable, CustomStringConvertible {
     /// already has and is tried again on the next pass.
     case primingDidNotFinish(mailboxId: Int64)
 
+    /// The coordinator was built for an account id the mirror does not have a row for. The
+    /// row comes first — see ``MirrorCoordinator/discoverAccounts(store:client:identity:)``.
+    case accountNotMirrored(accountId: Int64)
+
     public var description: String {
         switch self {
         case .primingDidNotFinish(let mailboxId): "primingDidNotFinish(mailbox: \(mailboxId))"
+        case .accountNotMirrored(let accountId): "accountNotMirrored(account: \(accountId))"
         }
     }
 }

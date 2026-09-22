@@ -18,12 +18,24 @@ public import NCMailStore
 public enum MailStoreFixtures {
     /// What `seed` put in the store, so a test does not have to hard-code ids that only
     /// happen to match this function's internals.
+    ///
+    /// Every id here is local to the mirror, which since ADR-0033 is not the same number as
+    /// the server's. The server ids the seed used are the `remote…` properties.
     public struct SeedResult: Sendable {
         public let accountId: Int64
+        public let remoteAccountId: Int64
         public let mailboxId: Int64
+        public let remoteMailboxId: Int64
         /// Oldest first, matching insertion order. `messageIds.last` is the newest message.
         public let messageIds: [Int64]
     }
+
+    /// The login the seeded account is filed under. A fixture store has one, and a test
+    /// that wants a second server passes its own.
+    public static let identity = ServerIdentity(
+        serverURL: "https://fixtures.example.invalid/",
+        loginName: "fixtures"
+    )
 
     /// A handful of distinct subject topics, rotated across messages so full-text search has
     /// more than one term to rank. Not meant to be exhaustive — just not the same six words
@@ -38,9 +50,11 @@ public enum MailStoreFixtures {
     /// - Parameters:
     ///   - store: an already-open `MailStore` (typically `.inMemory()`).
     ///   - messages: how many envelopes to write.
-    ///   - accountId: the account they belong to; created if `account` write has not already
-    ///     happened for this id.
-    ///   - mailboxId: the mailbox they land in; created alongside the account.
+    ///   - identity: the signed-in login the account is filed under. Two calls with two
+    ///     identities and the same numeric ids produce two independent accounts, which is
+    ///     the whole point of ADR-0033 and what a multi-server test asserts.
+    ///   - remoteAccountId: the server's id for the account they belong to.
+    ///   - remoteMailboxId: the server's id for the mailbox they land in.
     ///   - threadSize: messages per thread — `messages / threadSize` distinct threads.
     ///   - bodyFraction: the proportion (0...1) of messages that also get a stored body, taken
     ///     from a recorded fixture so the text is not one sentence repeated. 0 by default,
@@ -53,20 +67,30 @@ public enum MailStoreFixtures {
     public static func seed(
         _ store: MailStore,
         messages: Int,
-        accountId: Int64 = 1,
-        mailboxId: Int64 = 10,
+        identity: ServerIdentity = MailStoreFixtures.identity,
+        remoteAccountId: Int64 = 1,
+        remoteMailboxId: Int64 = 10,
         threadSize: Int = 5,
         bodyFraction: Double = 0,
         batchSize: Int = 1000
     ) async throws -> SeedResult {
-        try await store.upsert(
-            accounts: [AccountWrite(id: accountId, name: "Fixture account", emailAddress: "fixtures@example.invalid")]
+        let accounts = try await store.upsert(
+            accounts: [
+                AccountWrite(
+                    identity: identity,
+                    remoteId: remoteAccountId,
+                    name: "Fixture account",
+                    emailAddress: "fixtures@example.invalid"
+                )
+            ]
         )
-        try await store.upsert(
+        guard let accountId = accounts.first?.id else { throw FixtureError.accountNotWritten }
+
+        let mailboxes = try await store.upsert(
             mailboxes: [
                 MailboxWrite(
-                    id: mailboxId,
                     accountId: accountId,
+                    remoteId: remoteMailboxId,
                     name: "INBOX",
                     displayName: "INBOX",
                     specialRole: "inbox",
@@ -76,6 +100,7 @@ public enum MailStoreFixtures {
             ],
             accountId: accountId
         )
+        guard let mailboxId = mailboxes.first?.id else { throw FixtureError.mailboxNotWritten }
 
         var body: String?
         if bodyFraction > 0 {
@@ -88,15 +113,16 @@ public enum MailStoreFixtures {
         batch.reserveCapacity(min(batchSize, messages))
 
         for offset in 0..<messages {
-            let id = Int64(offset) + 1
-            ids.append(id)
-            batch.append(envelope(id: id, accountId: accountId, mailboxId: mailboxId, threadSize: threadSize))
+            let remoteId = Int64(offset) + 1
+            batch.append(
+                envelope(remoteId: remoteId, accountId: accountId, mailboxId: mailboxId, threadSize: threadSize)
+            )
             if batch.count == batchSize {
-                try await store.upsert(envelopes: batch)
+                ids.append(contentsOf: try await store.upsert(envelopes: batch))
                 batch.removeAll(keepingCapacity: true)
             }
         }
-        if !batch.isEmpty { try await store.upsert(envelopes: batch) }
+        if !batch.isEmpty { ids.append(contentsOf: try await store.upsert(envelopes: batch)) }
 
         if let body, bodyFraction > 0 {
             // Every Nth message rather than a random sample: deterministic, so a test that
@@ -110,10 +136,21 @@ public enum MailStoreFixtures {
             }
         }
 
-        return SeedResult(accountId: accountId, mailboxId: mailboxId, messageIds: ids)
+        return SeedResult(
+            accountId: accountId,
+            remoteAccountId: remoteAccountId,
+            mailboxId: mailboxId,
+            remoteMailboxId: remoteMailboxId,
+            messageIds: ids
+        )
     }
 
-    private static func envelope(id: Int64, accountId: Int64, mailboxId: Int64, threadSize: Int) -> EnvelopeWrite {
+    private static func envelope(
+        remoteId id: Int64,
+        accountId: Int64,
+        mailboxId: Int64,
+        threadSize: Int
+    ) -> EnvelopeWrite {
         let topic = topics[Int(id) % topics.count]
         var flags = MessageFlags()
         flags.isSeen = id % 3 == 0
@@ -122,7 +159,7 @@ public enum MailStoreFixtures {
         flags.isAnswered = id % 17 == 0
         let sender = Int(id) % 500
         return EnvelopeWrite(
-            id: id,
+            remoteId: id,
             mailboxId: mailboxId,
             accountId: accountId,
             sentAt: 1_600_000_000 + id,
@@ -140,4 +177,10 @@ public enum MailStoreFixtures {
             ]
         )
     }
+}
+
+/// A fixture that could not set itself up. Its own type so a failing test says which half.
+public enum FixtureError: Error, Sendable {
+    case accountNotWritten
+    case mailboxNotWritten
 }

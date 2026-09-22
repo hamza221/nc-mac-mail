@@ -29,6 +29,12 @@ seconds, complete eventually, resumable always, and polite to the server through
 
 ```swift
 public actor MirrorCoordinator {
+    // `accountId` is the mirror's own, not the server's, and a row has to exist first:
+    // ADR-0033. `discoverAccounts` is what creates the rows and hands back their ids.
+    public static func discoverAccounts(
+        store: MailStore, client: MailClient, identity: ServerIdentity
+    ) async throws -> [AccountRecord]
+
     public init(store: MailStore, client: MailClient, accountId: Int64)
     public func start() async          // resumes wherever the database says it stopped
     public func pause() async
@@ -38,9 +44,11 @@ public actor MirrorCoordinator {
 }
 ```
 
-**Bootstrap.** `GET /api/accounts` → upsert. Per account `GET /api/mailboxes?accountId=` →
-upsert, deriving `isSubscribed` and `isSelectable` from `attributes`, and setting
-`isMirrored = isSubscribed && isSelectable`.
+**Bootstrap.** `GET /api/accounts` → upsert, keyed by the signed-in login. Per account
+`GET /api/mailboxes?accountId=` — the *server's* account id, read off the account row —
+→ upsert, deriving `isSubscribed` and `isSelectable` from `attributes`, and setting
+`isMirrored = isSubscribed && isSelectable`. Every id in a URL from here on is a `remoteId`
+and every id written to a row is local ([ADR-0033](../../decisions/0033-accounts-have-a-local-identity.md)).
 
 **Stage 0, priming.** `POST /api/mailboxes/{id}/sync {"ids":[],"init":true}` per mirrored
 mailbox. 200 → store the returned envelopes (they are the first page, free). 202 → retry

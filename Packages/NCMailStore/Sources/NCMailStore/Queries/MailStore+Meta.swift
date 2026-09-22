@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Hamza Mahjoubi
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-public import GRDB
+internal import GRDB
 
 extension MailStore {
     /// Reads a `meta` value: the sidebar's expansion state, the backfill pause flag, the
@@ -23,11 +23,9 @@ extension MailStore {
         }
     }
 
-    public func observeMetaValue(forKey key: String) -> AsyncValueObservation<String?> {
-        ValueObservation
-            .tracking { db in
-                try String.fetchOne(db, sql: "SELECT value FROM meta WHERE key = ?", arguments: [key])
-            }
-            .values(in: dbQueue, scheduling: .mainActor)
+    public func observeMetaValue(forKey key: String) -> StoreObservation<String?> {
+        observation { db in
+            try String.fetchOne(db, sql: "SELECT value FROM meta WHERE key = ?", arguments: [key])
+        }
     }
 }

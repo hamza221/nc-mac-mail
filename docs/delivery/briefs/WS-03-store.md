@@ -60,7 +60,12 @@ wrong and the build should say so.
 **Records** — value types conforming to `FetchableRecord, PersistableRecord, Sendable`,
 one per table, camelCase columns so no `CodingKeys` are needed.
 
-**DAOs** — the queries, each one used by a named caller:
+**DAOs** — the queries, each one used by a named caller. Two things in the block below were
+settled differently once the code existed: the store defines its own write types rather than
+persisting WS-02's models ([ADR-0023](../../decisions/0023-store-records-are-not-wire-models.md)),
+and the observations return `StoreObservation`, not GRDB's `AsyncValueObservation`
+([ADR-0034](../../decisions/0034-the-store-returns-its-own-sequence.md)). The shape is
+otherwise as written.
 
 ```swift
 public func upsert(accounts: [Account]) async throws

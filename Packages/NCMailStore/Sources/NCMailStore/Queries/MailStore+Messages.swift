@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Hamza Mahjoubi
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-public import GRDB
+internal import GRDB
 
 extension MailStore {
     // MARK: - Writing
@@ -12,24 +12,37 @@ extension MailStore {
     /// One transaction is not tidiness. A crash between the envelope and its index row would
     /// leave a message that exists and cannot be found, and nothing would ever notice: the
     /// backfill would not revisit it, because as far as the cursor is concerned it is done.
-    public func upsert(envelopes: [EnvelopeWrite]) async throws {
-        guard !envelopes.isEmpty else { return }
-        try await dbQueue.write { db in
-            for envelope in envelopes {
+    /// - Returns: the local id of each envelope, in the order they were given.
+    @discardableResult
+    public func upsert(envelopes: [EnvelopeWrite]) async throws -> [Int64] {
+        guard !envelopes.isEmpty else { return [] }
+        return try await dbQueue.write { db in
+            try envelopes.map { envelope in
                 try envelope.upsert(db)
+                // The write carries the server's id, not the mirror's, so the local id has
+                // to be read back before anything can point at the row. A cached statement
+                // seeking `idxMessageAccountRemote`, because this runs once per envelope of
+                // every page of every mailbox (ADR-0033).
+                let lookup = try db.cachedStatement(
+                    sql: "SELECT id FROM message WHERE accountId = ? AND remoteId = ?"
+                )
+                lookup.arguments = [envelope.accountId, envelope.remoteId]
+                guard let messageId = try Int64.fetchOne(lookup) else {
+                    throw MailStoreError.rowVanished(table: "message", remoteId: envelope.remoteId)
+                }
 
                 // Rewritten rather than merged: a recipient removed server-side has to
                 // disappear here too, and the addresses of one message are a handful of rows.
                 try db.execute(
                     sql: "DELETE FROM messageAddress WHERE messageId = ?",
-                    arguments: [envelope.id]
+                    arguments: [messageId]
                 )
                 var nextPosition: [AddressKind: Int] = [:]
                 for address in envelope.addresses {
                     let position = nextPosition[address.kind, default: 0]
                     nextPosition[address.kind] = position + 1
                     try MessageAddressRecord(
-                        messageId: envelope.id,
+                        messageId: messageId,
                         kind: address.kind,
                         position: position,
                         email: address.email,
@@ -38,12 +51,13 @@ extension MailStore {
                 }
 
                 try SearchIndexWriter.indexEnvelope(
-                    messageId: envelope.id,
+                    messageId: messageId,
                     subject: envelope.subject,
                     preview: envelope.previewText,
                     people: envelope.indexedPeople,
                     in: db
                 )
+                return messageId
             }
         }
     }
@@ -75,25 +89,21 @@ extension MailStore {
         mailboxId: Int64,
         view: ListView,
         range: Range<Int>
-    ) -> AsyncValueObservation<[MessageRow]> {
-        ValueObservation
-            .tracking { db in
-                try Self.fetchMessages(db, mailboxId: mailboxId, view: view, range: range)
-            }
-            .values(in: dbQueue, scheduling: .mainActor)
+    ) -> StoreObservation<[MessageRow]> {
+        observation { db in
+            try Self.fetchMessages(db, mailboxId: mailboxId, view: view, range: range)
+        }
     }
 
     /// Every message of one thread, oldest first, which is how a conversation reads.
-    public func observeThread(rootId: String, mailboxId: Int64) -> AsyncValueObservation<[MessageRow]> {
-        ValueObservation
-            .tracking { db in
-                try MessageRow.fetchAll(
-                    db,
-                    sql: MessageSQL.thread,
-                    arguments: ["mailboxId": mailboxId, "rootId": rootId]
-                )
-            }
-            .values(in: dbQueue, scheduling: .mainActor)
+    public func observeThread(rootId: String, mailboxId: Int64) -> StoreObservation<[MessageRow]> {
+        observation { db in
+            try MessageRow.fetchAll(
+                db,
+                sql: MessageSQL.thread,
+                arguments: ["mailboxId": mailboxId, "rootId": rootId]
+            )
+        }
     }
 
     public func message(id: Int64) async throws -> MessageRecord? {
@@ -106,12 +116,12 @@ extension MailStore {
     ///
     /// Newest first because recency is what people open, and bounded because the scheduler
     /// holds a fixed number in flight rather than a list of everything outstanding.
-    public func nextBodyBackfillBatch(accountId: Int64, limit: Int) async throws -> [Int64] {
+    public func nextBodyBackfillBatch(accountId: Int64, limit: Int) async throws -> [BodyBackfillItem] {
         try await dbQueue.read { db in
-            try Int64.fetchAll(
+            try BodyBackfillItem.fetchAll(
                 db,
                 sql: """
-                    SELECT id FROM message
+                    SELECT id, remoteId FROM message
                      WHERE accountId = :accountId AND bodyState = 'missing'
                      ORDER BY sentAt DESC
                      LIMIT :limit

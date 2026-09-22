@@ -56,7 +56,15 @@ struct MirrorLiveMeasurementTests {
             transport: CountingTransport(counter: counter),
             clientVersion: "measurement"
         )
-        let coordinator = MirrorCoordinator(store: store, client: client, accountId: 1)
+        // The row before the coordinator: a local account id only exists once `GET /accounts`
+        // has been mirrored under this login (ADR-0033).
+        let accounts = try await MirrorCoordinator.discoverAccounts(
+            store: store,
+            client: client,
+            identity: ServerIdentity(serverURL: server, loginName: user)
+        )
+        let account = try #require(accounts.first)
+        let coordinator = MirrorCoordinator(store: store, client: client, accountId: account.id)
 
         let started = ContinuousClock.now
         await coordinator.start()
@@ -64,8 +72,8 @@ struct MirrorLiveMeasurementTests {
         let elapsed = ContinuousClock.now - started
 
         try await store.vacuum()
-        let progress = try await store.mirrorProgress(accountId: 1)
-        let footprint = try await store.storageFootprint(accountId: 1)
+        let progress = try await store.mirrorProgress(accountId: account.id)
+        let footprint = try await store.storageFootprint(accountId: account.id)
         let bytesOnDisk = store.fileSizeOnDisk()
 
         // Reported as an issue because Swift Testing has no other way to put a measurement
