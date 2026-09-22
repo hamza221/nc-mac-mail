@@ -93,9 +93,10 @@ jobs:
           restore-keys: xcode-spm-${{ steps.xcode.outputs.version }}-
 
       - name: Build
-        # SUPPRESS_WARNINGS=NO is load-bearing, not tidiness: without it swiftc
-        # rejects NextcloudUI's -warnings-as-errors against Xcode's
-        # -suppress-warnings and nothing builds. ADR-0016.
+        # SUPPRESS_WARNINGS=NO is no longer required to build: NextcloudUI
+        # dropped .treatAllWarnings(as: .error) in 1e753cb. It stays because
+        # Xcode hands package targets -suppress-warnings, and without it our
+        # own packages' warnings are invisible here. ADR-0016.
         run: make build-app
 
   app-tests:

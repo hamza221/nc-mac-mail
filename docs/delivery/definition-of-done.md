@@ -12,8 +12,9 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 - [ ] `make build` clean — `swift build -Xswiftc -warnings-as-errors` in every package.
       The flag lives in the command, not the manifest
       ([ADR-0016](../decisions/0016-warnings-as-errors-at-the-build-command.md)).
-- [ ] `make build-app` clean, if the app target was touched. Not bare `xcodebuild`: it needs
-      the `SUPPRESS_WARNINGS=NO` that the Makefile adds.
+- [ ] `make build-app` clean, if the app target was touched. Bare `xcodebuild` also works
+      since `NextcloudUI` 1e753cb, but the Makefile's `SUPPRESS_WARNINGS=NO` is what makes
+      a warning in one of our own packages visible in an app build.
 - [ ] Swift 6 language mode, strict concurrency, no new `@unchecked Sendable`, no new
       `@preconcurrency import`.
 - [ ] No new third-party dependency without an ADR.

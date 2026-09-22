@@ -5,9 +5,24 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 # ADR-0016: Ask for warnings-as-errors at the build command, not in the manifests
 
-**Status:** Accepted
+**Status:** Accepted. The decision stands; its blocking premise no longer does — see
+*What changed* below.
 **Date:** 2026-09-21
 **Decided by:** WS-00, after `xcodebuild -scheme NextcloudMail build` failed on a clean tree
+
+## What changed, 2026-09-22
+
+`NextcloudUI` dropped `.treatAllWarnings(as: .error)` from its manifest in `1e753cb` and
+moved the flag to its own build command, which is the fix this project reported upstream.
+Verified against the merged commit: **bare `xcodebuild -scheme NextcloudMail build`
+succeeds with no override, and the Xcode GUI builds the project.** Two consequences below
+are now historical and marked so.
+
+The decision itself is unaffected. Warnings-as-errors still belongs at the build command
+rather than in our manifests, because the collision it avoids is a property of how Xcode
+builds any package target, not of one library's manifest. `SUPPRESS_WARNINGS=NO` also
+stays in the Makefile and CI, for the second reason recorded below: without it, Xcode
+suppresses warnings in our own packages during an app build.
 
 ## Context
 
@@ -53,11 +68,12 @@ warnings-as-errors. The build command does:
   errors there. Nothing is checked less than it was.
 - A warning introduced in package code does not fail an Xcode build of the app. CI catches
   it, and `make build` catches it locally. The feedback is minutes later than it was.
-- The project **cannot be built from the Xcode GUI** until `NextcloudUI` stops setting
-  `.treatAllWarnings(as: .error)`, because the GUI has nowhere to put the override. Cmd-B
-  fails with the error above. Filed in
-  [../feedback/library-feedback.md](../feedback/library-feedback.md) as a blocker; it is the
-  single most valuable thing WS-00 found for the library.
+- ~~The project **cannot be built from the Xcode GUI**~~ — **no longer true as of
+  `NextcloudUI` 1e753cb.** It was true when this was written: the GUI had nowhere to put
+  the override and Cmd-B failed with the error above. Filed in
+  [../feedback/library-feedback.md](../feedback/library-feedback.md) as a blocker, fixed
+  upstream and merged. It is the single most valuable thing WS-00 found for the library,
+  and it is the first piece of feedback from this project to complete the round trip.
 - `SUPPRESS_WARNINGS=NO` also un-suppresses GRDB, so an app build prints two
   "type 'Any' does not conform to the 'Sendable' protocol" warnings from
   `GRDB/Record/EncodableRecord.swift` and `FetchableRecord.swift`. Kept visible on purpose:

@@ -11,9 +11,11 @@ PACKAGES := NCMailCore NCMailNet NCMailStore NCMailSync NCMailTestSupport
 # dependencies, so GRDB's warnings stay GRDB's problem. ADR-0016 has the rest.
 SWIFTFLAGS := -Xswiftc -warnings-as-errors
 
-# SUPPRESS_WARNINGS=NO is not optional: Xcode hands package targets
-# -suppress-warnings, NextcloudUI's manifest asks for -warnings-as-errors, and
-# swiftc refuses both at once. Without this the app does not build. ADR-0016.
+# SUPPRESS_WARNINGS=NO no longer has to be here for the app to build --
+# NextcloudUI stopped setting .treatAllWarnings(as: .error) in 1e753cb, and bare
+# xcodebuild works again. It stays for the other reason: Xcode hands package
+# targets -suppress-warnings, so without it our own packages' warnings are
+# invisible in an app build. ADR-0016.
 XCODEFLAGS := -project NextcloudMail.xcodeproj -scheme NextcloudMail \
 	-destination 'platform=macOS' SUPPRESS_WARNINGS=NO
 

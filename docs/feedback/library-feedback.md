@@ -156,6 +156,23 @@ identical and consumers are unaffected. That is what this repo now does; ADR-001
 measurements. The library also has a `Showcase/**/*.pbxproj` glob in its `REUSE.toml` with
 no project behind it — the moment that project exists, its own build will hit this.
 
+**Resolved, 2026-09-22.** Fixed upstream exactly as suggested and merged as
+[`1e753cb`](https://github.com/hamza221/nextcloud-swiftui/pull/2): the manifest no longer
+sets `.treatAllWarnings(as: .error)`, and the `Makefile` and CI pass
+`-Xswiftc -warnings-as-errors` instead. Verified from this side against the merged commit —
+bare `xcodebuild -scheme NextcloudMail build` succeeds with no override, so **the Xcode GUI
+builds this project**. The `Showcase/**/*.pbxproj` glob was left alone deliberately, to
+keep the fix to one thing; it is still dead and still waiting for the project behind it.
+
+Worth recording as process rather than as a bug: this is the first piece of feedback from
+this project to complete the round trip. WS-00 hit it on day one, could not work around it
+from the consumer side, wrote it down here instead of absorbing it, and the fix came back.
+The reason it survived the library's own CI is the part worth keeping — `swift build` never
+passes `-suppress-warnings`, and neither does `xcodebuild` when the package is the *root*.
+The flag only appears when the package is a dependency of another project's target, which
+no job in the library exercised. A library cannot catch this class of bug by building
+itself.
+
 ### `.ncTheme(.nextcloud)` at a scene root is one line and it works
 **Workstream:** WS-00 · **Component:** `NCTheme` · **Severity:** polish
 **Where:** `NextcloudMail/App/NextcloudMailApp.swift:19`

@@ -81,14 +81,18 @@ make lint        # swift format --strict, then swiftlint --strict
 make format      # apply formatting in place
 ```
 
-**Build the app with `make build-app`, not with bare `xcodebuild`.** `NextcloudUI`'s
-manifest sets `.treatAllWarnings(as: .error)`, Xcode gives every package target
-`-suppress-warnings`, and swiftc refuses the two together. The Makefile passes
-`SUPPRESS_WARNINGS=NO`, which is the only place the override can go. The same flaw means
-**the Xcode GUI cannot build this project yet** — there is nowhere to put the override in a
-Cmd-B. It is filed against the library in
-[docs/feedback/library-feedback.md](docs/feedback/library-feedback.md) and recorded in
-[ADR-0016](docs/decisions/0016-warnings-as-errors-at-the-build-command.md).
+**Prefer `make build-app` over bare `xcodebuild`, though both now work.** Until
+`NextcloudUI` 1e753cb, its manifest set `.treatAllWarnings(as: .error)`, Xcode gave every
+package target `-suppress-warnings`, and swiftc refused the two together — so bare
+`xcodebuild` and Cmd-B in the GUI both failed inside the library before reaching this
+project. WS-00 found it, it was filed in
+[docs/feedback/library-feedback.md](docs/feedback/library-feedback.md), fixed upstream and
+merged. **The Xcode GUI builds this project.**
+
+The Makefile still passes `SUPPRESS_WARNINGS=NO`, now for a different reason: Xcode
+suppresses warnings in package targets, so without it a warning in one of this project's
+own packages is invisible in an app build. Two GRDB warnings come along with it, which is
+the price. [ADR-0016](docs/decisions/0016-warnings-as-errors-at-the-build-command.md).
 
 ### Sandbox, signing and the Keychain
 

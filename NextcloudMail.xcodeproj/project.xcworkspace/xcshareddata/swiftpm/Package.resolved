@@ -1,24 +1,24 @@
 {
-  "originHash" : "23df1caa557c877ce11b6c951d878d955af14927c266d8d75f7594c58a20a3f2",
-  "pins" : [
+  "originHash": "23df1caa557c877ce11b6c951d878d955af14927c266d8d75f7594c58a20a3f2",
+  "pins": [
     {
-      "identity" : "grdb.swift",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/groue/GRDB.swift",
-      "state" : {
-        "revision" : "b83108d10f42680d78f23fe4d4d80fc88dab3212",
-        "version" : "7.11.1"
+      "identity": "grdb.swift",
+      "kind": "remoteSourceControl",
+      "location": "https://github.com/groue/GRDB.swift",
+      "state": {
+        "revision": "b83108d10f42680d78f23fe4d4d80fc88dab3212",
+        "version": "7.11.1"
       }
     },
     {
-      "identity" : "nextcloud-swiftui",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/hamza221/nextcloud-swiftui",
-      "state" : {
-        "branch" : "main",
-        "revision" : "c7cb12188c8c1ff3f0c17a880dc8143aca95eb2a"
+      "identity": "nextcloud-swiftui",
+      "kind": "remoteSourceControl",
+      "location": "https://github.com/hamza221/nextcloud-swiftui",
+      "state": {
+        "branch": "main",
+        "revision": "1e753cb3cff5ffc10d39a3f7305ea9a9e52b99f6"
       }
     }
   ],
-  "version" : 3
+  "version": 3
 }

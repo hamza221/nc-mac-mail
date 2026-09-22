@@ -88,9 +88,11 @@ Cache SwiftPM. Fail on warnings.
 ## Acceptance
 
 - `make build`, `make test`, `make lint` all pass on a clean checkout.
-- `make build-app` is clean. The bare `xcodebuild -scheme NextcloudMail build` is **not**,
-  and cannot be until `NextcloudUI` stops setting `.treatAllWarnings(as: .error)`: it needs
-  `SUPPRESS_WARNINGS=NO`, which is what `make build-app` adds. ADR-0016.
+- `make build-app` is clean. Bare `xcodebuild -scheme NextcloudMail build` was **not**, and
+  could not be until `NextcloudUI` stopped setting `.treatAllWarnings(as: .error)` — which
+  it did in `1e753cb`, after this project reported it. Both work now.
+  `make build-app` still adds `SUPPRESS_WARNINGS=NO`, which is what keeps a warning in one
+  of our own packages visible in an app build. ADR-0016.
 - The app launches and shows three empty columns wearing the Nextcloud brand colour.
 - CI is green on a pull request, and demonstrably red when a warning is introduced.
 - `swift test` runs in all five packages with zero tests and no errors.
