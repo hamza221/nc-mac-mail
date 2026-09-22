@@ -237,19 +237,49 @@ and does not touch the server. That sentence is not decoration. A user who belie
 
 ## Sizing, so nobody is surprised
 
-Measured against typical corpora, storing sanitised HTML rather than raw MIME (which is
-what keeps the number this low — attachments are most of a mailbox's bytes and we do not
-store them):
+We store sanitised HTML rather than raw MIME, and no attachment payloads, which is what
+keeps these numbers as low as they are — attachments are most of a mailbox's bytes.
+
+The per-message costs below are measured, by
+`PerformanceTests.sizingOfAMirrorOnDisk` against a real SQLite file, after `VACUUM`,
+counting pages rather than the file so a leftover write-ahead log does not flatter or
+inflate the figure. Run it with `NCMAIL_SIZING=1 swift test --filter sizingOfAMirrorOnDisk`.
+
+| Per message | Measured | Was estimated |
+| --- | --- | --- |
+| Envelope, addresses and every index on them | **593 bytes** | ~1.2 KB |
+| Body row, from 30 KB of sanitised HTML | **34.8 KB** | ~12 KB |
+| Its search index, stored copy included | **7.1 KB**, 24% of the body | ~20% of the body |
+| All in | **43.6 KB** | ~16 KB |
+
+Envelopes cost half what the estimate said. Bodies cost three times it, and that is the
+number to be careful with: it comes from the one body this repository has recorded from a
+real server, `message-html-plain.html`, which is a 31.5 KB marketing email. Real mail is a
+mix of those and two-line replies, so an average mailbox will land below this.
+
+Multiplying the measured costs, which is arithmetic and not a measurement:
 
 | Mailbox | Envelopes | Bodies | Search index | Total |
 | --- | --- | --- | --- | --- |
-| 10,000 messages | ~12 MB | ~120 MB | ~25 MB | ~160 MB |
-| 50,000 messages | ~60 MB | ~600 MB | ~120 MB | ~800 MB |
-| 250,000 messages | ~300 MB | ~3 GB | ~600 MB | ~4 GB |
+| 10,000 messages | 5.7 MB | 340 MB | 71 MB | **416 MB** |
+| 50,000 messages | 29 MB | 1.7 GB | 355 MB | **2.1 GB** |
+| 250,000 messages | 145 MB | 8.5 GB | 1.8 GB | **10.4 GB** |
 
-Estimates: ~1.2 KB per envelope row, ~12 KB per stored body, ~20% of body text for FTS.
-WS-04 must measure the real figures against a live instance and replace this table — an
-estimate in a document is a promise nobody made.
+**WS-04 still owes the corpus figure.** One recorded body measured exactly is better than
+an estimate, and it is not the same thing as the average over somebody's actual mail. When
+a full mirror of a live account exists, divide its file size by its message count and
+replace the per-message body row above.
+
+Two findings from taking the measurement, both already fixed in the code:
+
+- The search index is 24% of the body, which is what
+  [ADR-0011](../decisions/0011-fts5-standalone-index.md) predicted — but only after the
+  indexer learned to drop the contents of `<style>`. The server's sanitiser keeps style
+  blocks, a marketing email is mostly CSS, and indexing it made the index 2.2× the body
+  instead of a quarter of it.
+- `messageBody` costs 34.8 KB to store 30.1 KB of HTML. The 15% is SQLite overflow pages,
+  which is what a 30 KB text value costs on a 4 KB page, and there is nothing to do about
+  it short of compressing bodies.
 
 ## Failure modes and what happens
 

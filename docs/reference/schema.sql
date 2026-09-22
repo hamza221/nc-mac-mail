@@ -128,8 +128,10 @@ CREATE TABLE message (
 CREATE INDEX idxMessageMailboxSent  ON message(mailboxId, sentAt DESC);
 -- Threaded grouping and the thread view.
 CREATE INDEX idxMessageThread       ON message(mailboxId, threadRootId, sentAt DESC);
--- The body backfill picker.
-CREATE INDEX idxMessageBodyState    ON message(bodyState, sentAt DESC);
+-- The body backfill picker, which asks per account and newest first. `accountId`
+-- leads so the seek lands on one account's missing bodies and walks `limit` rows;
+-- without it every candidate needs a table lookup to find out whose it is.
+CREATE INDEX idxMessageBodyState    ON message(accountId, bodyState, sentAt DESC);
 -- Unread counts and the starred filter.
 CREATE INDEX idxMessageMailboxSeen  ON message(mailboxId, isSeen);
 CREATE INDEX idxMessageMailboxFlagged ON message(mailboxId, isFlagged, sentAt DESC);
@@ -141,6 +143,11 @@ CREATE INDEX idxMessageAccount      ON message(accountId, sentAt DESC);
 -- Normalised because "everything from this person" and the search index both
 -- need them, and because a message with forty recipients should not make forty
 -- copies of the envelope row.
+--
+-- The only WITHOUT ROWID table left, and it stays that way because nothing
+-- observes it: the list reads the denormalised sender off `message`. SQLite's
+-- update hook is not called for WITHOUT ROWID tables, so GRDB's ValueObservation
+-- can never fire for one. See ADR-0025.
 
 CREATE TABLE messageAddress (
     messageId INTEGER NOT NULL REFERENCES message(id) ON DELETE CASCADE,
@@ -204,7 +211,7 @@ CREATE TABLE attachment (
     data            BLOB,
     fetchedAt       INTEGER,
     PRIMARY KEY (messageId, attachmentId)
-) WITHOUT ROWID;
+);
 
 CREATE INDEX idxAttachmentCid ON attachment(messageId, cid);
 
@@ -224,7 +231,7 @@ CREATE TABLE messageTag (
     messageId INTEGER NOT NULL REFERENCES message(id) ON DELETE CASCADE,
     tagId     INTEGER NOT NULL REFERENCES tag(id) ON DELETE CASCADE,
     PRIMARY KEY (messageId, tagId)
-) WITHOUT ROWID;
+);
 
 -- ---------------------------------------------------------------------------
 -- Avatars
@@ -240,7 +247,7 @@ CREATE TABLE avatar (
     isExternal INTEGER NOT NULL DEFAULT 0,
     missing   INTEGER NOT NULL DEFAULT 0,
     fetchedAt INTEGER NOT NULL
-) WITHOUT ROWID;
+);
 
 -- ---------------------------------------------------------------------------
 -- The offline mutation queue
@@ -286,6 +293,14 @@ CREATE VIRTUAL TABLE messageSearch USING fts5(
     tokenize = 'unicode61 remove_diacritics 2'
 );
 
+-- Inserts and updates are the store's helper, in the same transaction as the write
+-- that feeds them. Deletes are not, because a message row also disappears through
+-- ON DELETE CASCADE from its mailbox or its account, and a cascade is invisible to
+-- the Swift code that started it. See ADR-0024.
+CREATE TRIGGER messageSearchDelete AFTER DELETE ON message BEGIN
+    DELETE FROM messageSearch WHERE rowid = old.id;
+END;
+
 -- ---------------------------------------------------------------------------
 -- Key/value metadata
 -- ---------------------------------------------------------------------------
@@ -296,4 +311,4 @@ CREATE VIRTUAL TABLE messageSearch USING fts5(
 CREATE TABLE meta (
     key   TEXT PRIMARY KEY,
     value TEXT NOT NULL
-) WITHOUT ROWID;
+);
