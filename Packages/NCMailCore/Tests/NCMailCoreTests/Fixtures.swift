@@ -2,25 +2,20 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import Foundation
+import NCMailFixtures
 
-/// Reads the recorded fixtures off disk.
+/// Reads the recorded fixtures through `NCMailFixtures`.
 ///
-/// Not `Bundle.module`, which is how `docs/delivery/testing-strategy.md`
-/// describes it: `NCMailTestSupport` depends on `NCMailCore`, so `NCMailCore`
-/// cannot depend back on it without a package cycle. The path is resolved from
-/// `#filePath`, which SwiftPM fixes at compile time. ADR-0022.
+/// `NCMailFixtures` is a dependency-free product of the `NCMailTestSupport` package, so
+/// `NCMailCoreTests` can depend on it without the package cycle that `NCMailCore` would hit
+/// depending on the full `NCMailTestSupport` product. ADR-0026 (supersedes ADR-0022, which
+/// resolved the same fixture directory by walking up from `#filePath`).
 enum Fixture {
-    static let directory: URL = {
-        var url = URL(filePath: #filePath)
-        for _ in 0..<5 { url.deleteLastPathComponent() }
-        return url.appending(path: "Packages/NCMailTestSupport/Sources/NCMailTestSupport/Resources/Fixtures")
-    }()
-
     static func data(_ name: String) throws -> Data {
-        try Data(contentsOf: directory.appending(path: name))
+        try FixtureBytes.data(name)
     }
 
     static func decode<T: Decodable>(_ type: T.Type, from name: String) throws -> T {
-        try JSONDecoder().decode(T.self, from: data(name))
+        try FixtureBytes.decode(type, from: name)
     }
 }

@@ -10,10 +10,11 @@
 #
 #   Scripts/record-fixtures.sh https://cloud.example.com alice 'app-password' [--scrub-content]
 #
-# Writes to Packages/NCMailTestSupport/Sources/NCMailTestSupport/Fixtures/, which every
-# package's tests reach through Bundle.module. Addresses, tokens, hmacs and hostnames are replaced
-# before anything is written. Subjects and preview text are KEPT — they are what
-# makes a decoding test real — unless --scrub-content is passed.
+# Writes to Packages/NCMailTestSupport/Sources/NCMailFixtures/Resources/Fixtures/, the
+# dependency-free target every package's tests can reach through Bundle.module (ADR-0026).
+# Addresses, tokens, hmacs and hostnames are replaced before anything is written. Subjects
+# and preview text are KEPT — they are what makes a decoding test real — unless
+# --scrub-content is passed.
 
 set -euo pipefail
 
@@ -28,7 +29,7 @@ PASSWORD="$3"
 SCRUB_CONTENT="${4:-}"
 
 API="$SERVER/index.php/apps/mail/api"
-OUT="$(cd "$(dirname "$0")/.." && pwd)/Packages/NCMailTestSupport/Sources/NCMailTestSupport/Resources/Fixtures"
+OUT="$(cd "$(dirname "$0")/.." && pwd)/Packages/NCMailTestSupport/Sources/NCMailFixtures/Resources/Fixtures"
 mkdir -p "$OUT"
 
 command -v jq >/dev/null 2>&1 || { echo "jq is required" >&2; exit 69; }
@@ -174,9 +175,18 @@ fetch "preference-sort-order.json" "$API/preferences/sort-order"
 fetch "trustedsenders.json" "$API/trustedsenders"
 
 # Error shapes. These are the fixtures nobody has when they need them.
-fetch "error-mailbox-not-found.json" "$API/mailboxes/99999999/stats"
-fetch "error-message-not-found.json" "$API/messages/99999999/body"
-fetch "avatar-missing.json" "$API/avatars/image/nobody%40example.invalid" raw
+#
+# A bad id on either route answers HTTP 403 with a body of exactly `[]`, not a 404 —
+# DelegationService resolves the effective user before the controller runs, and an id that
+# does not exist cannot be resolved to one the caller may see, so "gone" and "never yours"
+# are the same answer. See docs/reference/api-payloads.md#what-a-missing-thing-actually-answers.
+# Naming these "-not-found" would repeat the mistake this comment is fixing: the fixture
+# names say what the server actually sent, not what the id turned out to mean.
+fetch "error-mailbox-forbidden.json" "$API/mailboxes/99999999/stats"
+fetch "error-message-forbidden.json" "$API/messages/99999999/body"
+# A missing avatar is a genuine 404 with a zero-byte text/html body, not JSON — hence "raw"
+# and the .txt extension rather than .json.
+fetch "avatar-404.txt" "$API/avatars/image/nobody%40example.invalid" raw
 
 echo
 echo "Done. Before committing:"

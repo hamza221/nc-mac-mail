@@ -58,7 +58,7 @@ shape.
 | [WS-10](briefs/WS-10-triage.md) | Triage actions, toolbar, shortcuts | 06,08,09 | `NextcloudMail/Actions/**`, `NextcloudMail/Commands/**` | M |
 | [WS-11](briefs/WS-11-search.md) | Local full-text search | 03,08 | `NCMailStore/Search/**`, `NextcloudMail/Views/Search/**` | M |
 | [WS-12](briefs/WS-12-settings.md) | Settings, storage panel, sign-out | 04,06 | `NextcloudMail/Views/Settings/**` | M |
-| [WS-13](briefs/WS-13-app-shell.md) | App shell, theme, brand, restoration, status | 01,02 | `NextcloudMail/App/**`, `NextcloudMail/Theme/**` | M |
+| [WS-13](briefs/WS-13-app-shell.md) | App shell, theme, brand, restoration, status | 01,02 | `NextcloudMail/App/**`, `NextcloudMail/Theme/**`, `NextcloudMail/Status/**`, `NextcloudMail/MailSymbol.swift` | M |
 | [WS-14](briefs/WS-14-test-harness.md) | Fake transport, fixtures, recorder, CI gates | WS-02 | `Packages/NCMailTestSupport/**`, `Scripts/record-fixtures.sh` | M |
 | [WS-15](briefs/WS-15-feedback.md) | Library and server feedback, upstream reports | all | `docs/feedback/**` | S |
 
@@ -82,7 +82,7 @@ the owner, or a note in the brief's report.
 | `Packages/NCMailSync/Sources/Sync/**` | WS-05 |
 | `Packages/NCMailSync/Sources/Operations/**` | WS-06 |
 | `Packages/NCMailTestSupport/**` | WS-14 |
-| `NextcloudMail/App/**`, `Theme/**` | WS-13 |
+| `NextcloudMail/App/**`, `Theme/**`, `Status/**`, `MailSymbol.swift` | WS-13 |
 | `NextcloudMail/Views/<Area>/**` | the workstream for that area |
 | `docs/decisions/**` | anyone adding a record; never editing someone else's |
 | `docs/feedback/**` | **append-only, by everyone.** WS-15 curates |

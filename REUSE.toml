@@ -33,9 +33,11 @@ SPDX-FileCopyrightText = "Hamza Mahjoubi"
 SPDX-License-Identifier = "AGPL-3.0-or-later"
 
 # Recorded server responses, scrubbed by Scripts/record-fixtures.sh. JSON carries
-# no comment. WS-14 owns what lands here.
+# no comment. WS-14 owns what lands here. Path moved from
+# NCMailTestSupport/Resources to the dependency-free NCMailFixtures target
+# (ADR-0026); update this glob if it moves again.
 [[annotations]]
-path = "Packages/NCMailTestSupport/Sources/NCMailTestSupport/Resources/Fixtures/**"
+path = "Packages/NCMailTestSupport/Sources/NCMailFixtures/Resources/Fixtures/**"
 precedence = "aggregate"
 SPDX-FileCopyrightText = "Hamza Mahjoubi"
 SPDX-License-Identifier = "AGPL-3.0-or-later"

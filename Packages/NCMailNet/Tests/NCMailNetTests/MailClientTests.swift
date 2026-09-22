@@ -3,6 +3,8 @@
 
 import Foundation
 import NCMailCore
+import NCMailFixtures
+import NCMailTestSupport
 import Testing
 
 @testable import NCMailNet
@@ -11,7 +13,8 @@ import Testing
 struct RequestHeaderTests {
     @Test("every request carries the four headers and no cookies")
     func setsHeaders() async throws {
-        let transport = FakeTransport(replies: [.json("[]")])
+        let transport = FakeTransport()
+        await transport.stub(.any, with: .json("[]"))
         let client = MailClient.testing(transport: transport)
         _ = try await client.get(.accounts)
 
@@ -36,9 +39,8 @@ struct RequestHeaderTests {
 
     @Test("a body is sent as JSON with a content type")
     func encodesBody() async throws {
-        let transport = FakeTransport(
-            replies: [.json(#"{"newMessages":[],"changedMessages":[],"vanishedMessages":[]}"#)]
-        )
+        let transport = FakeTransport()
+        await transport.stub(.any, with: .json(#"{"newMessages":[],"changedMessages":[],"vanishedMessages":[]}"#))
         let client = MailClient.testing(transport: transport)
         _ = try await client.post(.sync(mailboxId: 5), body: SyncRequest(ids: [1], initialise: true))
 
@@ -113,7 +115,7 @@ struct StatusMappingTests {
     func mapsLiveForbiddenBody() throws {
         // What `GET /api/messages/99999999/body` really answers: HTTP 403 with
         // a body of `[]`, not the documented error envelope.
-        let body = String(decoding: try Fixture.data("error-message-not-found.json"), as: UTF8.self)
+        let body = String(decoding: try FixtureBytes.data("error-message-forbidden.json"), as: UTF8.self)
         #expect(body.trimmingCharacters(in: .whitespacesAndNewlines) == "[]")
         guard case .forbidden = try #require(try error(status: 403, body: body)) else {
             Issue.record("expected forbidden")
@@ -164,7 +166,8 @@ struct StatusMappingTests {
 struct RetryTests {
     @Test("a GET retries three times and then throws")
     func retriesReads() async throws {
-        let transport = FakeTransport(repeating: .init(status: 500))
+        let transport = FakeTransport()
+        await transport.stub(.any, with: .init(status: 500))
         let recorder = DelayRecorder()
         let client = MailClient.testing(transport: transport, recorder: recorder)
 
@@ -178,7 +181,8 @@ struct RetryTests {
 
     @Test("a PUT does not retry at all")
     func neverRetriesMutations() async throws {
-        let transport = FakeTransport(repeating: .init(status: 500))
+        let transport = FakeTransport()
+        await transport.stub(.any, with: .init(status: 500))
         let recorder = DelayRecorder()
         let client = MailClient.testing(transport: transport, recorder: recorder)
 
@@ -191,7 +195,8 @@ struct RetryTests {
 
     @Test("a retry that succeeds returns the second answer")
     func recoversAfterOneFailure() async throws {
-        let transport = FakeTransport(replies: [.init(status: 503), .json("[]")])
+        let transport = FakeTransport()
+        await transport.stubSequence(.any, [.init(status: 503), .json("[]")])
         let client = MailClient.testing(transport: transport)
         let accounts = try await client.get(.accounts)
         #expect(accounts.isEmpty)
@@ -200,7 +205,8 @@ struct RetryTests {
 
     @Test("Retry-After overrides the backoff schedule")
     func honoursRetryAfter() async throws {
-        let transport = FakeTransport(repeating: .init(status: 429, headers: ["Retry-After": "5"]))
+        let transport = FakeTransport()
+        await transport.stub(.any, with: .init(status: 429, headers: ["Retry-After": "5"]))
         let recorder = DelayRecorder()
         let client = MailClient.testing(transport: transport, recorder: recorder)
 
@@ -212,7 +218,8 @@ struct RetryTests {
 
     @Test("a 403 is never retried: it will answer the same way forever")
     func doesNotRetryClientErrors() async throws {
-        let transport = FakeTransport(repeating: .init(status: 403, body: Data("[]".utf8)))
+        let transport = FakeTransport()
+        await transport.stub(.any, with: .init(status: 403, body: Data("[]".utf8)))
         let client = MailClient.testing(transport: transport)
         await #expect(throws: MailError.self) {
             _ = try await client.get(.accounts)
@@ -222,7 +229,10 @@ struct RetryTests {
 
     @Test("a transport failure is retried, then surfaces as .transport")
     func retriesTransportFailures() async throws {
-        let transport = FakeTransport(alwaysThrowing: URLError(.notConnectedToInternet))
+        let transport = FakeTransport()
+        // A generous failure count reads as "never succeeds within this test" without
+        // depending on the exact number of attempts `RetryPolicy` allows.
+        await transport.fail(.any, times: 10, then: .json("[]"))
         let client = MailClient.testing(transport: transport)
         do {
             _ = try await client.get(.accounts)
@@ -234,7 +244,8 @@ struct RetryTests {
 
     @Test("a 202 surfaces as syncInProgress without being retried")
     func doesNotRetrySyncInProgress() async throws {
-        let transport = FakeTransport(repeating: .init(status: 202))
+        let transport = FakeTransport()
+        await transport.stub(.any, with: .init(status: 202))
         let client = MailClient.testing(transport: transport)
         do {
             _ = try await client.post(.sync(mailboxId: 5), body: SyncRequest(ids: []))
@@ -248,14 +259,16 @@ struct RetryTests {
 
 @Suite("Decoding through the client")
 struct ClientDecodingTests {
-    private func client(fixture: String) throws -> MailClient {
-        let transport = FakeTransport(replies: [.init(body: try Fixture.data(fixture))])
+    private func client(fixture: String) async throws -> MailClient {
+        let transport = FakeTransport()
+        await transport.stub(.any, with: .init(body: try FixtureBytes.data(fixture)))
         return MailClient.testing(transport: transport)
     }
 
     @Test("a malformed payload names its endpoint instead of crashing")
     func reportsDecodingEndpoint() async throws {
-        let transport = FakeTransport(replies: [.json(#"{"not":"an array"}"#)])
+        let transport = FakeTransport()
+        await transport.stub(.any, with: .json(#"{"not":"an array"}"#))
         let client = MailClient.testing(transport: transport)
         do {
             _ = try await client.get(.accounts)
@@ -267,8 +280,9 @@ struct ClientDecodingTests {
 
     @Test("a truncated payload also names its endpoint")
     func reportsTruncatedPayload() async throws {
-        let truncated = try Fixture.data("message-body.json").prefix(400)
-        let transport = FakeTransport(replies: [.init(body: Data(truncated))])
+        let truncated = try FixtureBytes.data("message-body.json").prefix(400)
+        let transport = FakeTransport()
+        await transport.stub(.any, with: .init(body: Data(truncated)))
         let client = MailClient.testing(transport: transport)
         do {
             _ = try await client.get(.messageBody(id: 66))
@@ -280,7 +294,8 @@ struct ClientDecodingTests {
 
     @Test("a mutation answering with nothing at all is still a success")
     func toleratesEmptyBody() async throws {
-        let transport = FakeTransport(replies: [.init(status: 204, body: Data())])
+        let transport = FakeTransport()
+        await transport.stub(.any, with: .status(204))
         let client = MailClient.testing(transport: transport)
         _ = try await client.delete(.deleteMessage(id: 1))
         #expect(await transport.sendCount == 1)
@@ -323,8 +338,9 @@ struct ClientDecodingTests {
 
     @Test("bytes hands back the response untouched")
     func returnsRawBytes() async throws {
-        let html = try Fixture.data("message-html-plain.html")
-        let transport = FakeTransport(replies: [.init(body: html, headers: ["Content-Type": "text/html"])])
+        let html = try FixtureBytes.data("message-html-plain.html")
+        let transport = FakeTransport()
+        await transport.stub(.any, with: .init(body: html, headers: ["Content-Type": "text/html"]))
         let client = MailClient.testing(transport: transport)
         let (data, response) = try await client.bytes(.messageHTML(id: 66))
         #expect(data == html)
@@ -333,7 +349,8 @@ struct ClientDecodingTests {
 
     @Test("a missing avatar is a notFound, which means draw initials")
     func reportsMissingAvatar() async throws {
-        let transport = FakeTransport(replies: [.init(status: 404, body: Data())])
+        let transport = FakeTransport()
+        await transport.stub(.any, with: .status(404))
         let client = MailClient.testing(transport: transport)
         await #expect(throws: MailError.self) {
             _ = try await client.bytes(.avatar(email: "nobody@example.invalid"))
@@ -359,7 +376,8 @@ private actor ClientHolder {
 struct ConcurrencyTests {
     @Test("a client crosses into an actor without a warning")
     func usableFromAnActor() async throws {
-        let transport = FakeTransport(replies: [.json("[]")])
+        let transport = FakeTransport()
+        await transport.stub(.any, with: .json("[]"))
         let holder = ClientHolder(client: MailClient.testing(transport: transport))
         #expect(try await holder.accounts().isEmpty)
     }

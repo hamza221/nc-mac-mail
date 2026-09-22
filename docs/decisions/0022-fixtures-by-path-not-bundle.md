@@ -5,7 +5,8 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 # ADR-0022: Tests read fixtures by path, because `Bundle.module` would need a package cycle
 
-**Status:** Accepted
+**Status:** Superseded by [ADR-0026](0026-fixtures-through-a-dependency-free-target.md) for
+`NCMailCoreTests` and `NCMailStoreTests`; still Accepted for `NCMailNetTests`
 **Date:** 2026-09-22
 **Decided by:** WS-02, on a SwiftPM constraint discovered while writing the first decoding test
 
@@ -75,3 +76,9 @@ workstream.
 
 `NCMailTestSupport` becomes a leaf, or grows a leaf fixture target. At that point the
 `Fixture` helpers are deleted and the tests import it, which is a mechanical change.
+
+**Update, ADR-0026:** it grew the leaf target (`NCMailFixtures`). `NCMailCoreTests` and
+`NCMailStoreTests` now import it and their `Fixture`/`RecordedFixture` helpers delegate to it
+instead of walking `#filePath`. `NCMailNetTests` keeps this ADR's original workaround, because
+matching it needs an edit to `Packages/NCMailNet/Package.swift` that was outside WS-14's
+ownership at the time — see ADR-0026's "Revisit when".

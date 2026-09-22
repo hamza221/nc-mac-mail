@@ -21,11 +21,25 @@ let shared: [SwiftSetting] = [
 // Test-only. The app target must never depend on this package: it exists
 // because a SwiftPM test target cannot read files outside its own package, and
 // the recorded fixtures are shared by every package's tests. WS-14 fills it.
+//
+// Two products, not one. `NCMailFixtures` has no dependencies and only vends the
+// recorded bytes; `NCMailTestSupport` depends on `NCMailCore`, `NCMailNet` and
+// `NCMailStore` and holds the model- and transport-aware helpers (`FakeTransport`,
+// `MailStoreFixtures`). Either product can be depended on by `NCMailCoreTests`,
+// `NCMailNetTests` and `NCMailStoreTests` without a package cycle, even though
+// each of those three packages is itself one of this package's dependencies —
+// SwiftPM's cycle check runs on the target graph actually used, not on which
+// packages a manifest merely lists (verified empirically; see ADR-0026's
+// "Update"). `NCMailCoreTests`/`NCMailStoreTests` still take the smaller
+// `NCMailFixtures` product, because they only need bytes; `NCMailNetTests` takes
+// the full product, because it needs `FakeTransport`. ADR-0026 (supersedes
+// ADR-0022).
 let package = Package(
     name: "NCMailTestSupport",
     platforms: [.macOS(.v26)],
     products: [
-        .library(name: "NCMailTestSupport", targets: ["NCMailTestSupport"])
+        .library(name: "NCMailFixtures", targets: ["NCMailFixtures"]),
+        .library(name: "NCMailTestSupport", targets: ["NCMailTestSupport"]),
     ],
     dependencies: [
         .package(path: "../NCMailCore"),
@@ -34,17 +48,21 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "NCMailTestSupport",
-            dependencies: ["NCMailCore", "NCMailNet", "NCMailStore"],
+            name: "NCMailFixtures",
             // `.copy`, not `.process`: a recorded fixture is a byte-for-byte
             // record of what the server sent, and `.process` would flatten the
             // directory tree the recorder writes.
             resources: [.copy("Resources/Fixtures")],
             swiftSettings: shared
         ),
+        .target(
+            name: "NCMailTestSupport",
+            dependencies: ["NCMailFixtures", "NCMailCore", "NCMailNet", "NCMailStore"],
+            swiftSettings: shared
+        ),
         .testTarget(
             name: "NCMailTestSupportTests",
-            dependencies: ["NCMailTestSupport"],
+            dependencies: ["NCMailTestSupport", "NCMailFixtures", "NCMailCore", "NCMailNet", "NCMailStore"],
             swiftSettings: shared
         ),
     ]

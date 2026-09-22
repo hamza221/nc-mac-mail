@@ -3,6 +3,7 @@
 
 import Foundation
 import GRDB
+import NCMailFixtures
 
 @testable import NCMailStore
 
@@ -35,30 +36,20 @@ enum ReferenceSchema {
 
 /// Reads a file recorded from a live server by `Scripts/record-fixtures.sh`.
 ///
-/// By path, for the reason in [ADR-0022](../../../../docs/decisions/0022-fixtures-by-path-not-bundle.md),
-/// and because `NCMailStore` cannot depend on `NCMailTestSupport` — that package depends on
-/// this one, and the other direction would be a cycle. Only the sizing measurement uses it;
-/// the fixtures were recorded with `--scrub-content`, so their subjects and previews are the
+/// Through `NCMailFixtures`, the dependency-free product of `NCMailTestSupport` — see
+/// [ADR-0026](../../../../docs/decisions/0026-fixtures-through-a-dependency-free-target.md),
+/// which supersedes ADR-0022's `#filePath` walk. Only the sizing measurement uses it; the
+/// fixtures were recorded with `--scrub-content`, so their subjects and previews are the
 /// literal strings "Subject redacted" and "Preview redacted" and are no use for anything that
 /// reads text.
 enum RecordedFixture {
     static func load(_ name: String) throws -> String {
-        var directory = URL(filePath: #filePath).deletingLastPathComponent()
-        let relative = "Packages/NCMailTestSupport/Sources/NCMailTestSupport/Resources/Fixtures"
-        while directory.path != "/" {
-            let candidate = directory.appending(path: relative).appending(path: name)
-            if FileManager.default.fileExists(atPath: candidate.path) {
-                return try String(contentsOf: candidate, encoding: .utf8)
-            }
-            directory = directory.deletingLastPathComponent()
-        }
-        throw TestError.fixtureNotFound(name)
+        String(decoding: try FixtureBytes.data(name), as: UTF8.self)
     }
 }
 
 enum TestError: Error {
     case referenceSchemaNotFound
-    case fixtureNotFound(String)
 }
 
 /// A comparable form of a schema: whitespace and comments flattened, names and types untouched.

@@ -34,10 +34,13 @@ old one stays.*
 | [0019](0019-login-flow-verifies-the-mail-app.md) | `LoginFlow` proves the Mail app exists before reporting success | Accepted |
 | [0020](0020-raw-json-in-a-wrapper.md) | Carry the server's JSON in a `RawBacked` wrapper, not in every model | Accepted |
 | [0021](0021-one-message-flags-type.md) | One `MessageFlags` type for the envelope and the body | Accepted |
-| [0022](0022-fixtures-by-path-not-bundle.md) | Tests read fixtures by path, not through `Bundle.module` | Accepted |
+| [0022](0022-fixtures-by-path-not-bundle.md) | Tests read fixtures by path, not through `Bundle.module` | Superseded by ADR-0026 for `NCMailCoreTests`/`NCMailStoreTests`; still Accepted for `NCMailNetTests` |
 | [0023](0023-store-records-are-not-wire-models.md) | Store records are their own types, and a write is narrower than a row | Accepted |
 | [0024](0024-fts-deletes-in-a-trigger.md) | Delete the search index row from a trigger, not from Swift | Accepted |
 | [0025](0025-rowid-tables-for-anything-observed.md) | Only unobserved tables may be `WITHOUT ROWID` | Accepted |
+| [0026](0026-fixtures-through-a-dependency-free-target.md) | Fixtures through a dependency-free `NCMailFixtures` target | Accepted |
+| [0027](0027-userdefaults-cache-for-the-launch-theme.md) | Cache the launch theme colour in `UserDefaults` for boot, `meta` for everything else | Accepted |
+| [0028](0028-no-force-unwrap-even-in-tests.md) | No force unwrap anywhere, including tests — `#require` instead | Accepted |
 
 ## Which ones matter most
 

@@ -32,8 +32,22 @@ let package = Package(
     products: [
         .library(name: "NCMailCore", targets: ["NCMailCore"])
     ],
+    // The test target's dependency on `../NCMailTestSupport` reaches only that
+    // package's dependency-free `NCMailFixtures` product, never the full
+    // `NCMailTestSupport` product — that one depends on `NCMailCore`, so pulling
+    // it in here would be the package cycle ADR-0022/ADR-0026 exist to avoid.
+    dependencies: [
+        .package(path: "../NCMailTestSupport")
+    ],
     targets: [
         .target(name: "NCMailCore", swiftSettings: shared),
-        .testTarget(name: "NCMailCoreTests", dependencies: ["NCMailCore"], swiftSettings: shared),
+        .testTarget(
+            name: "NCMailCoreTests",
+            dependencies: [
+                "NCMailCore",
+                .product(name: "NCMailFixtures", package: "NCMailTestSupport"),
+            ],
+            swiftSettings: shared
+        ),
     ]
 )

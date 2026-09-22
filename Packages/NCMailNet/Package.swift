@@ -26,10 +26,24 @@ let package = Package(
         .library(name: "NCMailNet", targets: ["NCMailNet"])
     ],
     dependencies: [
-        .package(path: "../NCMailCore")
+        .package(path: "../NCMailCore"),
+        // Test-only: the shared `FakeTransport`. `NCMailTestSupport` depends on `NCMailNet`
+        // for the main target, and this is the reverse edge for the test target only — not a
+        // cycle, because nothing depends on a test target. Verified empirically and recorded
+        // in ADR-0026, which is also why `NCMailCoreTests`/`NCMailStoreTests` can do the same
+        // thing for their own packages.
+        .package(path: "../NCMailTestSupport"),
     ],
     targets: [
         .target(name: "NCMailNet", dependencies: ["NCMailCore"], swiftSettings: shared),
-        .testTarget(name: "NCMailNetTests", dependencies: ["NCMailNet"], swiftSettings: shared),
+        .testTarget(
+            name: "NCMailNetTests",
+            dependencies: [
+                "NCMailNet",
+                .product(name: "NCMailTestSupport", package: "NCMailTestSupport"),
+                .product(name: "NCMailFixtures", package: "NCMailTestSupport"),
+            ],
+            swiftSettings: shared
+        ),
     ]
 )

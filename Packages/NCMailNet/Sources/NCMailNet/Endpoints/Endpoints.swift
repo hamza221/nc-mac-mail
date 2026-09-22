@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 public import Foundation
-
 public import NCMailCore
 
 // Every URL the app builds is in this file. Escaping is reviewed once, here,

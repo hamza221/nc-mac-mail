@@ -286,3 +286,53 @@ in the mailbox and filtering by thread afterwards. Rewriting it as
 
 Recorded here because the lesson generalises past this query: `EXPLAIN QUERY PLAN` saying
 "uses an index" is not the assertion worth making. Which index, and over how many rows, is.
+
+---
+
+## From WS-13 (app shell, theme, restoration, status)
+
+### Question 4 answered: MDI glyphs do survive a signed, sandboxed Release build
+**Workstream:** WS-13 · **Component:** `NCIcon.rendersBundledAssets` · **Severity:** —
+
+`xcodebuild -configuration Release SUPPRESS_WARNINGS=NO build` produces a signed, hardened
+`NextcloudMail.app`
+(`codesign -dv` reports `flags=0x10002(adhoc,runtime)`), and its
+`nextcloud-ui-swift_NextcloudIcons.bundle/Contents/Resources/Assets.car` still carries every
+generated symbol — `assetutil --info` lists 1,566 `"Name"` entries in that one catalogue,
+including the four `MailSymbol` cases (`.junk`, `.trash`, `.folder`, `.star`) that resolve to
+a bundled asset rather than an SF Symbol fallback. [ADR-0001](../decisions/0001-xcode-project-in-git.md)'s
+assumption holds for Release as well as Debug. Not run under an actual `open`ed window in
+this environment — no GUI, no `screencapture` — so this is evidence from the build product,
+not a screenshot.
+
+### Question 3 answered, provisionally: `.ncTheme` setting `.tint` globally reads right for a
+mail client, with one open edge
+**Workstream:** WS-13 · **Component:** `NCAccentPolicy` · **Severity:** —
+
+Nothing in the shell fought the brand tint driving selection and focus — a `NavigationSplitView`
+with three placeholder columns has no competing accent, so this is not yet tested against a
+real message list's selection highlight (WS-08's question, not this workstream's). Kept at
+the default `.instance` policy; no evidence surfaced that a mail client specifically wants
+`.brandSurfacesOnly`.
+
+### `MailSymbol` was built exactly to the design pass's list
+**Workstream:** WS-13 · **Component:** `NCSymbolCatalog` · **Severity:** —
+**Where:** `NextcloudMail/MailSymbol.swift`
+
+The nine missing-icon cases (`inbox`, `sent`, `drafts`, `archive`, `attachment`, `unread`,
+`sync`, `tag`, `answered`) and the four already-catalogued ones (`junk`, `trash`, `folder`,
+`star`) match the "Missing icons" table above one for one. Nothing new to add; recorded here
+only to close the loop the design pass opened.
+
+### The brand colour assumes one instance; multi-account has no rule for two
+**Workstream:** WS-13 · **Component:** app-level, not a library gap · **Severity:** friction
+**Where:** `NextcloudMail/App/AppSession.swift`, `refreshTheme()`
+
+[S-09](../product/user-stories.md#s-09-it-looks-like-the-instance-it-belongs-to-ws-13) and
+`ui-components.md`'s theme section both write as if there is one server. WS-07's brief
+promises multi-account, each with its own mailbox tree, and nothing in the product
+specification says whose brand colour wins when two accounts are on different Nextcloud
+instances with different colours. `AppSession` picks the first account in a stable
+(server, login name) sort, which is deterministic but arbitrary — not a considered answer.
+This is a product question for `docs/product/ux-spec.md`, not a `NextcloudUI` gap, so it is
+recorded here rather than filed against the library.

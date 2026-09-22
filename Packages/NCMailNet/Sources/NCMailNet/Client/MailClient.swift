@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 public import Foundation
-
 internal import OSLog
 
 /// The Nextcloud Mail HTTP client.

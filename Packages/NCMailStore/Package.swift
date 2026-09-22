@@ -29,6 +29,10 @@ let package = Package(
         .package(path: "../NCMailCore"),
         // ADR-0004. GRDB is the only third-party dependency in the storage layer.
         .package(url: "https://github.com/groue/GRDB.swift", from: "7.0.0"),
+        // Only for the test target, and only its dependency-free `NCMailFixtures`
+        // product: `NCMailTestSupport` depends on `NCMailStore`, so the full
+        // product would be the package cycle ADR-0022/ADR-0026 exist to avoid.
+        .package(path: "../NCMailTestSupport"),
     ],
     targets: [
         .target(
@@ -39,6 +43,13 @@ let package = Package(
             ],
             swiftSettings: shared
         ),
-        .testTarget(name: "NCMailStoreTests", dependencies: ["NCMailStore"], swiftSettings: shared),
+        .testTarget(
+            name: "NCMailStoreTests",
+            dependencies: [
+                "NCMailStore",
+                .product(name: "NCMailFixtures", package: "NCMailTestSupport"),
+            ],
+            swiftSettings: shared
+        ),
     ]
 )
