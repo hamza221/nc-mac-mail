@@ -50,6 +50,22 @@ Three consequences:
    improves, stored HTML is stale — hence `messageBody.sanitiserGeneration` and the
    re-download control in [local-mirror.md](local-mirror.md).
 
+**And one thing the transformation does not cover.** `TransformImageSrc` rewrites `<img>`.
+It does not touch CSS, and HTMLPurifier keeps `<style>`. The recorded body
+(`message-html-plain.html`) opens with
+
+```css
+@import url(https://static-forms.klaviyo.com/fonts/api/v1/U45QAK/custom_fonts.css);
+```
+
+which is a fourth remote host, unblocked, in a message whose images are all blocked. WS-09
+found it while rewriting and deletes every `@import` and every refused `url(…)`
+([ADR-0039](../decisions/0039-a-rendered-message-holds-only-urls-we-would-fetch.md)). The
+claim "the backfill can mirror 40,000 messages without fetching a single tracking pixel"
+stays true — nothing fetches CSS at mirror time — but "remote content is blocked before it
+reaches disk" is true of images and not of stylesheets. It is filed in
+[../feedback/server-findings.md](../feedback/server-findings.md).
+
 ## The WebView
 
 ```swift
@@ -68,9 +84,17 @@ Plus, and none of these are optional:
   server already neutralised remote images, so this is the third layer. Layers are the
   point: one server-side bug should not become an IP leak.
 - **A navigation delegate that cancels everything.** The first `loadHTMLString` is the only
-  navigation. A link click is cancelled and handed to `NSWorkspace` — after a confirmation
-  when the visible link text disagrees with the target host, which is the cheapest
-  anti-phishing control there is and one the web client has a whole detector for.
+  navigation. A link click is cancelled and handed to `openURL` — after a confirmation when
+  the visible link text disagrees with the target host, which is the cheapest anti-phishing
+  control there is and one the web client has a whole detector for.
+
+  The visible text has to be collected during the rewrite, because a cancelled navigation
+  carries a URL and nothing else: by the time WebKit asks, the anchor is gone. Where two
+  anchors share one `href` and say different things, the text that *names a host* is the one
+  kept — it is the one the rule can act on. Text that claims no host at all ("Shop now",
+  "Hoodies") asks no question, which is why the recorded body's thirteen click-tracker links
+  produce no confirmations. A rule that asks about every marketing link is a rule people
+  click through.
 - **No persistent data store.** A message must not be able to set a cookie or fill local
   storage.
 
@@ -100,6 +124,17 @@ ncmail://asset/{base64url(original URL)}
   for this message. Never stored ([ADR-0010](../decisions/0010-webview-scheme-handler.md)):
   storing it would give a tracking pixel a permanent home on the user's disk for no gain.
 - **anything else** → fail the load. The handler is an allowlist, not a proxy.
+
+The allowlist is one function, `MailAssetPolicy.classify(_:server:messageRemoteId:)`, and
+both the rewriter and the handler call it: the rewriter to decide what a URL in the stored
+HTML may become, the handler to decide what the WebView may actually have. A rewriting bug
+therefore cannot widen what the handler serves. It also refuses an attachment URL naming a
+different message, so one message cannot read another's parts.
+
+Inline attachments are served **out of the database in every path**. On a miss the handler
+fetches, writes `attachment.data`, and then reads the row back to answer the load, rather
+than handing the response's bytes to the WebView. Proxied remote images are the one
+exception, and it is ADR-0010's: they are never stored, so there is nothing to read back.
 
 `data:` URIs were the alternative and were rejected: a 4 MB inline image becomes a 5.5 MB
 base64 string in an HTML document held in memory, per message, and the WebView re-parses it
@@ -136,10 +171,32 @@ frame**, with the native header above it, rather than expanding to its content h
 inside a SwiftUI `ScrollView`.
 
 The expanding variant is nicer — one scroll surface for header and body together — and it
-needs a content height, which without JavaScript means `WKWebView.sizeToFit`-style layout
-observation. WS-09 prototypes both and picks on evidence, checking each against
-find-in-page, printing, text selection across the seam, and a 200-message thread. Whichever
-wins, record the measurement and the reason here.
+needs a content height.
+
+**WS-09 kept the fixed frame, and did not prototype the expanding variant.** The reason is
+not preference, it is that the expanding variant has no supported implementation here:
+
+- On iOS the content height is `webView.scrollView.contentSize`, which is public. **macOS
+  `WKWebView` does not expose its scroll view at all.** Reaching into the view hierarchy for
+  it is private API, and this document already rules that out once, for
+  `drawsBackground`.
+- The other route is asking the page, which means JavaScript. `allowsContentJavaScript` is
+  off, and host-initiated `evaluateJavaScript` is a different path that may still run — WS-09
+  could not test which, because that needs a running WebView and this workstream had no GUI
+  (see its report). Even if it runs, it puts a script evaluation on the path between
+  clicking a message and seeing it, per message, to save one scroll surface.
+
+The thread shape settles the rest. Siblings are collapsed and only the selected message is
+expanded, so there is **one** `WKWebView` on screen at a time and therefore one WebContent
+process. A 200-message thread costs 200 `NCListItem` rows and one web view. The expanding
+variant inside a `ScrollView` has the same property only if it is equally careful, and it is
+harder to keep careful.
+
+What that leaves unverified, honestly: whether printing, find-in-page and selection behave
+with the content rule list installed was **not** checked, for the same reason. The rule list
+compiles — `MailContentRuleListTests` asserts that WebKit accepts it, including the
+`^ncmail://asset/` exception — but whether it intercepts a custom-scheme load, and what it
+does to `⌘P`, needs a window.
 
 ## The blocked-content bar
 
@@ -155,15 +212,29 @@ not loaded." with **Show images** and **Always show from this sender**.
 - The bar is hidden when the message has no blocked content, when the sender is trusted
   (`messageBody.isSenderTrusted`), or after the user shows images for this message.
 
-Detecting blocked content is a scan for `data-original-src` in the stored HTML, done once
-at store time and cached as a column — not on every render.
+Detecting blocked content should be a scan for `data-original-src` in the stored HTML, done
+once at store time and cached as a column — not on every render. **There is no such column
+yet**: `messageBody` has no `hasBlockedContent`, and adding one is `NCMailStore`'s and
+`NCMailSync`'s work, not WS-09's. Today the rewriter reports it as it goes, so the scan is
+free — it happens inside a pass the renderer makes anyway — but it happens on every render
+rather than once. The column stays the right answer, and WS-09's report asks for it.
+
+One refinement the recorded body forced. A blocked image counts only when its
+`data-original-src` is a proxy URL on the signed-in server. An original pointing anywhere
+else cannot be restored, so counting it would put a bar on screen offering something **Show
+images** cannot deliver.
 
 ## Printing, selection, find
 
-`⌘P` prints the message. `⌘F` inside the message pane finds within the body. Selection
-spans the body but not the native header. All three are `WKWebView` defaults; the thing to
-verify is that they still work once the content rule list is installed, which is exactly
-the kind of surprise this workstream exists to find.
+`⌘P` prints the message. Selection spans the body but not the native header. Both are
+`WKWebView` defaults, and neither was verified with the content rule list installed, because
+verifying either needs a window.
+
+`⌘F` is the one that has to change. This document gave it to find-in-body;
+[../product/ux-spec.md](../product/ux-spec.md#keyboard) gives it to search, and search is
+the answer people expect from a mail client's `⌘F`. The keyboard table wins. Find-in-body
+would be `WKWebView.find(_:configuration:)` behind its own find bar, and it belongs to
+whoever owns the message toolbar (WS-10) rather than being implied here.
 
 ## What is deliberately not done in v1
 

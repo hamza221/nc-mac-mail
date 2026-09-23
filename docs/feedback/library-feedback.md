@@ -424,3 +424,138 @@ concurrency mistake rather than an overload-resolution one. The workaround is a 
 whose scheduler parameter is an opaque `some ValueObservationScheduler`, which the
 main-actor overload cannot match. Noted here for whoever meets it next; it is a GRDB API
 shape, not something this project can fix.
+
+### Four store DAOs the sync engine had to work around
+**Workstream:** WS-05 · **Component:** `NCMailStore` · **Severity:** friction
+**Where:** `SyncScheduler+Mailbox.swift`, `SyncScheduler.swift`
+
+`MailStore.read`/`write` are internal since
+[ADR-0034](../decisions/0034-the-store-returns-its-own-sequence.md), which is right, and it
+means a gap in the DAOs is now a gap the caller cannot route around. WS-05 met four and
+worked around all four rather than reaching into `NCMailStore`. In rough order of how ugly
+the workaround is:
+
+1. **Nothing reads `pendingOperation`.** The conflict rule in `offline-queue.md` is "a read
+   of `pendingOperation` inside the sync write transaction", and there is no DAO and no way
+   to open the transaction. The engine reads the queue through `OperationDraining` either
+   side of the write and repairs afterwards;
+   [ADR-0037](../decisions/0037-the-queue-is-read-twice-around-the-sync-write.md) names the
+   `upsert(envelopes:preservingPendingOperationsFor:)` that replaces it.
+2. **No `setMailboxStats(unread:total:mailboxId:)`.** A sync response's `stats` is two
+   integers; writing them means rebuilding a fifteen-column `MailboxWrite` from the
+   `MailboxRecord` that was just read and calling `upsert(mailboxes:)`. It is safe — the
+   write omits every mirror-bookkeeping column by design — and it is fifteen columns to
+   move two.
+3. **No `recordSyncSuccess(mailboxId:at:)`.** `setEnvelopeCursor(_:complete:mailboxId:lastSyncAt:)`
+   is the only DAO that stamps `lastSyncAt` and clears `syncFailureCount` and
+   `lastSyncError`, which is exactly what a successful sync means — so the engine calls it
+   with the mailbox's existing cursor and completion flag passed straight back in. It
+   works, and a reader is entitled to think sync is moving stage 1's cursor, which it must
+   never do.
+4. **`account.lastDeepReconcileAt` has no setter.** The column exists on `AccountRecord` and
+   nothing writes it, so the weekly timer lives in `meta` under
+   `sync.lastDeepReconcile.<accountId>` instead. Two homes for one fact is the kind of drift
+   that is cheap to fix now and confusing in a year.
+
+None of these blocked anything. They are listed together because they have one shape: the
+store's write surface was designed around the backfill, and sync writes different columns.
+
+### `MailClient` never reports how many bytes came back
+**Workstream:** WS-05 · **Component:** `NCMailNet` · **Severity:** friction
+**Where:** `SyncMetrics.envelopeBytesDown`
+
+`sync-engine.md` asks the instrumentation for "bytes down". `MailClient.get` hands back a
+decoded value, and `bytes(_:)` — the one verb that returns `Data` — is typed
+`Endpoint<Data>` and so is unavailable for a JSON endpoint. So the counter sums the
+`rawJSON` each envelope carries, which is the payload but not the response, and its
+documentation has to say so. A `(value, byteCount)` overload, or a transport-level meter
+`MailClient` could be handed, would make the number the one the document asks for. The live
+measurement test works around it with its own `MailTransport` wrapper, which is fine for a
+test and not something the app can do.
+
+### `FakeTransport.fail` cannot say "never succeeds", and it cost a comment rather than a workaround
+**Workstream:** WS-05 · **Component:** `NCMailTestSupport` · **Severity:** minor
+**Where:** `SyncSchedulerTests.oneFailingMailboxDoesNotStopTheAccount`
+
+WS-14 named this gap and its own doc comment tells callers to write `times: 10_000`, which
+is what the test does. It reads as a magic number at the call site and needs a comment
+explaining that it is not one. A `.always` case, or `times: Int? = nil` meaning forever,
+would remove both. Recorded rather than fixed, because widening it is WS-14's call.
+
+### Nothing new from `NextcloudUI`
+**Workstream:** WS-05 · **Component:** — · **Severity:** —
+
+`NCMailSync` has no view layer and WS-05 changed no file under `NextcloudMail/**`. Checked
+rather than assumed.
+
+## From WS-09 (message view, WebView, scheme handler)
+
+### `NCNoteCard` combines its children, so a control inside it is unreachable to VoiceOver
+**Workstream:** WS-09 · **Component:** `NCNoteCard` · **Severity:** blocker
+**Where:** `NextcloudMail/Views/Message/BlockedContentBar.swift:22`
+
+`NCNoteCard` ends with `.accessibilityElement(children: .combine)`, which is right for a
+banner that only explains. The blocked-content bar is the shape the design asks for and it
+is not that: it is a warning with two buttons, **Show images** and **Always show from this
+sender**, and `.combine` makes both unreachable — the card reads as one label and the
+buttons disappear from the rotor.
+
+`NCChip` has the same constraint and solves it, by re-surfacing removal as an accessibility
+action. `NCNoteCard` has no equivalent, so the bar puts its buttons *outside* the card in an
+enclosing `VStack`. The result is correct and it is not the composition
+[../architecture/rendering.md](../architecture/rendering.md) describes, which is one card
+with its actions.
+
+**What would have been better:** an `actions:` slot — `NCNoteCard(_:title:content:actions:)` —
+that stays outside the combined element, or `children: .contain` when the content builder
+contains anything focusable. A banner with a "Retry" or "Show anyway" button is the common
+case, not an unusual one: it is also what the failed-body state and the phishing card in
+this same screen want.
+
+### `NCListItem` has no initialiser with `details:` and no `leading:`
+**Workstream:** WS-09 · **Component:** `NCListItem` · **Severity:** friction
+**Where:** `NextcloudMail/Views/Message/MessageThreadStrip.swift:48`
+
+The thread strip wants sender, subject and date, and no avatar — the avatar is already in
+the header six points above, and repeating it per sibling is noise. The five initialisers
+cover every combination except that one, and the source comment says why: an unlabelled
+trailing closure would match two overloads. So the strip draws an avatar it did not want.
+
+**What would have been better:** the labelled form the comment already suggests,
+`NCListItem(_:subtitle:details:)`. The ambiguity argument does not apply once the argument
+is labelled, which is the case here.
+
+### Nothing in the library knows about a `WKWebView`, and that is the right answer
+**Workstream:** WS-09 · **Component:** — · **Severity:** —
+**Where:** `NextcloudMail/WebView/**`
+
+Recorded because the question will be asked. The whole of `NextcloudMail/WebView/**` is
+app-specific: the scheme, the allowlist, the content rule list, the rewrite. None of it
+belongs in `NextcloudUI`, and the library not reaching for it is correct rather than a gap.
+The one thing that would help is a **message-header block** — sender bubble, recipients
+collapsing past three, date — which `ui-components.md` already lists as a candidate. WS-09
+built it in 90 lines out of `NCUserBubble` and `NCChip`, and the two decisions inside it
+(collapse threshold, and what the "+3" control looks like) are the kind of thing a library
+should settle once.
+
+### `NCChip` inside a `Button` loses the chip's own pointer and hit target
+**Workstream:** WS-09 · **Component:** `NCChip` · **Severity:** polish
+**Where:** `NextcloudMail/Views/Message/MessageAttachmentsView.swift:41`
+
+An attachment chip is a control: clicking it saves the file or previews it. `NCChip` takes
+`onRemove:` and nothing else, so the chip goes inside a `Button` with `.buttonStyle(.plain)`
+and the app supplies the label and the tooltip. It works. A chip that is *activatable* — the
+`action:` that `NCUserBubble` already has — would make the attachment row three lines shorter
+and would get the pointer style and hit target from the library rather than from the caller
+remembering.
+
+### The icon list from the design pass held, with one addition
+**Workstream:** WS-09 · **Component:** `NCSymbolCatalog` · **Severity:** friction
+**Where:** `NextcloudMail/MailSymbol.swift`
+
+WS-09 needed `paperclip` (attachment chips), `sync` (the downloading and failed states) and
+`inbox` (the nothing-selected state), all three already in WS-13's mapping and all three
+still absent from the catalogue. Nothing new was needed, which is a good sign for that list.
+The one it would have used if it existed is MDI `image-off-outline`, for the blocked-content
+bar: the bar currently leans on `NCNoteCard(.warning)`'s own alert glyph, which says
+"warning" rather than "pictures not shown".

@@ -47,6 +47,11 @@ old one stays.*
 | [0032](0032-body-text-is-not-kept-twice.md) | `messageBody.rawJSON` drops the `body` field | Accepted — narrows ADR-0020 |
 | [0033](0033-accounts-have-a-local-identity.md) | Rows the server numbers get a local id and keep the server's as `remoteId` | Accepted |
 | [0034](0034-the-store-returns-its-own-sequence.md) | `NCMailStore` returns its own `AsyncSequence`; no GRDB type crosses its boundary | Accepted |
+| [0035](0035-sync-has-its-own-concurrency-limit.md) | The sync engine has its own concurrency limit and does not draw on the body budget | Accepted |
+| [0036](0036-sort-order-decides-the-cursor.md) | The server-side sort order decides what a cursor means, and the tail scan needs newest-first | Accepted |
+| [0037](0037-the-queue-is-read-twice-around-the-sync-write.md) | The operation queue is read twice around a sync write, until the store can read it inside one | Accepted, with a named replacement |
+| [0038](0038-the-message-view-observes-the-thread.md) | The message view observes its thread, because the store cannot observe one body | Accepted, with a named replacement |
+| [0039](0039-a-rendered-message-holds-only-urls-we-would-fetch.md) | A rendered message holds only URLs we would fetch | Accepted |
 
 ## Which ones matter most
 
