@@ -35,7 +35,7 @@ struct MessageListView: View {
             ForEach(model.sections) { section in
                 Section(section.title) {
                     ForEach(section.rows) { row in
-                        MessageListRow(row: row)
+                        MessageListRow(row: row, avatar: model.avatarLoader(for: row.senderEmail))
                             .onAppear { extendWindowIfLast(row) }
                     }
                 }

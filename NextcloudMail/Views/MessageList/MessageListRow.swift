@@ -20,6 +20,9 @@ import SwiftUI
 /// reads as unread in threaded and its own unread messages read as unread in flat.
 struct MessageListRow: View {
     let row: MessageRow
+    /// The sender's picture, read from the mirror. Nil when the row has no address to look
+    /// one up by; `NCAvatar` draws coloured initials for that and for a loader that throws.
+    var avatar: (@Sendable () async throws -> Image)?
 
     @Environment(\.ncTheme) private var theme
 
@@ -32,10 +35,13 @@ struct MessageListRow: View {
         NCListItem(senderName, subtitle: subject) {
             HStack(spacing: theme.metrics.spacing.tight) {
                 accessories
-                // No `load:`, so `NCAvatar` draws coloured initials. The mirror has an
-                // `avatar` table and `MailStore` has no reader for it, which is the second
-                // workstream to find that — see this one's report.
-                NCAvatar(displayName: senderName, user: row.senderEmail, size: .medium, label: .decorative)
+                NCAvatar(
+                    displayName: senderName,
+                    user: row.senderEmail,
+                    size: .medium,
+                    label: .decorative,
+                    load: avatar
+                )
             }
         } details: {
             NCListItemDetails(date: sentAt, unreadCount: row.threadUnreadCount)

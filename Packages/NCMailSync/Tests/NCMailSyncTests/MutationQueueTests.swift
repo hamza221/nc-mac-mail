@@ -11,8 +11,8 @@ import Testing
 /// The half of the queue that runs with the network switched off, which is all of
 /// ``MutationQueue``: it applies the change, it writes the row, and it never sends anything.
 ///
-/// Every test here runs against the real schema through ``MailStoreOperations``, so "one
-/// transaction" is SQLite's answer rather than a fake's.
+/// Every test here runs against the real `MailStore`, so "one transaction" is SQLite's
+/// answer rather than a fake's.
 @Suite("Mutation queue")
 struct MutationQueueTests {
     @Test func anActionTakenOfflineUpdatesTheMirrorAndQueuesOneRow() async throws {
@@ -65,11 +65,10 @@ struct MutationQueueTests {
         // Everything above is out of scope now, which is as close to a relaunch as a test
         // gets: a second `MailStore` over the same file, nothing carried across in memory.
         let reopened = try MailStore(url: url)
-        let operations = MailStoreOperations(store: reopened)
-        #expect(try await operations.pendingOperations(accountId: accountId).count == 1)
+        #expect(try await reopened.pendingOperations(accountId: accountId).count == 1)
         let message = try #require(try await reopened.message(id: messageId))
         #expect(message.mailboxId != 0)
-        #expect(try await operations.pendingOperations(accountId: accountId).first?.kind == "move")
+        #expect(try await reopened.pendingOperations(accountId: accountId).first?.kind == "move")
     }
 
     @Test func tenArchivesThreeStarsAndTwoDeletesAllStick() async throws {
@@ -157,7 +156,7 @@ struct MutationQueueTests {
         let fixture = try await QueueTest.make(messages: 12, threadSize: 3)
         let anchor = try await fixture.message(4)
         let rootId = try #require(anchor.threadRootId)
-        let members = try await fixture.operations.threadMessages(accountId: fixture.accountId, rootId: rootId)
+        let members = try await fixture.store.threadMessages(accountId: fixture.accountId, rootId: rootId)
         #expect(members.count > 1)
 
         try await fixture.queue.perform(

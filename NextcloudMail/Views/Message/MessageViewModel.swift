@@ -99,8 +99,11 @@ final class MessageViewModel {
     /// server the same way this type does.
     let services: MessageViewServices
     private var messageId: Int64?
-    private var observation: Task<Void, Never>?
-    private var lastObservedBodyState: BodyState?
+    /// Two observations, replaced rather than added to on every selection change. The body
+    /// drives what the body area shows; the thread drives the strip underneath it.
+    private var bodyObservation: Task<Void, Never>?
+    private var threadObservation: Task<Void, Never>?
+    private var bodyState: BodyState?
 
     init(services: MessageViewServices) {
         self.services = services
@@ -115,8 +118,10 @@ final class MessageViewModel {
     /// ([ADR-0034](../../../docs/decisions/0034-the-store-returns-its-own-sequence.md)).
     func present(messageId newId: Int64?) {
         guard newId != messageId else { return }
-        observation?.cancel()
-        observation = nil
+        bodyObservation?.cancel()
+        bodyObservation = nil
+        threadObservation?.cancel()
+        threadObservation = nil
         messageId = newId
         header = nil
         attachments = []
@@ -124,58 +129,84 @@ final class MessageViewModel {
         hasBlockedRemoteContent = false
         isSenderTrusted = false
         showsRemoteImages = false
-        lastObservedBodyState = nil
+        bodyState = nil
         presentation = .waiting
 
         guard let newId else { return }
-        observation = Task { [weak self] in await self?.observe(messageId: newId) }
+        bodyObservation = Task { [weak self] in await self?.observe(messageId: newId) }
+        threadObservation = Task { [weak self] in await self?.observeThread(messageId: newId) }
     }
 
+    /// The body, live.
+    ///
+    /// `MailStore.upsert(body:for:)` writes the body row, its attachments and
+    /// `message.bodyState` in one transaction, so a value arrives here exactly when a
+    /// backfilled body lands — and the view renders it without having asked the network for
+    /// anything. Until `observeBody(messageId:)` existed this rode the thread observation
+    /// and compared `bodyState` by hand
+    /// ([ADR-0038](../../../docs/decisions/0038-the-message-view-observes-the-thread.md)).
     private func observe(messageId: Int64) async {
         await refresh(messageId: messageId)
         await prioritiseIfNeeded(messageId: messageId)
 
-        guard let header else { return }
-        // A single-message observation is what this wants and what `MailStore` does not have
-        // yet. The thread query is the closest live query that covers the row: the body write
-        // sets `message.bodyState` in the same transaction as the body itself
-        // (`MailStore.upsert(body:for:)`), so a value arrives here exactly when the body
-        // lands. The report asks WS-03 for `observeBody(messageId:)`, which turns this into
-        // one line.
+        do {
+            for try await stored in services.store.observeBody(messageId: messageId) {
+                guard let stored, let header else { continue }
+                attachments = stored.attachments
+                isSenderTrusted = stored.body.isSenderTrusted
+                bodyState = .present
+                await render(stored, header: header)
+            }
+        } catch {
+            renderLog.error("body observation stopped: \(RenderFailure.label(error), privacy: .public)")
+        }
+    }
+
+    /// The rest of the conversation, for the strip under the body.
+    ///
+    /// It also carries the one thing the body observation cannot see: `bodyState` lives on
+    /// `message`, and a fetch that gave up writes that column and no body row at all. A
+    /// message with no `threadRootId` observes an empty thread, which still delivers —
+    /// GRDB tracks the region the query reads rather than the rows it returns.
+    private func observeThread(messageId: Int64) async {
+        guard let record = try? await services.store.message(id: messageId) else { return }
         do {
             for try await rows in services.store.observeThread(
-                rootId: header.threadRootId ?? "",
-                mailboxId: header.mailboxId
+                rootId: record.threadRootId ?? "",
+                mailboxId: record.mailboxId
             ) {
                 thread = rows
-                let observed = rows.first { $0.id == messageId }?.bodyState
-                let isWaiting = presentation == .waiting || presentation == .failed
-                guard isWaiting || (observed != nil && observed != lastObservedBodyState) else { continue }
+                guard presentation == .waiting || presentation == .failed else { continue }
                 await refresh(messageId: messageId)
             }
         } catch {
-            renderLog.error("message observation stopped: \(RenderFailure.label(error), privacy: .public)")
+            renderLog.error("thread observation stopped: \(RenderFailure.label(error), privacy: .public)")
         }
     }
 
     // MARK: - Reading the mirror
 
+    /// The envelope: the header, and what the body area says while there is no body.
+    ///
+    /// It deliberately does not read the body. That is ``observe(messageId:)``'s, and having
+    /// one owner is what stops the same body being rendered twice when a message is opened.
     private func refresh(messageId: Int64) async {
         guard let record = try? await services.store.message(id: messageId) else { return }
-        header = Self.header(from: record)
-        lastObservedBodyState = record.bodyState
+        let addresses = (try? await services.store.addresses(messageId: messageId)) ?? []
+        header = Self.header(from: record, addresses: addresses)
+        bodyState = record.bodyState
+        guard record.bodyState != .present else { return }
+        attachments = []
+        presentation = record.bodyState == .failed ? .failed : .waiting
+    }
 
-        guard record.bodyState == .present else {
-            attachments = []
-            presentation = record.bodyState == .failed ? .failed : .waiting
-            return
-        }
-        guard let stored = try? await services.store.body(messageId: messageId), let header else {
-            presentation = .waiting
-            return
-        }
-        attachments = stored.attachments
-        isSenderTrusted = stored.body.isSenderTrusted
+    /// Draws the stored body again from what is already in the mirror. No request: the only
+    /// thing that changes between the two renders is a decision this process made.
+    private func rerender(messageId: Int64) async {
+        guard
+            let stored = try? await services.store.body(messageId: messageId),
+            let header
+        else { return }
         await render(stored, header: header)
     }
 
@@ -220,7 +251,7 @@ final class MessageViewModel {
 
     /// Raises this body's backfill priority. Writes the database; returns nothing.
     private func prioritiseIfNeeded(messageId: Int64) async {
-        guard lastObservedBodyState != .present, let prioritiser = services.prioritiser else { return }
+        guard bodyState != .present, let prioritiser = services.prioritiser else { return }
         await prioritiser.prioritise(messageId: messageId)
     }
 
@@ -238,7 +269,7 @@ final class MessageViewModel {
     func showImages() {
         guard !showsRemoteImages, let messageId else { return }
         showsRemoteImages = true
-        Task { await refresh(messageId: messageId) }
+        Task { await rerender(messageId: messageId) }
     }
 
     /// Show images, and tell the server, so the choice matches the web client.
@@ -282,24 +313,24 @@ final class MessageViewModel {
 
     // MARK: - Header
 
-    /// The recipients come out of `message.rawJSON`.
+    /// The recipients come out of `messageAddress`, which is the table that holds them.
     ///
-    /// `message` denormalises the sender into two columns and keeps everybody else in
-    /// `messageAddress`, which `MailStore` exposes no reader for. The raw envelope is
-    /// already in the row for exactly this reason
-    /// ([ADR-0020](../../../docs/decisions/0020-raw-json-in-a-wrapper.md)), so the header
-    /// decodes it rather than asking for a new query.
-    static func header(from record: MessageRecord) -> MessageHeader {
-        let envelope = try? JSONDecoder().decode(Envelope.self, from: Data(record.rawJSON.utf8))
+    /// `message` denormalises only the sender, into `fromEmail` and `fromLabel`. This used to
+    /// decode the whole envelope back out of `message.rawJSON` to list anybody else, because
+    /// the table had no reader; `MailStore.addresses(messageId:)` is that reader.
+    static func header(from record: MessageRecord, addresses: [MessageAddressRecord]) -> MessageHeader {
+        func list(_ kind: AddressKind) -> [Address] {
+            addresses.filter { $0.kind == kind }.map { Address(label: $0.label, email: $0.email) }
+        }
         return MessageHeader(
             messageId: record.id,
             remoteId: record.remoteId,
             mailboxId: record.mailboxId,
             threadRootId: record.threadRootId,
             subject: record.subject,
-            sender: envelope?.sender ?? Address(label: record.fromLabel, email: record.fromEmail),
-            to: envelope?.to ?? [],
-            cc: envelope?.cc ?? [],
+            sender: list(.from).first ?? Address(label: record.fromLabel, email: record.fromEmail),
+            to: list(.to),
+            cc: list(.cc),
             sentAt: Date(timeIntervalSince1970: TimeInterval(record.sentAt)),
             isFlagged: record.isFlagged,
             isEncrypted: record.isEncrypted

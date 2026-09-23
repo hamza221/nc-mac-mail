@@ -132,16 +132,17 @@ completeness, and WS-05 uses the same `+ 1` when it enumerates —
 `SyncScheduler.nextCursor(after:sortOrder:)`, called by both the tail scan and the
 reconcile.
 
-**Both directions of that `+ 1` exist, and stage 1 only implements one of them.** The sort
-order that decides which way `cursor` points is a server-side *preference*, not a
-parameter: with `sort-order` set to `oldest`, page one of `GET /messages` is the oldest
-hundred and `cursor` becomes an exclusive lower bound, measured by WS-05 on the live server
-and written up in [ADR-0036](../decisions/0036-sort-order-decides-the-cursor.md). Stage 1 as
-written above starts with no cursor and always sends `oldest dateInt + 1`, so on an
-oldest-first account it advances by one row per page — 50,000 requests where 500 would do,
-with the "cursor did not advance" guard never firing because the cursor does advance. The
-fix is one call to `SyncScheduler.nextCursor(after:sortOrder:)` in `enumerate(_:)`; WS-05
-does not own `Mirror/**` and has left it as a request rather than changing it.
+**That `+ 1` has two directions, and stage 1 asks which one applies.** The sort order that
+decides which way `cursor` points is a server-side *preference*, not a parameter: with
+`sort-order` set to `oldest`, page one of `GET /messages` is the oldest hundred and
+`cursor` becomes an exclusive lower bound, measured by WS-05 on the live server and written
+up in [ADR-0036](../decisions/0036-sort-order-decides-the-cursor.md). So `enumerate(_:)`
+reads `GET /preferences/sort-order` once per coordinator, in `bootstrap`, and takes its
+cursor from `SyncScheduler.nextCursor(after:sortOrder:)`: `min(dateInt) + 1` under `newest`,
+`max(dateInt) - 1` under `oldest`. Computing it inline as `min + 1` — which is what this
+stage did until the cursor fix landed — made an oldest-first account advance one row per
+page, 50,000 requests where 500 would do, with the "cursor did not advance" guard never
+firing because the cursor does advance.
 
 Cost for a 50,000-message mailbox: 500 requests, each a database read on the server, a few
 minutes. This is the fast stage.

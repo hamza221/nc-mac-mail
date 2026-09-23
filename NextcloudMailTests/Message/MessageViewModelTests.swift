@@ -41,12 +41,24 @@ struct MessageViewModelTests {
 
     /// The recorded envelope for message 166, which is the same message
     /// `message-html-plain.html` is the body of.
-    private static func recordedEnvelope() throws -> (json: String, remoteId: Int64, threadRootId: String) {
+    private static func recordedEnvelope() throws -> (
+        json: String, remoteId: Int64, threadRootId: String, addresses: [EnvelopeAddress]
+    ) {
         let page = try JSONSerialization.jsonObject(with: try FixtureBytes.data("messages-inbox-page1.json"))
         let envelopes = try #require(page as? [[String: Any]])
         let envelope = try #require(envelopes.first { ($0["databaseId"] as? Int) == 166 })
         let json = String(decoding: try JSONSerialization.data(withJSONObject: envelope), as: UTF8.self)
-        return (json, 166, try #require(envelope["threadRootId"] as? String))
+
+        // The address rows the sync engine would have written, taken from the same recording
+        // rather than typed in. `MirrorMapping.envelopeWrite` does this for real.
+        var addresses: [EnvelopeAddress] = []
+        for (key, kind) in [("from", AddressKind.from), ("to", .to), ("cc", .cc)] {
+            for entry in (envelope[key] as? [[String: Any]]) ?? [] {
+                guard let email = entry["email"] as? String else { continue }
+                addresses.append(EnvelopeAddress(kind: kind, email: email, label: entry["label"] as? String))
+            }
+        }
+        return (json, 166, try #require(envelope["threadRootId"] as? String), addresses)
     }
 
     private static func recordedHTML() throws -> String {
@@ -79,6 +91,7 @@ struct MessageViewModelTests {
                 subject: "Subject redacted",
                 fromEmail: "user@example.com",
                 fromLabel: "Name redacted",
+                addresses: recorded.addresses,
                 rawJSON: recorded.json
             )
         ])
@@ -157,9 +170,12 @@ struct MessageViewModelTests {
         let header = try #require(mirror.model.header)
         #expect(header.subject == "Subject redacted")
         #expect(header.sender?.email == "user@example.com")
-        // Decoded out of the recorded envelope in `message.rawJSON`, because the store has no
-        // reader for `messageAddress`.
+        // Read from `messageAddress` through `MailStore.addresses(messageId:)`, which is the
+        // table that holds them — this used to decode the envelope back out of
+        // `message.rawJSON` because the table had no reader.
         #expect(header.to.count == 1)
+        #expect(header.to.first?.email == "user@example.com")
+        #expect(header.cc.isEmpty)
         #expect(mirror.model.presentation == .waiting)
     }
 
@@ -208,20 +224,18 @@ struct MessageViewModelTests {
     @Test("the body write is what the observation the view is already on reports")
     func theBodyWriteTicksTheObservation() async throws {
         let mirror = try await Self.seed()
-        var iterator = mirror.store
-            .observeThread(rootId: mirror.threadRootId, mailboxId: mirror.mailboxId)
-            .makeAsyncIterator()
+        var iterator = mirror.store.observeBody(messageId: mirror.messageId).makeAsyncIterator()
 
         let before = try await iterator.next()
-        #expect(before?.first?.bodyState == .missing)
+        #expect(before ?? nil == nil, "no body row yet, which is what a message the backfill has not reached is")
 
         try await Self.storeBody(mirror, plain: "Hello.")
 
-        // `upsert(body:for:)` sets `message.bodyState` in the same transaction as the body,
-        // so this value arrives exactly when the body lands. It is the signal the message
-        // view rides until `MailStore` gains `observeBody(messageId:)`.
+        // `upsert(body:for:)` writes the body row, its attachments and `message.bodyState`
+        // in one transaction, so this value arrives exactly when the body lands. It is the
+        // signal the message view rides.
         let after = try await iterator.next()
-        #expect(after?.first?.bodyState == .present)
+        #expect(after??.body.plainBody == "Hello.")
     }
 
     // MARK: - Remote content

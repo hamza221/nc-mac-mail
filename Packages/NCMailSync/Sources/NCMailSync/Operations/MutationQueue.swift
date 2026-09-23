@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 internal import Foundation
-internal import NCMailStore
+public import NCMailStore
 
 /// The front door for every triage action in the application.
 ///
@@ -20,14 +20,14 @@ internal import NCMailStore
 /// database changed and the observation fired, not because this method answered — which is
 /// `CLAUDE.md`'s one invariant, at the one place a view is most tempted to break it.
 public actor MutationQueue {
-    private let store: any OperationStoring
+    private let store: MailStore
     private let configuration: MutationQueueConfiguration
     /// Woken after each commit. Optional so a test can watch the queue fill without anything
     /// draining it, which is exactly the offline case.
     private let drainer: OperationDrainer?
 
     public init(
-        store: any OperationStoring,
+        store: MailStore,
         drainer: OperationDrainer? = nil,
         configuration: MutationQueueConfiguration = MutationQueueConfiguration()
     ) {
@@ -270,48 +270,5 @@ public actor MutationQueue {
             // conflict from a no-op without asking the server twice.
             baseSyncedAt: message.syncedAt
         )
-    }
-}
-
-/// The flag setter's key spellings, against the mirror's column names.
-///
-/// The same mapping `SyncConflicts` applies in the other direction. It lives here as well
-/// because the queue has to read a column to record what it is about to overwrite, and
-/// `Sync/**` belongs to another workstream.
-enum MessageFlagColumns {
-    static func value(of key: String, in message: MessageRecord) -> Bool {
-        switch key {
-        case "seen": message.isSeen
-        case "flagged": message.isFlagged
-        case "answered": message.isAnswered
-        case "deleted": message.isDeleted
-        case "draft": message.isDraft
-        case "forwarded": message.isForwarded
-        case "important": message.isImportant
-        case "junk": message.isJunk
-        case "notjunk": message.isNotJunk
-        case "mdnsent": message.isMdnSent
-        // An IMAP keyword the mirror has no column for. The setter accepts any, so the queue
-        // carries it to the server and records "false" as the state to revert to, which is
-        // what a column that does not exist holds.
-        default: false
-        }
-    }
-
-    /// Column names for the keys the mirror stores, for the store's own UPDATE.
-    static func column(for key: String) -> String? {
-        switch key {
-        case "seen": "isSeen"
-        case "flagged": "isFlagged"
-        case "answered": "isAnswered"
-        case "deleted": "isDeleted"
-        case "draft": "isDraft"
-        case "forwarded": "isForwarded"
-        case "important": "isImportant"
-        case "junk": "isJunk"
-        case "notjunk": "isNotJunk"
-        case "mdnsent": "isMdnSent"
-        default: nil
-        }
     }
 }

@@ -3,7 +3,7 @@
 
 internal import Foundation
 public import NCMailNet
-internal import NCMailStore
+public import NCMailStore
 
 /// Replays the queue to the server, one operation at a time, for ever.
 ///
@@ -19,7 +19,7 @@ internal import NCMailStore
 /// Like every other type in this package it returns `Void` and tells nobody anything. What
 /// changed, changed in the database.
 public actor OperationDrainer: OperationDraining {
-    private let store: any OperationStoring
+    private let store: MailStore
     private let client: MailClient
     private let accountId: Int64
     private let configuration: MutationQueueConfiguration
@@ -35,7 +35,7 @@ public actor OperationDrainer: OperationDraining {
     private var hasReportedForbidden = false
 
     public init(
-        store: any OperationStoring,
+        store: MailStore,
         client: MailClient,
         accountId: Int64,
         configuration: MutationQueueConfiguration = MutationQueueConfiguration()
@@ -51,11 +51,9 @@ public actor OperationDrainer: OperationDraining {
     /// The queue depth and the failures, republished after every change.
     ///
     /// `offline-queue.md` derives the count from a database observation. This publishes it
-    /// from the drainer instead, because observing `pendingOperation` needs a
-    /// `StoreObservation` that `NCMailStore` does not expose — the same missing DAO
-    /// [ADR-0043](../../../../docs/decisions/0043-the-queue-names-the-storage-it-needs.md)
-    /// is about. The values are identical; only the delivery differs, and the document says
-    /// so now.
+    /// from the drainer instead, because `NCMailStore` exposes `pendingOperations(accountId:)`
+    /// as a read and not as a `StoreObservation`. The values are identical; only the delivery
+    /// differs, and the document says so.
     ///
     /// Each iteration gets the current summary immediately, so a view that subscribes late
     /// draws the right thing without waiting for the next change.

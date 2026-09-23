@@ -112,6 +112,35 @@ extension MailStore {
         }
     }
 
+    /// Every address on one message, in header order: `from`, then `to`, `cc`, `bcc` and
+    /// `replyTo`, each in the order the header listed them.
+    ///
+    /// `message` denormalises only the sender, into `fromEmail` and `fromLabel`. Everybody
+    /// else is here, and this is the reader for them — without it a caller has to decode the
+    /// envelope back out of `message.rawJSON` to list recipients.
+    ///
+    /// A read and not an observation: `messageAddress` is `WITHOUT ROWID`, so SQLite's update
+    /// hook never fires for it and a `ValueObservation` over it could never deliver a second
+    /// value ([ADR-0025](../../../../docs/decisions/0025-rowid-tables-for-anything-observed.md)).
+    /// The rows are rewritten by the same transaction that writes the envelope, so a caller
+    /// observing the message re-reads these and is never stale.
+    public func addresses(messageId: Int64) async throws -> [MessageAddressRecord] {
+        try await dbQueue.read { db in
+            try MessageAddressRecord.fetchAll(
+                db,
+                sql: """
+                    SELECT * FROM messageAddress
+                     WHERE messageId = :messageId
+                     ORDER BY CASE kind
+                        WHEN 'from' THEN 0 WHEN 'to' THEN 1 WHEN 'cc' THEN 2
+                        WHEN 'bcc' THEN 3 ELSE 4 END,
+                        position
+                    """,
+                arguments: ["messageId": messageId]
+            )
+        }
+    }
+
     /// The next slice of stage-2 work: the account's newest messages with no body yet.
     ///
     /// Newest first because recency is what people open, and bounded because the scheduler

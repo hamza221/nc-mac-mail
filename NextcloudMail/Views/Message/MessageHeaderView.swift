@@ -10,6 +10,9 @@ import SwiftUI
 /// stays put when the body arrives.
 struct MessageHeaderView: View {
     let header: MessageHeader
+    /// The sender's picture, read from the mirror. Nil when there is no address to look one
+    /// up by; the bubble draws coloured initials for that and for a loader that throws.
+    var avatar: (@Sendable () async throws -> Image)?
 
     @Environment(\.ncTheme) private var theme
     @State private var showsAllRecipients = false
@@ -36,11 +39,13 @@ struct MessageHeaderView: View {
 
             HStack(spacing: theme.metrics.spacing.standard) {
                 if let sender = header.sender {
-                    // No `load:`, so `NCAvatar` draws coloured initials. The mirror has an
-                    // `avatar` table and `MailStore` has no reader for it yet — see the
-                    // report.
-                    NCUserBubble(displayName: sender.displayName, user: sender.email, size: .medium)
-                        .accessibilityLabel(Text("From \(sender.displayName)"))
+                    NCUserBubble(
+                        displayName: sender.displayName,
+                        user: sender.email,
+                        size: .medium,
+                        load: avatar
+                    )
+                    .accessibilityLabel(Text("From \(sender.displayName)"))
                 }
                 if header.isFlagged {
                     MailSymbol.star.view(size: .small, label: .text("Starred"))

@@ -19,10 +19,11 @@ drainer.wake()
 
 Inside that one call, per row: the local change, then the `pendingOperation` insert. The
 call is `enqueue` rather than a `store.write { … }` block because `MailStore.write` is
-internal ([ADR-0034](../decisions/0034-the-store-returns-its-own-sequence.md)) and
-`NCMailStore` has no queue DAO yet; `MutationQueue` talks to the `OperationStoring`
-protocol, and [ADR-0043](../decisions/0043-the-queue-names-the-storage-it-needs.md) names
-the file that replaces it. The shape of the guarantee is unchanged.
+internal ([ADR-0034](../decisions/0034-the-store-returns-its-own-sequence.md)), so the
+transaction is opened by a method on `MailStore` —
+`Queries/MailStore+Operations.swift`, added by
+[ADR-0045](../decisions/0045-the-store-grows-the-queue-dao-and-the-readers.md). The shape of
+the guarantee is unchanged.
 
 A multi-message action is one transaction and several rows — archiving ten messages is ten
 requests, because the server has no batch route, but the ten local changes land together or
@@ -144,9 +145,10 @@ rule the drainer is responsible for:
 Implemented as a read of `pendingOperation`, not as a lock or a flag on the message row: one
 query, one truth, no state to leave behind when the app is killed at the wrong moment. The
 read wants to be inside the sync write transaction and is not yet — `SyncScheduler` reads it
-either side of the write and repairs, for the same missing-DAO reason as above, and
+either side of the write and repairs, because the write it wants to read inside of is
+`upsert(envelopes:)` and there is still no masking variant of that;
 [ADR-0037](../decisions/0037-the-queue-is-read-twice-around-the-sync-write.md) has the
-argument. `OperationDrainer.pendingIntents()` is what it reads: the collapsed final state per
+argument and names the method. `OperationDrainer.pendingIntents()` is what it reads: the collapsed final state per
 message, so star-unstar-star masks with `flagged: true` rather than with three intents.
 
 The drain runs **before** sync for exactly this reason
@@ -173,9 +175,9 @@ SELECT count(*) FROM pendingOperation WHERE state != 'inFlight' AND attempts >= 
 ```
 
 `OperationDrainer.pendingCount` publishes it as an `AsyncStream<PendingSummary>` rather than
-as a store observation, and republishes after every change, because observing
-`pendingOperation` needs a `StoreObservation` the store does not expose — the same missing
-DAO as above. `AppStatus.pendingFailures` is `PendingSummary.failing`. Subscribing yields the
+as a store observation, and republishes after every change: `MailStore.pendingOperations`
+is a read, and the drainer already holds the collapsed list, so re-reading the queue after
+every operation would buy nothing. `AppStatus.pendingFailures` is `PendingSummary.failing`. Subscribing yields the
 current summary immediately, so a view drawn late is not blank until something changes.
 
 **Discard has one exception.** A `delete` of a message that was already in trash erased the

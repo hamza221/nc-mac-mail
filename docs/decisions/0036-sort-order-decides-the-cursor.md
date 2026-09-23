@@ -68,10 +68,12 @@ Every enumeration in the app now has to ask the scheduler for its cursor rather 
 computing `min + 1` inline. That is one function and one call site each, and it is the only
 way the two directions cannot drift apart.
 
-**Stage 1 in `NCMailSync/Mirror/**` is still wrong under `oldest`.** WS-05 does not own that
-file and has not changed it; the fix is one call to `nextCursor(after:sortOrder:)` and it is
-a request to WS-04 in WS-05's report. Until it lands, signing in on an `oldest` account
-makes the backfill crawl.
+**Stage 1 in `NCMailSync/Mirror/**` was still wrong under `oldest`** when this was written:
+WS-05 did not own that file and left the fix as a request. It landed on 2026-09-23.
+`MirrorCoordinator` reads the preference once per coordinator in `bootstrap` and
+`enumerate(_:)` calls `nextCursor(after:sortOrder:)`, which
+`MirrorCoordinatorTests.theCursorFlipsForAnOldestFirstAccount` pins from the mirror's side
+rather than only from sync's.
 
 ## Alternatives considered
 

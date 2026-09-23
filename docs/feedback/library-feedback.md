@@ -721,3 +721,86 @@ it is spelled `fail(route, times: 10_000, then: .status(200))`. The comment expl
 remove both, and would also let a test choose the error — every failure this fake produces is
 `URLError(.networkConnectionLost)`, so a test cannot tell a timeout from a DNS failure.
 Not widened here: it is WS-14's API and this workstream is not the one to change it.
+
+## From WS-07 (sidebar: accounts and mailbox tree)
+
+### `NCNavigationItem` composes inside `DisclosureGroup` with no fighting at all
+**Workstream:** WS-07 · **Component:** `NCNavigationItem` · **Severity:** —
+
+The question the design pass and WS-08's `NCListItem` entry both raised for this row shape
+does not arise here. A sidebar row needs exactly one icon and one count, which is precisely
+`NCNavigationItem`'s two optional slots, so `MailboxTreeRowView` is `NCNavigationItem(...)`
+used as a `DisclosureGroup`'s `label:` with nothing built around it — no accessory `HStack`,
+no manual width. The component's own doc comment says nesting is `DisclosureGroup`'s job and
+declines a `children:` parameter for exactly that reason; the decision holds up in a real
+three-level tree (`NextcloudMail/Views/Sidebar/SidebarView.swift`).
+
+### `NCNavigationItem` does not combine its children into one accessibility element
+**Workstream:** WS-07 · **Component:** `NCNavigationItem` · **Severity:** friction
+**Where:** `Sources/NextcloudUI/Components/NavigationItem/NCNavigationItem.swift:72`
+
+The brief's acceptance criterion is "VoiceOver reads a mailbox row as name plus unread
+count." `NCNavigationItem`'s body is a plain `HStack` — the title `Text`, `NCCounterBubble`
+and the trailing-actions `Menu` are three separate accessibility elements, with no
+`.accessibilityElement(children: .combine)` the way `NCListItem` already has
+(`ListItem/NCListItem.swift:115`). Left alone, VoiceOver would swipe through "Inbox", then
+separately "7 unread", instead of one stop.
+
+Worked around at the call site: `MailboxTreeRowView.label` wraps the row in
+`.accessibilityElement(children: .combine)` itself, which is safe here only because a plain
+mailbox row carries no other focusable content — its context menu is a native
+`.contextMenu`, not a persistent button, so nothing disappears from the rotor the way
+`NCNoteCard`'s buttons did for WS-09. The account header does **not** get the same
+treatment, because its trailing actions `Menu` does need its own stop; `NCNavigationCaption`
+already leaves its own children uncombined, which is the right default for a component with a
+control on it.
+
+**What would have been better:** `NCNavigationItem` combining its own children the same way
+`NCListItem` does, since a row with no `actions:` closure (`NCNavigationItem<EmptyView>`) has
+nothing that a combine could break, and the common sidebar case — icon, title, count, no
+actions menu — is exactly that shape.
+
+### The icon list holds; nothing new past what WS-13 already built
+**Workstream:** WS-07 · **Component:** `NCSymbolCatalog` · **Severity:** —
+
+Every role this workstream draws — inbox, drafts, sent, archive, junk, trash, plus the plain
+folder for an ordinary or synthetic container — was already a `MailSymbol` case. No new icon
+was needed.
+
+### Question 3 (brand tint vs. macOS selection in a three-column split view) is still open
+**Workstream:** WS-07 · **Component:** `NCAccentPolicy` · **Severity:** —
+
+Still unanswerable here: no GUI, no `screencapture`, and `RootSplitView` still shows a
+placeholder in the sidebar's slot rather than this workstream's view (see the report). The
+sidebar is the column with the densest selection surface of the three — a `List` several
+levels deep, nested in `DisclosureGroup`s — so it is the strongest test of this question once
+someone can actually look.
+
+## From the store-DAO pass (ADR-0045)
+
+### `NCAvatar` and `NCUserBubble` take exactly the loader a local-first client wants
+**Workstream:** store-DAO pass · **Component:** `NCAvatar`, `NCUserBubble` · **Severity:** —
+
+`load: (@Sendable () async throws -> Image)?` is the right shape and worth recording as such,
+because the obvious alternative — a URL, the way `AsyncImage` takes one — would have been
+unusable here. This app must never let a view reach the network, so the picture has to come
+out of the mirror; a closure lets the caller decide where bytes come from, and `nil` is a
+first-class "do not try". Wiring both call sites was a one-line change each once
+`MailStore.avatar(for:)` existed.
+
+The fallback contract helps too: the component draws coloured initials when the loader
+throws, so "no row yet" and "the server answered 404" need no branch at the call site even
+though they are different facts the fetcher will have to tell apart.
+
+### `NCAvatar`'s cache key includes the diameter, which is right and worth saying out loud
+**Workstream:** store-DAO pass · **Component:** `NCAvatar` · **Severity:** —
+
+`NCAvatar.cacheIdentity` folds the size into the key
+(`Components/Avatar/NCAvatar.swift:135`). A mail client draws the same sender at two sizes on
+one screen — `.medium` in the list row and `.medium` in the message header today, and the
+header will want to grow — and a key that ignored the size would hand one of them the other's
+bitmap. Nothing to change; it is the sort of decision that is invisible until it is wrong.
+
+### Nothing new otherwise
+This pass was store queries and the two call sites above. No component was bent, and no icon
+was missing.

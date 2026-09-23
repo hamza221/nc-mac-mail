@@ -45,6 +45,16 @@ public actor MirrorCoordinator {
     /// and the login the accounts refresh has to be keyed by.
     private var account: AccountRecord?
 
+    /// The user's server-side sort order, read once.
+    ///
+    /// It decides what a `cursor` means, and it is a preference rather than a parameter:
+    /// `GET /messages` ignores `sortOrder` in the query, measured against the live server.
+    /// Under `oldest` the first page is the *oldest* hundred and the cursor is an exclusive
+    /// lower bound, so the `min + 1` this stage used to compute inline advanced by one row
+    /// per page. [ADR-0036](../../../../docs/decisions/0036-sort-order-decides-the-cursor.md).
+    private(set) var sortOrder = NCMailCore.SortOrder.default
+    private var hasReadSortOrder = false
+
     private var runTask: Task<Void, Never>?
     private var powerObserver: Task<Void, Never>?
     private var runGeneration = 0
@@ -315,6 +325,8 @@ public actor MirrorCoordinator {
             MirrorLog.mirror.error("accounts refresh failed: \(describe(error), privacy: .public)")
         }
 
+        await readSortOrder()
+
         try Task.checkCancellation()
         do {
             let list = try await client.get(.mailboxes(accountId: Int(account.remoteId)))
@@ -343,6 +355,30 @@ public actor MirrorCoordinator {
     private func rethrowIfUnrecoverable(_ error: MailError) throws {
         guard case .unauthorized = error else { return }
         throw error
+    }
+
+    /// `GET /preferences/sort-order`, once per coordinator.
+    ///
+    /// A failure is not one: null is the ordinary answer on an instance where nobody ever
+    /// set it, and a server that cannot answer at all leaves the default, which is what the
+    /// server itself uses.
+    private func readSortOrder() async {
+        guard !hasReadSortOrder else { return }
+        hasReadSortOrder = true
+        guard let preference = try? await client.get(.preference(key: "sort-order")) else {
+            MirrorLog.mirror.info(
+                "account \(self.accountId, privacy: .public) sort-order unreadable; assuming newest"
+            )
+            return
+        }
+        sortOrder = NCMailCore.SortOrder(preference: preference)
+        guard sortOrder == .oldest else { return }
+        MirrorLog.mirror.info(
+            """
+            account \(self.accountId, privacy: .public) has the server-side sort order set to \
+            oldest-first; stage 1 pages forward from the oldest message. See ADR-0036
+            """
+        )
     }
 
     // MARK: - Stages 0 and 1
@@ -481,7 +517,8 @@ public actor MirrorCoordinator {
         await publishProgress()
     }
 
-    /// Stage 1. Pages of a hundred envelopes, oldest-ward, until a short page.
+    /// Stage 1. Pages of a hundred envelopes until a short page, walking whichever way the
+    /// account's ``sortOrder`` makes `GET /messages` walk.
     ///
     /// Envelopes are written before the cursor moves, and that order is the guarantee: a
     /// crash in between re-fetches one page, whose upserts land identically. The reverse
@@ -511,15 +548,13 @@ public actor MirrorCoordinator {
                 try await store.upsert(envelopes: writes)
             }
 
-            // One past the oldest `dateInt`, not the oldest `dateInt`. The server's cursor
-            // is strictly exclusive — measured: asking with the oldest value returns
-            // messages *older* than it, never it — so two messages sharing a `dateInt`
-            // across a page boundary lose the second one, permanently and silently. The
-            // live inbox has such a pair (ids 44 and 45, both 1778515439) and the
-            // documented algorithm drops id 45. Overlapping by one `dateInt` re-reads the
-            // boundary message, whose upsert is a no-op, and costs at most one duplicated
-            // row per page. ADR-0030.
-            let nextCursor = writes.map(\.sentAt).min().map { $0 + 1 } ?? cursor
+            // One function owns the arithmetic, because the two sort orders walk in
+            // opposite directions and computing it inline is how they drift apart. Under
+            // `newest` it is `min(dateInt) + 1`, under `oldest` it is `max(dateInt) - 1`,
+            // and the `± 1` is the same overlap-by-one in both: the comparison is strict
+            // and `dateInt` is not unique, so the boundary message is re-read rather than
+            // skipped (ADR-0030, ADR-0036).
+            let nextCursor = SyncScheduler.nextCursor(after: page, sortOrder: sortOrder) ?? cursor
 
             // A full page that did not move the cursor would ask for the same page forever.
             // It takes a hundred messages sharing one second to happen; stopping loses less

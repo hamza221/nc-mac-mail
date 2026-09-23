@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 # ADR-0043: The mutation queue talks to a protocol, because `NCMailStore` has no queue DAO
 
-**Status:** Accepted, with a named replacement
+**Status:** Superseded by [ADR-0045](0045-the-store-grows-the-queue-dao-and-the-readers.md)
 **Date:** 2026-09-23
 **Decided by:** WS-06, against the same boundary [ADR-0037](0037-the-queue-is-read-twice-around-the-sync-write.md) hit
 

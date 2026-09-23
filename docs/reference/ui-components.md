@@ -76,10 +76,18 @@ reads the mirror first, per the invariant in
 [../architecture/overview.md](../architecture/overview.md):
 
 ```swift
-func avatarLoader(for address: String) -> @Sendable () async throws -> Image {
-    { [store] in
-        if let image = try await store.avatar(for: address) { return image }   // mirror
-        return try await avatarFetcher.fetchAndStore(address)                   // then network
+// NextcloudMail/Views/Message/AvatarLoader.swift
+extension MailStore {
+    func avatarLoader(for email: String?) -> (@Sendable () async throws -> Image)? {
+        guard let email, !email.isEmpty else { return nil }
+        return { [self] in
+            guard let record = try await avatar(for: email) else { throw AvatarUnavailable.notStored }
+            guard !record.missing else { throw AvatarUnavailable.noneOnTheServer }
+            guard let data = record.data, let image = NSImage(data: data) else {
+                throw AvatarUnavailable.undecodable
+            }
+            return Image(nsImage: image)
+        }
     }
 }
 ```
@@ -87,12 +95,18 @@ func avatarLoader(for address: String) -> @Sendable () async throws -> Image {
 `NCAvatar` draws coloured initials when the loader throws, so a 404 needs no special case —
 but record it in `avatar.missing` so the client stops asking every launch.
 
-**Not built yet.** `store.avatar(for:)` and `avatarFetcher` above are the shape, not the
-code: the mirror has an `avatar` table (`Migrations.swift`, `schema.sql`) and `MailStore` has
-no reader or writer for it, and nothing fetches one. WS-09's message header and WS-08's list
-rows therefore pass no `load:` at all and get coloured initials for everyone. Two workstreams
-have now asked for the same three methods — a reader, a writer, and whichever workstream owns
-the fetch.
+`MailStore.avatar(for:)` reads the `avatar` table, case-insensitively, and answers three
+different facts: nil for an address nobody has asked about, `missing` for one the server
+answered 404 for, and bytes otherwise. It returns an `AvatarRecord` rather than an `Image`
+because `NCMailStore` may not import SwiftUI; the conversion is the app-side loader above,
+which `MessageHeaderView` and `MessageListRow` both pass as `load:`.
+
+**Half built.** There is a reader and no writer, and nothing fetches an avatar, so in
+practice every address still draws initials — the difference is that it draws them because
+the row is absent rather than because there was no way to look. The writer and
+`GET /api/avatars/image/{email}` are still unowned; whichever workstream takes them needs
+`upsert(avatar:)` beside the reader, and the fetch belongs in `NCMailNet` and `NCMailSync`
+like every other request.
 
 ## Gaps: what the library does not give us
 

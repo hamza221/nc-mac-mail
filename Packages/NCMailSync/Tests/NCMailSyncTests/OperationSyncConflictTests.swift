@@ -24,13 +24,12 @@ struct OperationSyncConflictTests {
         let localId = try #require(seeded.localByRemote[target])
 
         let transport = FakeTransport()
-        let operations = MailStoreOperations(store: seeded.store)
         let drainer = OperationDrainer(
-            store: operations,
+            store: seeded.store,
             client: try MirrorTest.client(transport),
             accountId: seeded.accountId
         )
-        let queue = MutationQueue(store: operations)
+        let queue = MutationQueue(store: seeded.store)
         try await queue.perform(.setFlags(messageIds: [localId], flags: ["seen": true]), accountId: seeded.accountId)
 
         // The train. Every attempt to tell the server fails, so the row stays queued.
@@ -53,7 +52,7 @@ struct OperationSyncConflictTests {
         await scheduler.syncNow(mailboxId: seeded.inboxId)
 
         #expect(try await seeded.store.message(id: localId)?.isSeen == true)
-        #expect(try await operations.pendingOperations(accountId: seeded.accountId).count == 1)
+        #expect(try await seeded.store.pendingOperations(accountId: seeded.accountId).count == 1)
     }
 
     @Test("Once the drain has sent it, the server owns the field again")
@@ -64,13 +63,12 @@ struct OperationSyncConflictTests {
         let localId = try #require(seeded.localByRemote[target])
 
         let transport = FakeTransport()
-        let operations = MailStoreOperations(store: seeded.store)
         let drainer = OperationDrainer(
-            store: operations,
+            store: seeded.store,
             client: try MirrorTest.client(transport),
             accountId: seeded.accountId
         )
-        let queue = MutationQueue(store: operations)
+        let queue = MutationQueue(store: seeded.store)
         try await queue.perform(.setFlags(messageIds: [localId], flags: ["seen": true]), accountId: seeded.accountId)
 
         await QueueTest.stubEverything(transport)
@@ -93,7 +91,7 @@ struct OperationSyncConflictTests {
         )
         await scheduler.syncNow(mailboxId: seeded.inboxId)
 
-        #expect(try await operations.pendingOperations(accountId: seeded.accountId).isEmpty)
+        #expect(try await seeded.store.pendingOperations(accountId: seeded.accountId).isEmpty)
         #expect(try await seeded.store.message(id: localId)?.isSeen == false)
     }
 }

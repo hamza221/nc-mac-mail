@@ -67,21 +67,37 @@ extension MailStore {
 
     /// The body and its attachments, from one read.
     public func body(messageId: Int64) async throws -> StoredBody? {
-        try await dbQueue.read { db in
-            guard
-                let body = try MessageBodyRecord.fetchOne(
-                    db,
-                    sql: "SELECT * FROM messageBody WHERE messageId = ?",
-                    arguments: [messageId]
-                )
-            else { return nil }
-            let attachments = try AttachmentRecord.fetchAll(
+        try await dbQueue.read { db in try Self.fetchBody(db, messageId: messageId) }
+    }
+
+    /// One message's body and attachments, live.
+    ///
+    /// This is what the message view opens when it shows a message whose body the backfill
+    /// has not reached: the fetch writes the database, and the value arrives here. It fires
+    /// when the body lands because ``upsert(body:for:)`` writes the body row, the
+    /// attachments and `message.bodyState` in one transaction, and both tables this reads
+    /// are inside it.
+    ///
+    /// Nil while there is no body row, which is the ordinary state of a message the mirror
+    /// has the envelope for and nothing else.
+    public func observeBody(messageId: Int64) -> StoreObservation<StoredBody?> {
+        observation { db in try Self.fetchBody(db, messageId: messageId) }
+    }
+
+    private static func fetchBody(_ db: Database, messageId: Int64) throws -> StoredBody? {
+        guard
+            let body = try MessageBodyRecord.fetchOne(
                 db,
-                sql: "SELECT * FROM attachment WHERE messageId = ? ORDER BY attachmentId",
+                sql: "SELECT * FROM messageBody WHERE messageId = ?",
                 arguments: [messageId]
             )
-            return StoredBody(body: body, attachments: attachments)
-        }
+        else { return nil }
+        let attachments = try AttachmentRecord.fetchAll(
+            db,
+            sql: "SELECT * FROM attachment WHERE messageId = ? ORDER BY attachmentId",
+            arguments: [messageId]
+        )
+        return StoredBody(body: body, attachments: attachments)
     }
 
     /// Marks where a body got to, so a crash does not leave work claimed forever.

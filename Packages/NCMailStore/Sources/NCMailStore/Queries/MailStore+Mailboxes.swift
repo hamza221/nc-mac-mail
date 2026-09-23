@@ -52,6 +52,18 @@ extension MailStore {
         observation { db in try Self.fetchMailboxes(db, accountId: accountId) }
     }
 
+    /// One mailbox, live.
+    ///
+    /// The mirror's progress columns — `envelopesComplete` above all — change while the
+    /// mailbox is on screen, and an empty list reads differently depending on which of them
+    /// is set. Nil once the row is gone, which is what a deleted or unsubscribed folder
+    /// looks like from a view still pointed at it.
+    public func observeMailbox(id: Int64) -> StoreObservation<MailboxRecord?> {
+        observation { db in
+            try MailboxRecord.fetchOne(db, sql: "SELECT * FROM mailbox WHERE id = ?", arguments: [id])
+        }
+    }
+
     private static func fetchMailboxes(_ db: Database, accountId: Int64) throws -> [MailboxRecord] {
         try MailboxRecord.fetchAll(
             db,

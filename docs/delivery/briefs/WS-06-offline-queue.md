@@ -28,8 +28,10 @@ actions taken on a train, quit, relaunched, and reconnected three days later.
 *As built, two names differ from this sketch and one method was added. The actor is
 `MutationQueue`, because `OperationQueue` is Foundation's
 ([ADR-0044](../../decisions/0044-the-queue-type-is-not-called-operationqueue.md)); its
-storage is the `OperationStoring` protocol rather than `MailStore`, because the store has no
-queue DAO ([ADR-0043](../../decisions/0043-the-queue-names-the-storage-it-needs.md)); and
+storage was the `OperationStoring` protocol rather than `MailStore`, because the store had
+no queue DAO ([ADR-0043](../../decisions/0043-the-queue-names-the-storage-it-needs.md)) —
+that DAO landed as `Queries/MailStore+Operations.swift` and the protocol is gone
+([ADR-0045](../../decisions/0045-the-store-grows-the-queue-dao-and-the-readers.md)); and
 `MutationQueue.localMailboxId(for:accountId:)` exists because `account.archiveMailboxId`
 turned out to be the server's id, not the mirror's.*
 
@@ -65,7 +67,7 @@ drainer.wake()
 
 Nothing in between, no `await` between applying and inserting, no optimistic-then-queue.
 `MailStore.write` is internal since ADR-0034, so the transaction lives behind
-`OperationStoring.enqueue(_:applying:)`; the guarantee is the same one.
+`MailStore.enqueue(_:applying:)`; the guarantee is the same one.
 
 **Payloads are absolute intent** — `{"seen": true}`, never a toggle — so replay is
 idempotent and collapsing is well defined.

@@ -45,7 +45,7 @@ struct OperationDrainScaleTests {
         await QueueTest.stubEverything(fixture.transport)
         // The wiring the app uses: the queue wakes the drainer after the commit, and nothing
         // in between awaits a request.
-        let queue = MutationQueue(store: fixture.operations, drainer: fixture.drainer)
+        let queue = MutationQueue(store: fixture.store, drainer: fixture.drainer)
 
         var iterator = fixture.drainer.pendingCount.makeAsyncIterator()
         #expect(await iterator.next()?.queued == 0)

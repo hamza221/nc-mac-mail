@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 # ADR-0038: The message view observes its thread, because the store cannot observe one body
 
-**Status:** Accepted, with a named replacement
+**Status:** Superseded by [ADR-0045](0045-the-store-grows-the-queue-dao-and-the-readers.md)
 **Date:** 2026-09-23
 **Decided by:** WS-09, on finding no single-message observation in `MailStore`
 

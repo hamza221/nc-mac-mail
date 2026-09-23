@@ -124,6 +124,9 @@ enum MirrorTest {
     struct RecordedInbox {
         let ids: [Int64]
         let oldestDateInt: Int64
+        /// The other end of the page, which is the one stage 1 walks from under an
+        /// oldest-first account (ADR-0036).
+        let newestDateInt: Int64
         var count: Int { ids.count }
     }
 
@@ -133,7 +136,11 @@ enum MirrorTest {
             let dateInt: Int64
         }
         let rows = try JSONDecoder().decode([Row].self, from: try FixtureBytes.data("messages-inbox-page1.json"))
-        return RecordedInbox(ids: rows.map(\.databaseId), oldestDateInt: rows.map(\.dateInt).min() ?? 0)
+        return RecordedInbox(
+            ids: rows.map(\.databaseId),
+            oldestDateInt: rows.map(\.dateInt).min() ?? 0,
+            newestDateInt: rows.map(\.dateInt).max() ?? 0
+        )
     }
 }
 

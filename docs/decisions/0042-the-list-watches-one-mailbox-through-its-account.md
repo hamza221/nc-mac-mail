@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 # ADR-0042: The message list watches one mailbox through its account's mailbox observation
 
-**Status:** Accepted, with a named replacement
+**Status:** Superseded by [ADR-0045](0045-the-store-grows-the-queue-dao-and-the-readers.md)
 **Date:** 2026-09-23
 **Decided by:** WS-08, on finding no single-mailbox observation in `MailStore`
 

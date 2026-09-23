@@ -75,7 +75,10 @@ struct MessageView: View {
         VStack(alignment: .leading, spacing: 0) {
             if let header = model.header {
                 VStack(alignment: .leading, spacing: theme.metrics.spacing.standard) {
-                    MessageHeaderView(header: header)
+                    MessageHeaderView(
+                        header: header,
+                        avatar: model.services.store.avatarLoader(for: header.sender?.email)
+                    )
                     if model.hasBlockedRemoteContent, !model.showsRemoteImages, !model.isSenderTrusted {
                         BlockedContentBar(
                             showImages: model.showImages,

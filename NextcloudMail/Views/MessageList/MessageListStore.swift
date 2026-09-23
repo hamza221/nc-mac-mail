@@ -5,6 +5,7 @@ import Foundation
 import NCMailStore
 import OSLog
 import Observation
+import SwiftUI
 
 /// A narrowing of the list. WS-11 builds one; this workstream only renders what it selects.
 ///
@@ -144,6 +145,14 @@ final class MessageListStore {
         selection.count == 1 ? selection.first : nil
     }
 
+    /// The sender's picture for one row, read from the mirror.
+    ///
+    /// Here rather than in the row view because ``store`` is private, and the row should not
+    /// need a database to draw itself.
+    func avatarLoader(for email: String?) -> (@Sendable () async throws -> Image)? {
+        store.avatarLoader(for: email)
+    }
+
     // MARK: - Selection
 
     /// Shows one mailbox, replacing whatever was being observed before.
@@ -226,16 +235,16 @@ final class MessageListStore {
 
     /// The mirror state, live.
     ///
-    /// `MailStore` has `observeMailboxes(accountId:)` and no `observeMailbox(id:)`, so the
-    /// account's mailboxes are observed and this one is picked out of them
-    /// ([ADR-0042](../../../docs/decisions/0042-the-list-watches-one-mailbox-through-its-account.md)),
-    /// which also names the replacement: `MailStore.observeMailbox(id:)`.
+    /// One row, not the account's. `envelopesComplete` is what tells "still being
+    /// enumerated" from "mirrored and empty", and it changes while the list is on screen.
+    /// This watched every mailbox of the account and filtered, because the store had no
+    /// single-mailbox observation
+    /// ([ADR-0042](../../../docs/decisions/0042-the-list-watches-one-mailbox-through-its-account.md));
+    /// `MailStore.observeMailbox(id:)` is that observation.
     private func observeMailbox(id: Int64) async {
-        guard let record = try? await store.mailbox(id: id) else { return }
-        mailbox = record
         do {
-            for try await mailboxes in store.observeMailboxes(accountId: record.accountId) {
-                mailbox = mailboxes.first { $0.id == id }
+            for try await record in store.observeMailbox(id: id) {
+                mailbox = record
             }
         } catch {
             Self.logger.error("mailbox observation stopped: \(String(describing: error), privacy: .public)")

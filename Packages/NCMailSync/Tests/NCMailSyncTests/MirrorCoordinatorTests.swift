@@ -333,6 +333,53 @@ struct MirrorCoordinatorTests {
         #expect(try await store.message(remoteId: 45) != nil)
     }
 
+    @Test("an oldest-first account pages forward, so stage 1 does not advance one row at a time")
+    func theCursorFlipsForAnOldestFirstAccount() async throws {
+        let store = try MailStore.inMemory()
+        _ = try await MirrorTest.mirroredAccount(store)
+        let transport = FakeTransport()
+        let recorded = try MirrorTest.recordedInbox()
+        try await MirrorTest.stubBootstrap(transport)
+        try await MirrorTest.stubQuietMailboxes(transport, except: 5)
+        // The shape is `preference-sort-order.json`'s, one string apart. There is no
+        // recording of this value because setting the preference on the shared test server
+        // to make one would change it for everybody — the same reason `SyncTest` gives.
+        await transport.stub(SyncTest.sortOrderRoute, with: .json(#"{"value":"oldest"}"#))
+        await transport.stub(MirrorTest.syncRoute(mailboxId: 5), with: try .fixture("sync-incremental.json"))
+        await transport.stubSequence(
+            MirrorTest.messagesRoute(mailboxId: 5),
+            [try .fixture("messages-inbox-page1.json"), try .fixture("messages-inbox-page2.json")]
+        )
+        await transport.stub(MirrorTest.bodyRoute, with: .status(404))
+
+        let coordinator = MirrorCoordinator(
+            store: store,
+            client: try MirrorTest.client(transport),
+            accountId: 1,
+            configuration: MirrorTest.configuration(envelopePageSize: recorded.count)
+        )
+        await coordinator.start()
+        await coordinator.awaitCurrentRun()
+
+        // Under `oldest` the first page is the oldest hundred and `cursor` is an exclusive
+        // *lower* bound, so the next page starts one below the newest `dateInt` the last
+        // page carried. `min + 1` — which this stage used to compute inline — would have
+        // asked for everything newer than the page's oldest message, which is the same page
+        // shifted by one row, for ever. ADR-0036.
+        let inboxPages = await transport.requestURLs.filter { $0.contains("mailboxId=5&") }
+        #expect(inboxPages.count == 2)
+        #expect(inboxPages.last?.contains("cursor=\(recorded.newestDateInt - 1)") == true)
+        #expect(
+            inboxPages.last?.contains("cursor=\(recorded.oldestDateInt + 1)") == false,
+            "the newest-first cursor would advance one row per page"
+        )
+
+        let inbox = try #require(try await store.mailbox(remoteId: 5))
+        #expect(inbox.envelopeCursor == recorded.newestDateInt - 1)
+        #expect(inbox.envelopesComplete)
+        #expect(try await store.counts().totalMessages == recorded.count)
+    }
+
     @Test("a relaunch mid-stage-1 resumes at the stored cursor and re-fetches at most one page")
     func enumerationResumesFromTheStoredCursor() async throws {
         let store = try MailStore.inMemory()
