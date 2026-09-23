@@ -166,6 +166,38 @@ This is the number behind the bulk-body ask in finding 1. A client cannot make i
 being politer — it is already inside the concurrency budget — and at 1.4 s per message a
 50,000-message account is 19 hours of somebody's server doing one message at a time.
 
+## 13. The message list's sort order is a stored preference, and it silently inverts pagination
+
+**Where:** `lib/Controller/MessagesController.php::index`, `lib/Db/MessageMapper.php`
+**Kind:** correctness · **Impact:** high for any client that enumerates
+
+`GET /api/messages` takes no sort-order parameter. It reads the user's stored `sort-order`
+preference, and that one value changes two things at once: which end of the mailbox page one
+comes from, and which way `cursor` compares.
+
+Measured on a live 5.12.0-rc.1 instance, setting the preference and putting it back:
+
+| | `newest` / unset | `oldest` |
+| --- | --- | --- |
+| `limit=5` | ids 167, 166, 165, 164, 154 — newest first | ids 23, 24, 25, 26, 27 — oldest first |
+| `cursor=<dateInt>` | returns messages **older** than it | returns messages **newer** than it |
+| `&sortOrder=newest` in the query | ignored | ignored |
+
+Two consequences for a client that mirrors a whole mailbox. Pagination arithmetic has to
+flip with a value it did not send and cannot override per request — the workaround for
+finding 11 becomes `newest dateInt - 1` instead of `oldest dateInt + 1`. And a
+"page from the newest until you recognise everything" scan, which is how this client catches
+the thread siblings `POST /sync` omits (finding 3), cannot be expressed at all: under
+`oldest` the newest messages are at the far end of the walk.
+
+The failure is silent in the worst way. Nothing errors; the enumeration just advances by one
+row per page instead of by a hundred, so a mailbox that took 500 requests takes 50,000 and
+looks like a slow server.
+
+**Suggestion:** accept `sortOrder` as a query parameter on `GET /api/messages`, as
+`POST /sync` already does in its body. It is one line in the controller and it would let a
+client ask for what it needs without touching a user-visible preference.
+
 ---
 
 ## Things that are right, and worth saying
@@ -180,3 +212,44 @@ being politer — it is already inside the concurrency budget — and at 1.4 s p
   handleable state rather than an empty list.
 - **`#[NoCSRFRequired]` on the avatar and proxy endpoints** makes them usable with app-password
   auth, which is what makes avatars and image unblocking work at all.
+
+---
+
+## 14. `TransformImageSrc` rewrites `<img>` and not CSS, so `@import` survives sanitisation
+
+**Found by:** WS-09, rendering the recorded body.
+
+`lib/Service/HtmlPurify/TransformImageSrc.php` replaces every remote `<img src>` with the
+blocked placeholder and stashes the original in `data-original-src`. HTMLPurifier keeps
+`<style>` blocks, and nothing in the chain touches the URLs inside them. The recorded body
+`message-html-plain.html` — a real marketing email, nine images blocked, a 1×1 tracking
+pixel neutralised — opens its `<style>` with:
+
+```css
+@import url(https://static-forms.klaviyo.com/fonts/api/v1/U45QAK/custom_fonts.css);
+```
+
+A browser rendering that fragment fetches it. It is a fourth host, it is not blocked, and it
+is a request that tells the sender's font CDN when the message was opened, from where. The
+web client renders the fragment in an iframe with a CSP, which may or may not stop it
+depending on the policy; a native client with no CSP has nothing in the way.
+
+**What we do:** delete every `@import` and rewrite every `url(…)` through the same
+allowlist as `<img>` ([ADR-0039](../decisions/0039-a-rendered-message-holds-only-urls-we-would-fetch.md)).
+Messages lose web fonts and CSS background images that the server would have proxied
+happily.
+
+**Suggestion:** extend the transformation to CSS `url()` and `@import`, either by dropping
+them or by routing them through `/proxy` the way images go. The proxy already exists and
+already signs its URLs; this is the same treatment for the other half of the document.
+
+## 15. The 1×1 tracking pixel is genuinely unrecoverable, which is the right behaviour
+
+**Found by:** WS-09, on the same body.
+
+Nine of the ten images in the recorded body carry a `data-original-src`. The tenth —
+`width="1" height="1"`, no alt — carries none: the server replaced its `src` and kept
+nothing. So **Show images** cannot restore it, there is no client-side rule needed to keep
+it blocked, and a reader who unblocks a newsletter still does not confirm receipt to its
+tracker. Worth writing down because it looks like an inconsistency in the payload and it is
+a deliberate, load-bearing one.

@@ -61,14 +61,34 @@ POST /api/mailboxes/{id}/sync  {ids: [...250 ids...], init: false, sortOrder: "n
 
 newMessages      → upsert envelopes, enqueue bodies at the head of the backfill queue
 changedMessages  → upsert envelopes; flags, tags and preview text are the point
-vanishedMessages → delete locally (message, body, attachments, search rows)
+vanishedMessages → delete locally (message, body, attachments, search rows)*
 stats            → mailbox.unreadCount, totalCount
 ```
 
 Then, because of trap 4, **the tail scan**: fetch page 1 of
 `GET /api/messages?mailboxId=&view=singleton&limit=100` and walk pages until an entire page
 is already known. Thread siblings that `newMessages` omitted appear here. In the steady
-state this is one request that finds nothing new.
+state this is one request that finds nothing new. The stop condition is a whole page with
+nothing new in it, not the first id already known: the server orders by `sentAt` and one
+recognised message says nothing about the next.
+
+**The tail scan needs the account's sort order to be newest-first**, which is the server
+default and the value of `GET /api/preferences/sort-order` when nobody has set it. A user
+who chose oldest-first in the web client makes page 1 the *oldest* hundred and turns
+`cursor` into a lower bound, so "page from the newest" cannot be expressed at all. On such
+an account the scan is skipped and thread siblings wait for the deep reconcile, whose cursor
+flips to `newest dateInt - 1` and which still enumerates correctly.
+[ADR-0036](../decisions/0036-sort-order-decides-the-cursor.md).
+
+A mailbox with no mirrored rows sends no window at all and is carried by the tail scan
+alone. `{"ids": []}` is answered from `findAllIds` — the whole mailbox, unpaginated,
+measured — so the bounded, paged request is the one to make.
+
+\* `vanishedMessages` is scoped to the mailbox, measured: sending the inbox's sync an id
+that lives in Sent Items reports it vanished. So a message moved in the web client is
+"vanished from the source" here and "new" in the destination's own sync, under a **different**
+`databaseId` — an IMAP move is a delete and an append. Deleting the local row is therefore
+right, and the cost of a server-side move is one body re-fetched.
 
 Cadence:
 
@@ -83,7 +103,19 @@ Off entirely while offline; resumed on reconnect with an immediate pass.
 
 ### 2. Deep reconcile — weekly, and on demand
 
-Full enumeration per mailbox, exactly as stage 1 of the backfill, comparing ids:
+Full enumeration per mailbox, exactly as stage 1 of the backfill, comparing ids — and
+"exactly as stage 1" means with stage 1's cursor arithmetic, **`oldest dateInt + 1`**, not
+the oldest `dateInt` itself. The comparison is strict and `dateInt` is not unique: the live
+inbox has ids 44 and 45 both at 1778515439, and paging with the plain oldest value returns
+44 and skips 45 with a 200 and no visible gap
+([ADR-0030](../decisions/0030-stage-one-owns-its-cursor.md), trap 5 in
+[../reference/api-payloads.md](../reference/api-payloads.md)). A reconcile written to find
+missing mail that carried that blind spot would be worse than none: it would report the
+mirror complete while the hole it exists to find stayed open. One function owns the
+arithmetic, `SyncScheduler.nextCursor(after:sortOrder:)`, and both the tail scan and the
+reconcile call it.
+
+Comparing ids:
 
 ```
 server ids (paginated, view=singleton)  vs  local ids
@@ -141,7 +173,17 @@ A sync response and a local row disagree. Who wins:
 | Envelope differs, body already stored | Keep the body | Bodies are immutable in IMAP; only flags and tags change |
 
 That last one matters for cost: a `changedMessages` entry never invalidates a stored body.
-Re-fetching bodies on every sync would undo the entire point of the mirror.
+Re-fetching bodies on every sync would undo the entire point of the mirror. It needs no code
+either: `EnvelopeWrite` has no `bodyState` column (ADR-0023), so no sync response can tell
+the mirror it has lost a body.
+
+The mechanism is a read of `pendingOperation`, and until `NCMailStore` exposes a DAO that
+does it *inside* the sync write transaction, `SyncScheduler` reads the queue once either
+side of the write and repairs anything that changed in between. That is correct for the
+same reason the one-query version is — WS-06 writes the local row and the queue row in one
+transaction — and it is temporary by design:
+[ADR-0037](../decisions/0037-the-queue-is-read-twice-around-the-sync-write.md) names the DAO
+that replaces it.
 
 ## Errors
 
@@ -161,6 +203,13 @@ into a modal.
 ## Instrumentation
 
 Cheap counters, visible in a debug pane, because sync bugs are invisible without them:
-requests per cycle, envelopes written, bodies fetched, bytes down, queue depth, backoff
-state, last error per mailbox, and time since last successful sync per mailbox. WS-05
-owns them; WS-14 asserts on them in the fake-transport tests.
+requests per cycle, envelopes written, bodies enqueued, bytes down, backoff state, last
+error per mailbox, and time since last successful sync per mailbox. They are `SyncMetrics`
+and `MailboxSyncMetrics`, read from `SyncScheduler.metrics`; WS-14 asserts on them in the
+fake-transport tests.
+
+One of them is narrower than its name. **`envelopeBytesDown` counts the `rawJSON` each
+envelope carries, not the transfer size**, because `MailClient` hands back a decoded value
+and never the response length. It is the payload and within a few per cent of the body of
+the response. A byte-accurate figure needs `NCMailNet` to report it, which is a request in
+WS-05's report.

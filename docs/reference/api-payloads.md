@@ -18,7 +18,7 @@ The complete endpoint map — including everything v1 does not use — is
 [../../plan/API.md](../../plan/API.md). This document covers only what v1 touches, plus the
 traps.
 
-## Read this first: the five traps
+## Read this first: the six traps
 
 Each has already been designed around. They are collected here because each one costs a day
 if it is met in a debugger instead of a document.
@@ -56,6 +56,21 @@ pagination, with no error and no gap anyone can see. Send **`oldest dateInt + 1`
 the boundary message repeat; the upsert finds the row it already has through
 `(accountId, remoteId)`, so it costs nothing.
 [ADR-0030](../decisions/0030-stage-one-owns-its-cursor.md), and finding 11 in
+[../feedback/server-findings.md](../feedback/server-findings.md).
+
+**6. The user's `sort-order` preference decides what page one is and which way `cursor`
+points.** Added by WS-05, measured by setting the preference on the live server and putting
+it back. With `sort-order` unset or `newest`, page one of `GET /messages` is the newest 100
+and `cursor` is an exclusive **upper** bound (`dateInt <`). With it set to `oldest`, page one
+is the **oldest** 100 and `cursor` becomes an exclusive **lower** bound: `&cursor=1776198096`
+— the `dateInt` of the oldest message — returned the messages *newer* than it. There is no
+way to override it per request: `&sortOrder=newest` in the query is ignored, because
+`MessagesController::index` reads the preference and not the parameter.
+
+So a client that enumerates with `oldest dateInt + 1` (trap 5) walks forward by one row per
+page under `oldest`, and a "page from the newest until you recognise everything" scan cannot
+be expressed at all. The cursor has to flip to `newest dateInt - 1`, and the tail scan has to
+be skipped. [ADR-0036](../decisions/0036-sort-order-decides-the-cursor.md), and finding 13 in
 [../feedback/server-findings.md](../feedback/server-findings.md).
 
 And one more, cheaper but sharp: **`mailbox.id` is not an id.** It is
@@ -314,6 +329,23 @@ POST /api/mailboxes/{id}/sync
 Traps 2 and 3 above. Statuses: **200** fine; **202** with a `fail` envelope means
 `IncompleteSyncException` (still working, retry); **428** means the mailbox is not cached —
 re-send with `init: true` (`lib/Controller/MailboxesController.php:186`).
+
+Three more things WS-05 measured about this endpoint, none of them visible from the shape:
+
+- **`vanishedMessages` is scoped to the mailbox, not to the account.** Sending the inbox's
+  sync a message id that exists but lives in Sent Items reports that id vanished. So a
+  message moved in the web client looks like "gone from the source" plus "new in the
+  destination", which is what a mirror wants — but it means a local row is deleted and its
+  body re-fetched under the destination's new id, because an IMAP move is a delete and an
+  append and the server's `databaseId` changes with it.
+- **`POST /sync` refreshes the server's IMAP cache as a side effect.** A sync sent against a
+  95-message inbox came back with one `newMessages` entry, and the `GET /messages` that
+  followed then returned 96 where the identical call a second earlier had returned 95. The
+  enumeration endpoint reads the cache; the sync endpoint fills it.
+- **`{"ids": [], "init": false}` returns the whole mailbox** as `newMessages`, exactly as
+  `init: true` does — 96 of 96 on the test inbox. A client with nothing mirrored for a
+  mailbox must not send an empty window on the incremental path, because the response is
+  unpaginated.
 
 Neither 202 nor 428 could be provoked on the test server: a sync against a mailbox that had
 never been synced answered **200** with four empty arrays rather than 428. So the client

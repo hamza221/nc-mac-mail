@@ -128,7 +128,20 @@ page. Verified against the same pair:
 rather than the oldest `dateInt` seen.
 
 The deep reconcile in [sync-engine.md](sync-engine.md) is still what guarantees
-completeness, and WS-05 must use the same `+ 1` when it enumerates.
+completeness, and WS-05 uses the same `+ 1` when it enumerates —
+`SyncScheduler.nextCursor(after:sortOrder:)`, called by both the tail scan and the
+reconcile.
+
+**Both directions of that `+ 1` exist, and stage 1 only implements one of them.** The sort
+order that decides which way `cursor` points is a server-side *preference*, not a
+parameter: with `sort-order` set to `oldest`, page one of `GET /messages` is the oldest
+hundred and `cursor` becomes an exclusive lower bound, measured by WS-05 on the live server
+and written up in [ADR-0036](../decisions/0036-sort-order-decides-the-cursor.md). Stage 1 as
+written above starts with no cursor and always sends `oldest dateInt + 1`, so on an
+oldest-first account it advances by one row per page — 50,000 requests where 500 would do,
+with the "cursor did not advance" guard never firing because the cursor does advance. The
+fix is one call to `SyncScheduler.nextCursor(after:sortOrder:)` in `enumerate(_:)`; WS-05
+does not own `Mirror/**` and has left it as a request rather than changing it.
 
 Cost for a 50,000-message mailbox: 500 requests, each a database read on the server, a few
 minutes. This is the fast stage.
