@@ -59,6 +59,18 @@ old one stays.*
 | [0044](0044-the-queue-type-is-not-called-operationqueue.md) | The queue type is `MutationQueue`, not `OperationQueue` | Accepted |
 | [0045](0045-the-store-grows-the-queue-dao-and-the-readers.md) | `NCMailStore` grows the queue DAO and the four readers the views worked around | Accepted — supersedes 0038, 0042, 0043 |
 | [0046](0046-mailboxtree-takes-its-own-row-type.md) | `MailboxTree` takes its own row type, not `NCMailCore.Mailbox` | Accepted |
+| [0047](0047-the-account-row-starts-the-engine.md) | The account row starts the engine, not the Keychain entry | Accepted |
+| [0048](0048-one-footer-for-every-account.md) | The status footer adds every account's progress into one line | Accepted |
+| [0049](0049-the-arrow-keys-stay-with-the-list.md) | `↑` and `↓` stay with the list; every other shortcut is a menu item | Accepted |
+| [0050](0050-an-unavailable-action-says-why-in-the-menu.md) | An unavailable action says why in the menu, because a disabled button cannot | Accepted |
+| [0051](0051-triage-owns-its-undo-manager.md) | Triage owns its `UndoManager`, and undo is the inverse operation | Accepted |
+| [0052](0052-move-is-a-popover-because-a-menu-cannot-hold-a-field.md) | Move ▾ is a popover, because a menu cannot hold a filter field | Accepted |
+| [0053](0053-settings-builds-its-own-short-lived-coordinators.md) | Settings builds its own short-lived sync objects rather than reaching into `AccountEngine` | Accepted |
+| [0054](0054-the-passwords-are-read-off-the-main-thread.md) | Keychain attributes at launch, passwords off the main thread | Accepted |
+| [0055](0055-the-search-field-cannot-reach-the-fts5-grammar.md) | The search field cannot reach the FTS5 grammar | Accepted |
+| [0056](0056-search-results-are-flat-and-ranked.md) | Search results are a flat ranked list, whatever the list is set to | Accepted |
+| [0057](0057-search-borrows-the-message-list.md) | Search borrows the message list instead of drawing its own | Accepted, with one thing still owed |
+| [0058](0058-the-sidebar-opens-settings-through-userdefaults-and-a-selector.md) | The sidebar opens Settings through a `UserDefaults` key and an AppKit selector | Accepted |
 
 ## Which ones matter most
 

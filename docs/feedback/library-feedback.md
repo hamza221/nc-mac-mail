@@ -804,3 +804,143 @@ bitmap. Nothing to change; it is the sort of decision that is invisible until it
 ### Nothing new otherwise
 This pass was store queries and the two call sites above. No component was bent, and no icon
 was missing.
+
+## From WS-10 (triage actions, toolbar, keyboard)
+
+### `NCKeyboardShortcut` is the right shape, and it is the reason the shortcut table has one source
+**Workstream:** WS-10 · **Component:** `NCKeyboardShortcut`, `NCKeyboardShortcutGlyphs` · **Severity:** —
+
+One value renders as `⌘⇧F` and hands `.keyboardShortcut` a `KeyEquivalent`, so the key in the
+tooltip, the key in the menu bar and the key in the shortcut window come from the same
+`TriageAction.shortcut` and cannot drift. `accessibilityDescription(for:)` — "Command Shift
+F" — is the part that would have been forgotten if it had to be written per call site; the
+glyphs read as punctuation to VoiceOver and the shortcut window uses it on every row.
+
+The one thing it does not have is a `Set<NCKeyboardShortcut>` collision check. A table of
+thirteen keys wants to assert that no two of them are the same, and the test that does it
+here (`TriageCommandsTests.theTableMatchesTheSpecification`) compares rendered strings because
+that was shorter than making the type `Hashable` do it. It already is `Hashable`, so this is a
+note rather than a request.
+
+### `NCColorTokens` has no muted-text colour
+**Workstream:** WS-10 · **Component:** `NCColorTokens` · **Severity:** minor
+
+The "No folders match." line in the move popover wants the colour a Nextcloud client uses for
+secondary text — the web's `--color-text-maxcontrast`. `NCColorTokens` has `primary`,
+`primaryHover`, `primarySurface`, `onPrimary`, `onPrimarySurface`, the four status families,
+`favorite` and `highlight`, and nothing for text that should recede. The fallback is SwiftUI's
+`.secondary`, which is correct on macOS and is not a hard-coded colour, but it means one
+string in a Nextcloud-themed popover is coloured by the system rather than by the theme.
+
+Every empty state, caption and timestamp in this app will want the same token.
+
+### `.buttonStyle(.icon)` and a disabled control: the tooltip is unreachable
+**Workstream:** WS-10 · **Component:** `NCButtonStyle.icon` · **Severity:** —
+
+Not the library's fault — a disabled AppKit control does not track the pointer, so `.help` on
+a greyed-out button never appears. Recording it because `ui-components.md` recommends
+`NCButtonStyle.icon` "with `.help` tooltips carrying the shortcut" for the toolbar, and that
+advice is silently wrong for the disabled state. `accessibilityHint` still reaches VoiceOver.
+ADR-0050 has what this app does instead.
+
+### A menu cannot hold a text field, and the specification asked for one
+**Workstream:** WS-10 · **Component:** — (SwiftUI `Menu`) · **Severity:** —
+
+Nothing for `NextcloudUI` to fix. Noted here because the next person to read
+"`Menu` … with a filter field" in `ux-spec.md` will start where this workstream started.
+ADR-0052.
+
+## From the settings pass
+
+### `Form` and `NCNoteCard` composed with nothing to work around
+**Workstream:** WS-12 · **Component:** `NCNoteCard`, system `Form` · **Severity:** —
+
+`SettingsSections.md`'s claim that a wrapper would add nothing held up in a real settings
+pane with three tabs and a destructive-confirmation flow on every tab. `Form { Section { } }`
+plus `.formStyle(.grouped)` gave the grouped background, headers, footers and row separators
+with no fighting, and `NCNoteCard(.info) { }` slotted the "local copies only" and
+oldest-sort-order explanations in without a custom banner. Nothing here forced a numeric
+literal, a hard-coded colour, or a workaround.
+
+### No generic icon exists for a settings tab
+**Workstream:** WS-12 · **Component:** `MailSymbol` (app-owned, not the library) · **Severity:** —
+
+Not a `NextcloudUI` gap: the library's catalogue is Nextcloud- and mail-specific by design.
+`TabView`'s three tabs (General, Accounts, Storage) wanted a gear, a person and a disk glyph
+that nothing in `MailSymbol.swift` maps to, and adding a case is WS-13's file, not this one's.
+The tabs use plain text labels instead of asking for an icon mid-review; a `gear`,
+`accountOutline` and `harddisk` (or similar) case would be a small, reusable addition if
+another settings-shaped screen ever needs the same three.
+
+## From the app shell, wiring pass
+
+### `NCIcon` carried four more fallbacks without complaint
+**Workstream:** WS-13 · **Component:** `NCSymbol`, `NCIcon` · **Severity:** —
+
+`MailSymbol` grew four cases while wiring the columns: `image-off-outline` for the blocked
+content bar (WS-09 asked), and `cog-outline`, `account-outline` and `harddisk` for the
+settings tabs (WS-12 asked). Two of the four are in the catalogue already — `.cogOutline` and
+`.accountOutline` — and the other two resolve through `systemFallback`, which is the
+mechanism working as documented. The catalogue gaps worth generating next, in the order a
+mail client hits them: `inbox`, `send`, `paperclip`, `email-open-outline`, `sync`,
+`tag-outline`, `reply`, `archive-arrow-down-outline`, `file-document-outline`,
+`image-off-outline`, `harddisk`. Eleven of the app's seventeen icons are fallbacks today.
+
+### `NCTheme` has no slot for a window's column widths
+**Workstream:** WS-13 · **Component:** `NCTheme.metrics` · **Severity:** minor
+
+Not a request to add one. `NavigationSplitView`'s three breakpoints are the window's shape
+rather than a spacing token, so they live in the app as a private `ColumnWidth` enum and the
+`no hard-coded metrics` rule reads them as literals in a file it cannot distinguish from a
+padding. If `NCTheme.metrics` ever grows a `layout` group, "a column's min/ideal/max" is the
+first thing that would belong in it.
+
+## From WS-11 (local full-text search)
+
+### `NCHighlight` matches a substring; an FTS index matches terms
+**Workstream:** WS-11 · **Component:** `NCHighlight`, `NCHighlightText` · **Severity:** medium
+
+`NCHighlight.ranges(in:matching:)` trims the query and looks for that whole string inside the
+text (`Components/Highlight/NCHighlight.swift:26`). That is right for filtering a list of
+names, which is what the component was written for. It disagrees with a full-text index as
+soon as the query has two words in it.
+
+`hedgehog census` against this app's index is `"hedgehog"* AND "census"*`: two terms, either
+order, anywhere in the message. A row matching it can have "hedgehog" in the subject and
+"census" forty words into the preview, and `NCHighlight` highlights neither, because the
+literal string "hedgehog census" does not appear. The reader is shown a result with nothing
+marked and no clue why it is a result.
+
+**What would help:** an overload taking the terms rather than the query —
+`NCHighlight.ranges(in: text, matchingAny: ["hedgehog", "census"])` and a matching
+`NCHighlightText(_:matchingAny:)` — so a caller that has already split the query hands the
+pieces over instead of re-joining them into something that cannot match. Prefix semantics
+come free: each term is already matched as a substring, so a term is its own prefix.
+
+Everything else about the component is the right shape. `attributed(_:matching:background:)`
+being separate from the view is what lets the matching be tested without SwiftUI, the
+diacritic folding agrees with the schema's `remove_diacritics 2` without either side knowing
+about the other, and an empty query yielding no ranges is exactly what "highlight as you
+type" needs before the first character.
+
+Not used in the shipped app yet, for the ownership reason in
+[ADR-0057](../decisions/0057-search-borrows-the-message-list.md): the row that would call it
+belongs to WS-08.
+
+### There is no search field, and `.searchable` was the right answer anyway
+**Workstream:** WS-11 · **Component:** — · **Severity:** —
+
+`NextcloudUI` has no search-field component, and it should not grow one. `.searchable` puts
+the field in the window's toolbar where macOS users look for it, brings the scope control
+(`.searchScopes`), the clear button, Escape-to-clear and `.searchFocused` with it, and none
+of that is reimplementable at a component's level — the modifier needs the navigation
+container above it. A component would be a worse field in the wrong place.
+
+### The coverage footer is a `Text` and did not want a component
+**Workstream:** WS-11 · **Component:** `NCNoteCard` · **Severity:** —
+
+"Searching 31,204 of 48,902 downloaded messages." is one caption-sized line under the list.
+`NCNoteCard` was the nearest component and is too loud for it — it is a card with a border
+for something the reader is meant to stop at, and this is a footnote they are meant to
+absorb without stopping. A plain `Text` with `theme.metrics.spacing` was right, and nothing
+was bent to get there.
