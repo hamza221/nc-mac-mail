@@ -4,6 +4,18 @@
 import Network
 import OSLog
 
+/// What the current path allows, as three booleans.
+///
+/// The app's own type rather than `NCMailSync.MirrorConditions` so that `NCMailSync` stays
+/// imported in exactly one app file; `AccountEngine` converts. The three fields are the same
+/// three, because they are the three `NWPath` answers that change what the sync engine is
+/// allowed to do ([ADR-0031](../../docs/decisions/0031-conditions-pushed-power-read.md)).
+struct NetworkConditions: Equatable, Sendable {
+    var isOffline = false
+    var isExpensive = false
+    var isConstrained = false
+}
+
 /// The one `NWPathMonitor` in the app.
 ///
 /// It lives in the shell rather than in the sync engine so that the backfill, the sync
@@ -16,11 +28,16 @@ final class NetworkMonitor {
     private static let logger = Logger(subsystem: "com.nextcloud.mail.macos", category: "network")
 
     /// Calls `onChange` on every transition, on the main actor, since every observer
-    /// (`AppStatus`) lives there. `NWPathMonitor` itself calls back on `queue`.
-    func start(onChange: @escaping @MainActor (Bool) -> Void) {
+    /// (`AppStatus`, `AccountEngine`) lives there. `NWPathMonitor` itself calls back on
+    /// `queue`.
+    func start(onChange: @escaping @MainActor (NetworkConditions) -> Void) {
         monitor.pathUpdateHandler = { path in
-            let isOffline = path.status != .satisfied
-            Task { @MainActor in onChange(isOffline) }
+            let conditions = NetworkConditions(
+                isOffline: path.status != .satisfied,
+                isExpensive: path.isExpensive,
+                isConstrained: path.isConstrained
+            )
+            Task { @MainActor in onChange(conditions) }
         }
         monitor.start(queue: queue)
         Self.logger.debug("path monitor started")

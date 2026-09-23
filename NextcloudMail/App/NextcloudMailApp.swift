@@ -13,8 +13,9 @@ import SwiftUI
 /// blue for a frame before recolouring itself — see `Theme/ThemeCache.swift` for why that
 /// cache is `UserDefaults` rather than the `meta` table the brief first reached for.
 ///
-/// The `Commands` WS-10 populates attach here with `.commands { }` once
-/// `NextcloudMail/Commands/**` exists; there is nothing to populate yet.
+/// `MailCommands` is the app's one keyboard-shortcut table, and `KeyboardShortcutsWindow` is
+/// what Help ▸ Keyboard Shortcuts opens. Both take the same `TriageContext` the columns use,
+/// because a menu item and a toolbar button that act on different state are two bugs waiting.
 @main
 struct NextcloudMailApp: App {
     @State private var session: AppSession
@@ -26,13 +27,18 @@ struct NextcloudMailApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootSplitView()
+            RootSplitView(session: session)
                 .environment(session)
                 .ncTheme(session.theme)
                 .task { await session.start() }
         }
+        .commands {
+            MailCommands(context: session.triage)
+            SearchCommands(model: session.search)
+        }
+        KeyboardShortcutsWindow()
         Settings {
-            SettingsPlaceholder()
+            SettingsScene()
                 .environment(session)
         }
     }
@@ -52,13 +58,5 @@ struct NextcloudMailApp: App {
             }
             return inMemory
         }
-    }
-}
-
-/// WS-12 replaces this with the real `Settings` scene.
-private struct SettingsPlaceholder: View {
-    var body: some View {
-        Text("Settings")
-            .frame(minWidth: 360, minHeight: 200)
     }
 }

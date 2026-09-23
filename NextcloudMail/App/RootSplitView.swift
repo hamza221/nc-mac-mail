@@ -7,14 +7,19 @@ import SwiftUI
 
 /// `LoginView` before there is an account, three columns after.
 ///
-/// The columns are still WS-07/WS-08/WS-09's placeholders — this workstream owns the shell
-/// around them: the split view itself, its column-width restoration, the status footer, the
-/// sign-in gate, and the one 401 modal. Window size and the selected mailbox restore too, per
-/// [ux-spec.md](../../docs/product/ux-spec.md#window), but the second half of that has
-/// nothing to restore yet: see `AppSession.needsSignIn` and `NavigationState` for what exists
-/// today versus what WS-07/WS-08 wire in once the columns have real content.
+/// The shell owns the split view, the column-width restoration, the status footer, the
+/// sign-in gate and the one 401 modal. The contents of the three columns belong to WS-07,
+/// WS-08 and WS-09; what is here is the construction of their models, which all three need a
+/// `MailStore` for and none of them may open one themselves.
+///
+/// `session` is passed in rather than read from the environment because the two column models
+/// are `@State` built in `init`, so they survive a redraw instead of being rebuilt — and the
+/// store they take is not available to a `@State` initialiser through `@Environment`.
 struct RootSplitView: View {
-    @Environment(AppSession.self) private var session
+    private let session: AppSession
+
+    @State private var sidebar: SidebarStore
+    @State private var messageList: MessageListStore
 
     @SceneStorage("shell.sidebarWidth") private var sidebarWidth = ColumnWidth.sidebar.ideal
     @SceneStorage("shell.contentWidth") private var contentWidth = ColumnWidth.content.ideal
@@ -22,25 +27,37 @@ struct RootSplitView: View {
     @State private var isShowingExpiredAlert = false
     @State private var isPresentingReauth = false
 
+    init(session: AppSession) {
+        self.session = session
+        _sidebar = State(initialValue: SidebarStore(store: session.store))
+        _messageList = State(initialValue: MessageListStore(store: session.store))
+    }
+
     var body: some View {
         if session.needsSignIn {
             LoginView(onSignedIn: session.signedIn)
         } else {
             NavigationSplitView {
-                PlaceholderColumn(title: "Mailboxes")
+                SidebarView(model: sidebar, navigation: session.navigation)
                     .navigationSplitViewColumnWidth(
                         min: ColumnWidth.sidebar.min, ideal: sidebarWidth, max: ColumnWidth.sidebar.max
                     )
                     .trackingWidth($sidebarWidth)
                     .safeAreaInset(edge: .bottom) { StatusFooter(status: session.status) }
             } content: {
-                PlaceholderColumn(title: "Messages")
-                    .navigationSplitViewColumnWidth(
-                        min: ColumnWidth.content.min, ideal: contentWidth, max: ColumnWidth.content.max
-                    )
-                    .trackingWidth($contentWidth)
+                SearchableMessageList(
+                    model: session.search,
+                    list: messageList,
+                    navigation: session.navigation,
+                    isOffline: session.status.isOffline
+                )
+                .navigationSplitViewColumnWidth(
+                    min: ColumnWidth.content.min, ideal: contentWidth, max: ColumnWidth.content.max
+                )
+                .trackingWidth($contentWidth)
+                .task { session.triage.listStore = messageList }
             } detail: {
-                PlaceholderColumn(title: "Message")
+                detailColumn
                     .navigationSplitViewColumnWidth(min: ColumnWidth.detail.min, ideal: ColumnWidth.detail.ideal)
             }
             .onChange(of: session.expiredAccount) { _, newValue in
@@ -57,6 +74,26 @@ struct RootSplitView: View {
                     isPresentingReauth = false
                 })
             }
+        }
+    }
+
+    /// The message, from the account the selected mailbox belongs to.
+    ///
+    /// `.id(accountId)` is what makes a second account correct rather than nearly correct:
+    /// `MessageView` builds its model from `services` once, in `init`, so switching to a
+    /// mailbox on another server has to rebuild the view or the WebView would go on fetching
+    /// assets with the first account's client.
+    @ViewBuilder
+    private var detailColumn: some View {
+        let accountId = messageList.mailbox?.accountId
+        if let services = session.messageServices(accountId: accountId) {
+            MessageView(
+                services: services,
+                messageId: messageList.focusedMessageId,
+                isOffline: session.status.isOffline,
+                select: { messageList.selection = [$0] }
+            )
+            .id(accountId)
         }
     }
 }
@@ -122,18 +159,5 @@ private struct StatusFooter: View {
         case .none:
             EmptyView()
         }
-    }
-}
-
-private struct PlaceholderColumn: View {
-    @Environment(\.ncTheme) private var theme
-
-    let title: String
-
-    var body: some View {
-        Text(title)
-            .font(.headline)
-            .foregroundStyle(theme.colors.primary)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

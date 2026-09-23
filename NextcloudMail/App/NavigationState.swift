@@ -8,17 +8,20 @@ import SwiftUI
 /// [ux-spec.md](../../docs/product/ux-spec.md#window) is explicit that this is restoration,
 /// not a preference.
 ///
-/// `NextcloudMail/Views/Sidebar` (WS-07) and `NextcloudMail/Views/MessageList` (WS-08) read
-/// and write these once they exist; this workstream defines the `meta` keys and the
-/// persistence so neither has to invent its own. There is nothing to select yet — both
-/// columns are still placeholders — so `load()` has something to populate but no view reads
-/// it back today.
+/// `SidebarView` writes the selection, `MessageListView` reads it, and ``mailboxDidChange``
+/// carries it on to every `SyncScheduler`: the mailbox being read syncs on the shorter
+/// foreground interval and is never deep-reconciled underneath the scroll view.
 @MainActor
 @Observable
 final class NavigationState {
     private(set) var selectedAccountID: String?
     private(set) var selectedMailboxID: Int64?
     private(set) var listView: ListView = .threaded
+
+    /// Called with every selection, including the one `load()` restores. `AppSession` sets it
+    /// so that the sync engine hears about a selection without a view having to reach for a
+    /// scheduler.
+    var mailboxDidChange: (@MainActor (Int64?) -> Void)?
 
     private let store: MailStore
 
@@ -40,6 +43,7 @@ final class NavigationState {
         if let raw = try? await store.metaValue(forKey: MetaKey.listView), let value = ListView(rawValue: raw) {
             listView = value
         }
+        mailboxDidChange?(selectedMailboxID)
     }
 
     func selectAccount(_ id: String?) {
@@ -49,6 +53,7 @@ final class NavigationState {
 
     func selectMailbox(_ id: Int64?) {
         selectedMailboxID = id
+        mailboxDidChange?(id)
         Task { try? await store.setMetaValue(id.map(String.init), forKey: MetaKey.mailbox) }
     }
 

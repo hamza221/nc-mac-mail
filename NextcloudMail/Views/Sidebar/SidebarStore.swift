@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Hamza Mahjoubi
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import AppKit
 import Foundation
 import NCMailCore
 import NCMailStore
@@ -149,20 +150,38 @@ final class SidebarStore {
     // account rows exist only once something calls
     // `MirrorCoordinator.discoverAccounts(store:client:identity:)` per Keychain entry, which
     // is not this workstream's file to add (see the report). "Mark all as read" is a triage
-    // action and belongs to WS-10's `Actions/**`; "Storage…" belongs to WS-12's settings
-    // panel. Logging rather than silently doing nothing means a click is visible in the
-    // console during manual testing instead of looking like a dead button.
+    // action and belongs to WS-10's `Actions/**`. Logging rather than silently doing nothing
+    // means a click is visible in the console during manual testing instead of looking like
+    // a dead button.
+    //
+    // `showStorage(_:)` and `signOut(_:)` are the two WS-12's brief names as its own, even
+    // though this file is WS-07's. They open the real Settings window WS-12 built, on the
+    // tab that has something to do about the account: Storage's panel, or the Accounts
+    // tab's confirmed Sign Out button. Neither performs the destructive action itself. The
+    // sidebar is not where a sign-out gets confirmed.
 
     func refreshAccount(_ account: AccountRecord) {
         Self.logger.info("refresh requested for account \(account.id, privacy: .public); no SyncScheduler wired yet")
     }
 
     func showStorage(_ account: AccountRecord) {
-        Self.logger.info("storage panel requested for account \(account.id, privacy: .public); WS-12 owns it")
+        Self.logger.info("storage panel requested for account \(account.id, privacy: .public)")
+        openSettings(on: .storage)
     }
 
     func signOut(_ account: AccountRecord) {
-        Self.logger.info("sign-out requested for account \(account.id, privacy: .public); WS-12 owns it")
+        Self.logger.info("sign-out requested for account \(account.id, privacy: .public)")
+        openSettings(on: .accounts)
+    }
+
+    /// `SettingsTab` is `NextcloudMail/Views/Settings/SettingsScene.swift`'s type, in the same
+    /// app target, so no import is needed to name it here, only the courtesy of saying so.
+    /// There is no `@Environment(\.openSettings)` to reach for: `SidebarStore` is a plain
+    /// `@Observable`, not a `View`. This goes straight to the AppKit selector the
+    /// "Settings…" menu item itself sends.
+    private func openSettings(on tab: SettingsTab) {
+        UserDefaults.standard.set(tab.rawValue, forKey: SettingsTab.preferredTabKey)
+        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
     }
 
     func refreshMailbox(accountId: Int64, mailboxId: Int64) {

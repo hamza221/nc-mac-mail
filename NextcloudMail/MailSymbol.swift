@@ -26,6 +26,10 @@ enum MailSymbol: CaseIterable {
     case sync
     case tag
     case answered
+    case blockedImages
+    case settings
+    case account
+    case storage
 
     /// The symbol to hand a library component whose icon slot takes one directly, such as
     /// `NCNavigationItem(icon:)`. `NCIcon` already falls back to `systemFallback` for any
@@ -56,6 +60,14 @@ enum MailSymbol: CaseIterable {
         case .tag: NCSymbol(asset: "tag-outline", systemFallback: "tag")
         // MDI `reply` — not in the catalogue.
         case .answered: NCSymbol(asset: "reply", systemFallback: "arrowshape.turn.up.left")
+        // MDI `image-off-outline` — not in the catalogue. Asked for by WS-09, whose blocked
+        // content bar leans on `NCNoteCard(.warning)`'s alert glyph instead; an alert is what
+        // a warning card says about itself, not what was blocked.
+        case .blockedImages: NCSymbol(asset: "image-off-outline", systemFallback: "photo.badge.exclamationmark")
+        case .settings: .cogOutline
+        case .account: .accountOutline
+        // MDI `harddisk` — not in the catalogue.
+        case .storage: NCSymbol(asset: "harddisk", systemFallback: "internaldrive")
         }
     }
 
@@ -76,6 +88,10 @@ enum MailSymbol: CaseIterable {
         case .sync: .text("Syncing")
         case .tag: .text("Tag")
         case .answered: .text("Replied")
+        case .blockedImages: .text("Remote content blocked")
+        case .settings: .text("Settings")
+        case .account: .text("Account")
+        case .storage: .text("Storage")
         }
     }
 
