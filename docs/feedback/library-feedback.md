@@ -5,13 +5,22 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 # NextcloudUI feedback
 
-*The deliverable `hamza221/nextcloud-swiftui`'s README is waiting for: "Build a real Mail
-client against it, and freeze the API on what that finds."*
+*`hamza221/nextcloud-swiftui`'s README is waiting for this: "Build a real Mail client
+against it, and freeze the API on what that finds."*
 
-**Append as you go.** Every workstream adds what it found, or says "nothing new" in its
-report and means it. WS-15 curates this into something a maintainer can act on.
+Fifteen workstreams built a native macOS Nextcloud Mail client against `NextcloudUI` and
+appended what they hit, each without being able to see the others' entries. WS-15 curated
+them into this document on 2026-09-23.
 
-Entry format — an entry without a call site is an opinion, not evidence:
+Nothing here was invented at curation. Every finding was written by the workstream that hit
+it. What curation did was merge the same finding seen twice into one entry that says so,
+re-check every call site against the tree as it stands, mark the entries that later work
+resolved, and put the items a maintainer can act on first.
+
+Versions: `NextcloudUI` at [`1e753cb`](https://github.com/hamza221/nextcloud-swiftui), Xcode
+26.6 (17F113), Swift 6.3.3, macOS 26.
+
+Entry format. An entry without a call site is an opinion, not evidence:
 
 ```markdown
 ### Short title
@@ -20,113 +29,50 @@ Entry format — an entry without a call site is an opinion, not evidence:
 What happened. What we did instead. What would have been better.
 ```
 
----
+## How to read this
 
-## Status
+**Part 1** is for the `NextcloudUI` maintainer. It is ordered by what would change the API.
 
-Seeded from the design pass, before implementation. Everything below is either a fact about
-the library as it stands or a question the design could not answer from the outside — the
-answers arrive as workstreams land.
+**Part 2** is everything else this file collected while it was the only append-only place in
+the project: `NCMailStore` (this repository's own package), GRDB, SQLite, SwiftPM and the
+Swift toolchain. It is kept because it is true and somebody will want it, not because a
+library maintainer needs to read it.
 
-## Missing icons
+**Part 3** records what each workstream contributed, so "every workstream is represented" is
+checkable rather than claimed.
 
-**Workstream:** design pass · **Component:** `NCSymbolCatalog` · **Severity:** friction
-**Where:** `Sources/NextcloudIcons/NCSymbolCatalog.swift` (91 symbols)
-
-A mail client's chrome needs roughly ten Material Design Icons the catalogue does not carry:
-
-| Needed for | MDI name |
-| --- | --- |
-| Inbox mailbox | `inbox` |
-| Sent mailbox | `send` |
-| Drafts mailbox | `file-document-outline` |
-| Archive action and mailbox | `archive-arrow-down-outline` |
-| Attachment indicator | `paperclip` |
-| Mark unread | `email-open-outline` |
-| Refresh / syncing | `sync` |
-| Tags | `tag-outline` |
-| Answered indicator | `reply` |
-| Snooze (v1.1) | `alarm` |
-
-Present and used already: `email`, `folder`/`folderOutline`, `star`/`starOutline`,
-`delete`/`deleteOutline`/`trashCanOutline`, `alertOctagonOutline` (junk), `magnify`,
-`clockOutline`, `download`/`trayArrowDown`, `openInNew`, `dotsHorizontal`, `chevron*`.
-
-The client substitutes SF Symbols behind a single `MailSymbol` type (WS-13), so the swap is
-mechanical when the catalogue grows. This is the most concrete input available to the
-roadmap's open question, "which ~150 icons to curate": the Mail floor is these ten on top
-of the 91.
-
-## Composition gaps
-
-### A list row has one leading slot; a mail row wants two
-**Workstream:** design pass · **Component:** `NCListItem` · **Severity:** friction
-**Where:** `Sources/NextcloudUI/Components/ListItem/NCListItem.swift:79`
-
-A mail row is: [unread dot | star | attachment clip] [avatar] [sender / subject] [date /
-count]. `NCListItem` gives one `leading` slot, so the accessory column goes inside it as an
-`HStack` and loses the component's alignment and spacing discipline. Rows with and without
-accessories then drift unless the app re-imposes a fixed width itself.
-
-Either a second slot, or a documented pattern for the accessory column. Mail, Files
-(sync badges) and Talk (unread/mention markers) all want the same shape, which suggests it
-belongs in the library rather than in three apps.
-
-### There is no message-header block
-**Workstream:** design pass · **Severity:** polish
-
-Sender, recipients, date and an actions row is a shape every mail client has, and the app
-builds it from `NCUserBubble` + `NCChip` + `Text`. Worth asking whether it generalises
-(Talk has a message header too, Files has a file header) or whether it is Mail-specific and
-belongs here.
-
-## Questions the showcase cannot answer
-
-Each of these is answered by a workstream, and the answer belongs here either way.
-
-1. **`NCListItem` at 50,000 rows** (WS-08) — does the optional-slot `HStack` stay cheap in a
-   `List`, or does a mail list need a cheaper row?
-2. **Unread weight versus selection tint** (WS-08) — does `.fontWeight(.semibold)` still
-   read as unread when the row is selected and tinted by the brand colour?
-3. **Brand tint in a three-column split view** (WS-13) — `.ncTheme` sets `.tint` globally,
-   overriding the user's macOS accent. Right for a mail client, or is
-   `NCAccentPolicy.brandSurfacesOnly` the better default here?
-4. **MDI glyphs in a signed Release build** (WS-13) — `NCIcon.rendersBundledAssets` is known
-   true under Xcode run. Nobody has checked a sandboxed, hardened, signed build, and
-   [ADR-0001](../decisions/0001-xcode-project-in-git.md) assumes it.
-5. **`NCRelativeDateFormatter` for a mail list** (WS-08) — is the short form right ("3m",
-   "Yesterday", "12 Mar"), or does a mail list want its own rules?
-6. **`NCAvatar`'s loader and a database-backed cache** (WS-08) — the loader signature
-   assumes fetching. Ours reads the mirror first. Does the library's own `NCImageCache`
-   duplicate work, or compose cleanly?
-
-## Things that worked
-
-Kept deliberately: a feedback document that only complains is not evidence.
-
-- **The loader closure instead of `AsyncImage`.** The library bans `AsyncImage` because it
-  uses `URLSession.shared` and Nextcloud avatars need auth. That is exactly right, and it
-  is what lets this app serve avatars from the mirror with no library change — the
-  component never knows the difference.
-- **Non-optional `NCAccessibilityLabel`.** Unlabelled construction does not compile, which
-  means the app cannot accumulate unlabelled controls the way it otherwise would.
-- **`NCTheme` reassignment recolours the running app.** Exactly one line after the
-  capabilities call.
-- **Not building `NCEmptyContent` and `NCSettingsSection`.** `ContentUnavailableView` and
-  `Form(.grouped)` are what this app uses, and the DocC notes explaining why are the right
-  kind of documentation.
-- **The `MailScreenDemo` in the showcase** is a genuinely useful reference composition — it
-  is what the sidebar and list briefs point at.
+Findings about the Mail server are in [server-findings.md](server-findings.md). Issue text
+ready for a human to post is in [upstream-issues.md](upstream-issues.md).
 
 ---
 
-## From WS-00 (project skeleton)
+# Part 1: NextcloudUI
 
-### `.treatAllWarnings(as: .error)` makes the library unbuildable from Xcode
+## What to change before freezing the API
+
+Three things, in the order a maintainer should take them.
+
+1. **`NCNoteCard` cannot hold a button.** It combines its children into one accessibility
+   element, so a control inside it is unreachable to VoiceOver. A banner with a "Show
+   images" or a "Retry" button is the ordinary case, not an unusual one. See "The two
+   accessibility findings pull in opposite directions".
+2. **`NCListItem` gives a row one leading slot, and a list row wants an accessory column
+   in front of the avatar.** Predicted by the design pass and then confirmed by WS-08 with
+   twenty lines of the library's own alignment logic rewritten at the call site. Files and
+   Talk want the same shape. See "A list row needs an accessory column".
+3. **Eleven Material Design Icons.** Eleven of this app's seventeen icons resolve to an SF
+   Symbol fallback today. The list and the order to generate them in are in "Missing icons".
+
+One more has already been fixed, and it is the most useful thing in this document.
+
+## The one finding that completed the round trip
+
+### `.treatAllWarnings(as: .error)` made the library unbuildable from Xcode
 **Workstream:** WS-00 · **Component:** `Package.swift` · **Severity:** blocker
 **Where:** `Package.swift:19` (`sharedSwiftSettings`), every target
+**Status: resolved upstream, 2026-09-22.**
 
-Any Xcode project that depends on `NextcloudUI` fails to build, before compiling a line of
+Any Xcode project that depended on `NextcloudUI` failed to build before compiling a line of
 its own code:
 
 ```
@@ -135,459 +81,198 @@ error: Conflicting options (in target 'NextcloudDesign' from project 'nextcloud-
 ** BUILD FAILED **
 ```
 
-Xcode gives every package target `-suppress-warnings`, so a dependency's warnings stay out
+Xcode hands every package target `-suppress-warnings`, so a dependency's warnings stay out
 of the consumer's issue navigator. `.treatAllWarnings(as: .error)` produces
-`-warnings-as-errors`. swiftc rejects the pair. Xcode 26.6 (17F113), Swift 6.3.3.
-
-What makes it a blocker rather than friction is where the override can go. `xcodebuild
-SUPPRESS_WARNINGS=NO` on the command line works, because a command-line setting reaches the
-synthesised package projects. `SUPPRESS_WARNINGS = NO` in the consumer's `.xcodeproj` does
-not — checked at project level, no effect. So there is no fix a consumer can commit, and
-**Cmd-B in the Xcode GUI cannot be made to work at all** while the setting is in the
-manifest. This app builds only through `make build-app`, which adds the override.
-
-The library's own CI never sees it: it runs `swift build`, where SwiftPM applies no
-suppression to the root package.
-
-Suggested fix: drop `.treatAllWarnings(as: .error)` from the manifest and pass
-`-Xswiftc -warnings-as-errors` from the `Makefile` and CI instead. SwiftPM applies
-`-Xswiftc` to the root package's own targets and not to its dependencies, so the coverage is
-identical and consumers are unaffected. That is what this repo now does; ADR-0016 has the
-measurements. The library also has a `Showcase/**/*.pbxproj` glob in its `REUSE.toml` with
-no project behind it — the moment that project exists, its own build will hit this.
-
-**Resolved, 2026-09-22.** Fixed upstream exactly as suggested and merged as
-[`1e753cb`](https://github.com/hamza221/nextcloud-swiftui/pull/2): the manifest no longer
-sets `.treatAllWarnings(as: .error)`, and the `Makefile` and CI pass
-`-Xswiftc -warnings-as-errors` instead. Verified from this side against the merged commit —
-bare `xcodebuild -scheme NextcloudMail build` succeeds with no override, so **the Xcode GUI
-builds this project**. The `Showcase/**/*.pbxproj` glob was left alone deliberately, to
-keep the fix to one thing; it is still dead and still waiting for the project behind it.
-
-Worth recording as process rather than as a bug: this is the first piece of feedback from
-this project to complete the round trip. WS-00 hit it on day one, could not work around it
-from the consumer side, wrote it down here instead of absorbing it, and the fix came back.
-The reason it survived the library's own CI is the part worth keeping — `swift build` never
-passes `-suppress-warnings`, and neither does `xcodebuild` when the package is the *root*.
-The flag only appears when the package is a dependency of another project's target, which
-no job in the library exercised. A library cannot catch this class of bug by building
-itself.
-
-### `.ncTheme(.nextcloud)` at a scene root is one line and it works
-**Workstream:** WS-00 · **Component:** `NCTheme` · **Severity:** polish
-**Where:** `NextcloudMail/App/NextcloudMailApp.swift:19`
-
-The skeleton's three columns wear the brand colour with a single modifier on the
-`WindowGroup` content and `@Environment(\.ncTheme)` in the column view. No setup, no
-injection, no `@StateObject`. `NCDynamicColor` conforming to `ShapeStyle` means
-`.foregroundStyle(theme.colors.primary)` composes with no unwrapping. Nothing to report
-beyond that it was uneventful, which is the point of a token system.
-
-### Icons compile under Xcode, as ADR-0001 assumed
-**Workstream:** WS-00 · **Component:** `NextcloudIcons` · **Severity:** —
-**Where:** build log, target `nextcloud-ui-swift_NextcloudIcons`
-
-`actool` runs and emplaces `Assets.car` in the resource bundle:
-`note: Emplaced .../nextcloud-ui-swift_NextcloudIcons.bundle/Contents/Resources/Assets.car`.
-That is the premise of [ADR-0001](../decisions/0001-xcode-project-in-git.md) confirmed for
-an unsigned debug build. Question 4 in the list above — whether the glyphs survive a
-sandboxed, hardened, signed Release build — is still open and still WS-13's.
-
----
-
-## From WS-01 (login flow, Keychain, session)
-
-Nothing new. `NCButtonStyle` (`.primary`, `.tertiary`), `NCNoteCard(.error, title:, message:)`
-and `NCProgressStyle.normal` covered `LoginView` exactly as
-[ui-components.md](../reference/ui-components.md) describes them — a server field, a
-Continue button, a waiting state and an error banner needed no workaround and no custom
-view. `.ncAccessibilityLabel(.text(...))` labelled the plain `TextField` and `ProgressView`
-this screen uses that are not library components themselves, which is not something the
-component map called out but worked exactly like the library's own controls.
-
-One thing worth recording precisely because it is not a complaint: `LoginView` is not yet
-reachable from the running app. `RootSplitView` is still WS-00's three-column placeholder,
-and wiring a sign-in screen in ahead of it belongs to WS-13, not to this workstream — see
-"For the next workstream" in the WS-01 report.
-
----
-
-## From WS-02 (HTTP client, endpoints, models, decoding)
-
-Nothing new about `NextcloudUI`: this workstream builds no view and imports no library
-component. What it has instead is feedback about the packaging of this repository's own
-test-support package and about the Mail server's JSON, so it is recorded here rather than
-lost.
-
-### `NCMailTestSupport` cannot be used by the tests it was created for
-**Workstream:** WS-02 · **Component:** `Packages/NCMailTestSupport/Package.swift` · **Severity:** blocking, worked around
-
-The package depends on `NCMailCore`, `NCMailNet` and `NCMailStore`, so none of their test
-targets can depend on it: SwiftPM rejects the cycle. `Bundle.module`, which
-[testing-strategy.md](../delivery/testing-strategy.md) tells every package to load fixtures
-through, is therefore reachable only from `NCMailTestSupportTests`.
-
-WS-02 works around it by resolving the fixture directory from `#filePath`
-([ADR-0022](../decisions/0022-fixtures-by-path-not-bundle.md)). The fix is to make the
-fixture-vending part a leaf: either drop the three dependencies from `NCMailTestSupport`, or
-add a `NCMailFixtures` target inside it with no dependencies and let `FakeTransport` depend
-on that. WS-14 and WS-00 own the change between them.
-
-### `swift format` disagrees with `#expect` about trailing closures
-**Workstream:** WS-02 · **Component:** toolchain, Swift Testing · **Severity:** polish
-
-`#expect(list.allSatisfy(\.isSelectable))` does not compile: the macro expands the key path
-into a position where the `rethrows` overload is selected and the call is not marked `try`.
-`#expect(list.allSatisfy { $0.isSelectable })` is fine. Worth knowing before the third time
-it happens.
-
-`Testing.Tag` also collides with this project's `Tag` model, so a test that names the model
-in a type annotation has to qualify it as `NCMailCore.Tag`.
-
-### The Mail server's JSON needs a lenient decoder in four specific places
-**Workstream:** WS-02 · **Component:** `nextcloud/mail` 5.12.0-rc.1 · **Severity:** upstream
-
-Each is documented and corrected in
-[api-payloads.md](../reference/api-payloads.md), and each is a decoding failure for anyone
-who writes the obvious `Codable` conformance. An empty `tags` dictionary serialises as `[]`
-rather than `{}`; `mentionsMe` is `0`/`1` rather than a boolean; `specialRole` is the
-integer `0` when there is no special use; and an unknown id answers 403 with a body of `[]`
-rather than the documented error envelope. The first two are PHP's array/object ambiguity
-reaching the wire, and both would be fixed upstream by casting at the point of
-serialisation. WS-15 should decide whether any of it is worth an issue against
-`nextcloud/mail`.
-
----
-
-## From WS-03 (GRDB stack, schema, migrations, DAOs)
-
-Nothing new about `NextcloudUI`. This workstream is `NCMailStore`, which by
-[ADR-0013](../decisions/0013-module-layout.md) must not import SwiftUI at all, so it never
-touched a component. The three things worth writing down are about GRDB and SQLite, and the
-first two cost a working day between them.
-
-### SQLite's update hook skips `WITHOUT ROWID` tables, so `ValueObservation` never fires
-**Workstream:** WS-03 · **Component:** GRDB `ValueObservation` · **Severity:** trap
-**Where:** `docs/decisions/0025-rowid-tables-for-anything-observed.md`
-
-`ValueObservation` is built on `sqlite3_update_hook`, and
-[SQLite does not call that hook for `WITHOUT ROWID` tables](https://www.sqlite.org/c3ref/update_hook.html).
-An observation of such a table delivers its first value and then waits forever. No error, no
-warning, no timeout — the first symptom was a test that hung. Four tables in `schema.sql` were
-`WITHOUT ROWID` and three of them were things a view would want to watch.
-
-Worth an upstream note: GRDB could detect this at observation start, when it already resolves
-the tracked region against the schema, and trap with "cannot observe WITHOUT ROWID table
-`avatar`". The information is all there and the failure mode is silence.
-
-### FTS5 virtual tables reject `ON CONFLICT`, so there is no upsert
-**Workstream:** WS-03 · **Component:** SQLite FTS5 · **Severity:** friction
-
-`messageSearch` is written from two places: an envelope supplies subject, preview and people,
-a body supplies the text. Neither may clobber the other's columns, and there is no
-`INSERT … ON CONFLICT DO UPDATE` on a virtual table to express that. The shape that works is
-`UPDATE …; if changesCount == 0 { INSERT … }`, which reads like a mistake until you know why.
-It is in `SearchIndexWriter` with a comment, and WS-11 will read that file before it writes a
-query.
-
-### An index helps only if the predicate lets the planner choose it
-**Workstream:** WS-03 · **Component:** SQLite query planner · **Severity:** —
-
-The threaded list took 196 ms for its first fifty rows out of fifty thousand, against 0.5 ms
-for the flat one. Nothing was missing: `idxMessageThread` existed and the plan used it for two
-of the three subqueries. The unread count was written
-`count(*) … WHERE mailboxId = ? AND threadRootId = ? AND isSeen = 0`, and that third term made
-`idxMessageMailboxSeen` look attractive, so the planner took it — matching every unread message
-in the mailbox and filtering by thread afterwards. Rewriting it as
-`sum(CASE WHEN isSeen THEN 0 ELSE 1 END)` over the same two-column predicate took it to 0.8 ms.
-
-Recorded here because the lesson generalises past this query: `EXPLAIN QUERY PLAN` saying
-"uses an index" is not the assertion worth making. Which index, and over how many rows, is.
-
----
-
-## From WS-13 (app shell, theme, restoration, status)
-
-### Question 4 answered: MDI glyphs do survive a signed, sandboxed Release build
-**Workstream:** WS-13 · **Component:** `NCIcon.rendersBundledAssets` · **Severity:** —
-
-`xcodebuild -configuration Release SUPPRESS_WARNINGS=NO build` produces a signed, hardened
-`NextcloudMail.app`
-(`codesign -dv` reports `flags=0x10002(adhoc,runtime)`), and its
-`nextcloud-ui-swift_NextcloudIcons.bundle/Contents/Resources/Assets.car` still carries every
-generated symbol — `assetutil --info` lists 1,566 `"Name"` entries in that one catalogue,
-including the four `MailSymbol` cases (`.junk`, `.trash`, `.folder`, `.star`) that resolve to
-a bundled asset rather than an SF Symbol fallback. [ADR-0001](../decisions/0001-xcode-project-in-git.md)'s
-assumption holds for Release as well as Debug. Not run under an actual `open`ed window in
-this environment — no GUI, no `screencapture` — so this is evidence from the build product,
-not a screenshot.
-
-### Question 3 answered, provisionally: `.ncTheme` setting `.tint` globally reads right for a
-mail client, with one open edge
-**Workstream:** WS-13 · **Component:** `NCAccentPolicy` · **Severity:** —
-
-Nothing in the shell fought the brand tint driving selection and focus — a `NavigationSplitView`
-with three placeholder columns has no competing accent, so this is not yet tested against a
-real message list's selection highlight (WS-08's question, not this workstream's). Kept at
-the default `.instance` policy; no evidence surfaced that a mail client specifically wants
-`.brandSurfacesOnly`.
-
-### `MailSymbol` was built exactly to the design pass's list
-**Workstream:** WS-13 · **Component:** `NCSymbolCatalog` · **Severity:** —
-**Where:** `NextcloudMail/MailSymbol.swift`
-
-The nine missing-icon cases (`inbox`, `sent`, `drafts`, `archive`, `attachment`, `unread`,
-`sync`, `tag`, `answered`) and the four already-catalogued ones (`junk`, `trash`, `folder`,
-`star`) match the "Missing icons" table above one for one. Nothing new to add; recorded here
-only to close the loop the design pass opened.
-
-### The brand colour assumes one instance; multi-account has no rule for two
-**Workstream:** WS-13 · **Component:** app-level, not a library gap · **Severity:** friction
-**Where:** `NextcloudMail/App/AppSession.swift`, `refreshTheme()`
-
-[S-09](../product/user-stories.md#s-09-it-looks-like-the-instance-it-belongs-to-ws-13) and
-`ui-components.md`'s theme section both write as if there is one server. WS-07's brief
-promises multi-account, each with its own mailbox tree, and nothing in the product
-specification says whose brand colour wins when two accounts are on different Nextcloud
-instances with different colours. `AppSession` picks the first account in a stable
-(server, login name) sort, which is deterministic but arbitrary — not a considered answer.
-This is a product question for `docs/product/ux-spec.md`, not a `NextcloudUI` gap, so it is
-recorded here rather than filed against the library.
-
-### Nothing new from `NextcloudUI` — WS-04 draws nothing
-**Workstream:** WS-04 · **Component:** — · **Severity:** —
-
-The mirror is an actor in `NCMailSync` with no view, no symbol and no colour, so it never
-touched the library. Recorded rather than left blank, because "nothing new" is only an
-acceptable answer if somebody checked.
-
-### `MailStore` cannot write a page and its cursor in one transaction from outside
-**Workstream:** WS-04 · **Component:** `NCMailStore`, not `NextcloudUI` · **Severity:** friction
-**Where:** `MailStore.upsert(envelopes:)`, `MailStore.setEnvelopeCursor(_:complete:mailboxId:lastSyncAt:)`
-
-`local-mirror.md` asked stage 1 for one transaction over both.
-`upsert(envelopes:)` opens its own, and the pieces it uses — `SearchIndexWriter`,
-`EnvelopeWrite.indexedPeople` — are internal to the package, so a caller cannot reproduce
-the page write inside its own `store.write { }` without reimplementing the address rewrite
-and the FTS row from outside the module that owns them.
-
-Resolved by ordering rather than by a new method
-([ADR-0030](../decisions/0030-stage-one-owns-its-cursor.md)): envelopes commit first, the
-cursor second, and a crash between them re-reads one page. Noted here because the next
-workstream to want two store calls atomic will hit the same wall, and because
-`upsert(envelopes:cursor:complete:mailboxId:)` is a small addition if WS-03 would rather
-have it than the ordering argument.
-
-### `mailbox.lastPrimedAt` has no DAO, so stage 0 writes it in raw SQL
-**Workstream:** WS-04 · **Component:** `NCMailStore` · **Severity:** friction
-**Where:** `MirrorCoordinator.storePrimed(_:mailboxId:)`
-
-`MailboxWrite` correctly omits every mirror-bookkeeping column (ADR-0023), and
-`setEnvelopeCursor` covers `envelopeCursor`, `envelopesComplete`, `lastSyncAt`,
-`syncFailureCount` and `lastSyncError` — but nothing covers `lastPrimedAt`, which stage 0
-is the only writer of. It is set through `store.write { }` with a one-line `UPDATE`, which
-works and is the documented escape hatch, but it is `NCMailSync` naming a column in another
-package's table. `setPrimed(mailboxId:at:)` next to `setEnvelopeCursor` would close it.
-
-### `mailbox.lastPrimedAt` now has a DAO
-**Workstream:** wave-2 fixes · **Component:** `NCMailStore` · **Severity:** resolved
-**Where:** `MailStore.setLastPrimedAt(_:mailboxId:)`
-
-WS-04's entry above asked for `setPrimed(mailboxId:at:)` next to `setEnvelopeCursor`. It
-exists as `setLastPrimedAt(_:mailboxId:)`, and `MirrorCoordinator.storePrimed` uses it.
-This was not a courtesy: `MailStore.read`/`write` are internal now
-([ADR-0034](../decisions/0034-the-store-returns-its-own-sequence.md)), so the raw-SQL
-escape hatch WS-04 used is gone and the DAO had to exist for the coordinator to compile.
-The general form of WS-04's other entry stands — a caller outside the package that wants
-two store calls in one transaction still cannot have one.
-
-### Nothing new from `NextcloudUI` — the wave-2 fixes draw nothing
-**Workstream:** wave-2 fixes · **Component:** — · **Severity:** —
-
-Both changes are below the view layer: a package boundary and a schema. No view, no symbol,
-no colour, and `NextcloudMail/**` changed by nothing at all — `AppSession`'s
-`for try await hex in store.observeMetaValue(…)` compiles unchanged against the new
-sequence type, which was the point of matching GRDB's semantics rather than inventing
-easier ones. Recorded rather than left blank, because "nothing new" is only an acceptable
-answer if somebody checked.
-
-### GRDB's `ValueObservation.start` has two overloads and picks the wrong one
-**Workstream:** wave-2 fixes · **Component:** GRDB, not `NextcloudUI` · **Severity:** friction
-**Where:** `MailStore.swift`, `startTracking(_:in:scheduling:onError:onChange:)`
-
-GRDB 7 declares `start(in:scheduling:onError:onChange:)` twice: a `nonisolated` one taking
-`some ValueObservationScheduler`, and a `@MainActor` one taking
-`some ValueObservationMainActorScheduler`. `.mainActor` satisfies both, and passing it from
-a `nonisolated` context selects the `@MainActor` overload and fails with "call to main
-actor-isolated instance method in a synchronous nonisolated context" — which reads as a
-concurrency mistake rather than an overload-resolution one. The workaround is a helper
-whose scheduler parameter is an opaque `some ValueObservationScheduler`, which the
-main-actor overload cannot match. Noted here for whoever meets it next; it is a GRDB API
-shape, not something this project can fix.
-
-### Four store DAOs the sync engine had to work around
-**Workstream:** WS-05 · **Component:** `NCMailStore` · **Severity:** friction
-**Where:** `SyncScheduler+Mailbox.swift`, `SyncScheduler.swift`
-
-`MailStore.read`/`write` are internal since
-[ADR-0034](../decisions/0034-the-store-returns-its-own-sequence.md), which is right, and it
-means a gap in the DAOs is now a gap the caller cannot route around. WS-05 met four and
-worked around all four rather than reaching into `NCMailStore`. In rough order of how ugly
-the workaround is:
-
-1. **Nothing reads `pendingOperation`.** The conflict rule in `offline-queue.md` is "a read
-   of `pendingOperation` inside the sync write transaction", and there is no DAO and no way
-   to open the transaction. The engine reads the queue through `OperationDraining` either
-   side of the write and repairs afterwards;
-   [ADR-0037](../decisions/0037-the-queue-is-read-twice-around-the-sync-write.md) names the
-   `upsert(envelopes:preservingPendingOperationsFor:)` that replaces it.
-2. **No `setMailboxStats(unread:total:mailboxId:)`.** A sync response's `stats` is two
-   integers; writing them means rebuilding a fifteen-column `MailboxWrite` from the
-   `MailboxRecord` that was just read and calling `upsert(mailboxes:)`. It is safe — the
-   write omits every mirror-bookkeeping column by design — and it is fifteen columns to
-   move two.
-3. **No `recordSyncSuccess(mailboxId:at:)`.** `setEnvelopeCursor(_:complete:mailboxId:lastSyncAt:)`
-   is the only DAO that stamps `lastSyncAt` and clears `syncFailureCount` and
-   `lastSyncError`, which is exactly what a successful sync means — so the engine calls it
-   with the mailbox's existing cursor and completion flag passed straight back in. It
-   works, and a reader is entitled to think sync is moving stage 1's cursor, which it must
-   never do.
-4. **`account.lastDeepReconcileAt` has no setter.** The column exists on `AccountRecord` and
-   nothing writes it, so the weekly timer lives in `meta` under
-   `sync.lastDeepReconcile.<accountId>` instead. Two homes for one fact is the kind of drift
-   that is cheap to fix now and confusing in a year.
-
-None of these blocked anything. They are listed together because they have one shape: the
-store's write surface was designed around the backfill, and sync writes different columns.
-
-### `MailClient` never reports how many bytes came back
-**Workstream:** WS-05 · **Component:** `NCMailNet` · **Severity:** friction
-**Where:** `SyncMetrics.envelopeBytesDown`
-
-`sync-engine.md` asks the instrumentation for "bytes down". `MailClient.get` hands back a
-decoded value, and `bytes(_:)` — the one verb that returns `Data` — is typed
-`Endpoint<Data>` and so is unavailable for a JSON endpoint. So the counter sums the
-`rawJSON` each envelope carries, which is the payload but not the response, and its
-documentation has to say so. A `(value, byteCount)` overload, or a transport-level meter
-`MailClient` could be handed, would make the number the one the document asks for. The live
-measurement test works around it with its own `MailTransport` wrapper, which is fine for a
-test and not something the app can do.
-
-### `FakeTransport.fail` cannot say "never succeeds", and it cost a comment rather than a workaround
-**Workstream:** WS-05 · **Component:** `NCMailTestSupport` · **Severity:** minor
-**Where:** `SyncSchedulerTests.oneFailingMailboxDoesNotStopTheAccount`
-
-WS-14 named this gap and its own doc comment tells callers to write `times: 10_000`, which
-is what the test does. It reads as a magic number at the call site and needs a comment
-explaining that it is not one. A `.always` case, or `times: Int? = nil` meaning forever,
-would remove both. Recorded rather than fixed, because widening it is WS-14's call.
-
-### Nothing new from `NextcloudUI`
-**Workstream:** WS-05 · **Component:** — · **Severity:** —
-
-`NCMailSync` has no view layer and WS-05 changed no file under `NextcloudMail/**`. Checked
-rather than assumed.
-
-## From WS-09 (message view, WebView, scheme handler)
+`-warnings-as-errors`. swiftc rejects the pair.
+
+What made it a blocker rather than friction was where the override could go.
+`xcodebuild SUPPRESS_WARNINGS=NO` on the command line works, because a command-line setting
+reaches the synthesised package projects. `SUPPRESS_WARNINGS = NO` in the consumer's
+`.xcodeproj` does not, checked at project level, no effect. There was no fix a consumer
+could commit, and **Cmd-B in the Xcode GUI could not be made to work at all** while the
+setting was in the manifest.
+
+Fixed upstream exactly as WS-00 suggested and merged as
+[`1e753cb`](https://github.com/hamza221/nextcloud-swiftui/pull/2). The manifest no longer
+sets `.treatAllWarnings(as: .error)`, and the library's `Makefile` and CI pass
+`-Xswiftc -warnings-as-errors` instead. SwiftPM applies `-Xswiftc` to the root package's own
+targets and not to its dependencies, so the coverage is identical and consumers are
+unaffected.
+
+Verified from this side against the merged commit: bare
+`xcodebuild -scheme NextcloudMail build`, with no override, succeeds, so the Xcode GUI
+builds this project.
+
+**The part worth keeping is why the library's own CI never caught it.** `swift build` never
+passes `-suppress-warnings`, and neither does `xcodebuild` when the package is the root. The
+flag appears only when the package is a dependency of another project's target, which no job
+in the library exercised. **A library cannot catch this class of bug by building itself.**
+A CI job that builds a throwaway Xcode app against the package would have caught it on day
+one, and would catch the next one.
+
+One loose end left deliberately, to keep the fix to one thing: the library's `REUSE.toml`
+still has a `Showcase/**/*.pbxproj` glob with no project behind it
+(`REUSE.toml:30`). The moment that project exists, its own build hits this same class of
+problem.
+
+## The two accessibility findings pull in opposite directions
+
+Two components, one combining its children and one not, and both are wrong for the case that
+met them. Together they are the argument for a stated rule rather than two fixes.
 
 ### `NCNoteCard` combines its children, so a control inside it is unreachable to VoiceOver
 **Workstream:** WS-09 · **Component:** `NCNoteCard` · **Severity:** blocker
-**Where:** `NextcloudMail/Views/Message/BlockedContentBar.swift:22`
+**Where:** `NextcloudMail/Views/Message/BlockedContentBar.swift:19-30`;
+`Sources/NextcloudUI/Components/NoteCard/NCNoteCard.swift:88`
 
-`NCNoteCard` ends with `.accessibilityElement(children: .combine)`, which is right for a
-banner that only explains. The blocked-content bar is the shape the design asks for and it
-is not that: it is a warning with two buttons, **Show images** and **Always show from this
-sender**, and `.combine` makes both unreachable — the card reads as one label and the
-buttons disappear from the rotor.
+`NCNoteCard`'s body ends with `.accessibilityElement(children: .combine)`, which is right for
+a banner that only explains. The blocked-content bar is the shape
+[rendering.md](../architecture/rendering.md) asks for and it is not that shape: it is a
+warning with two buttons, **Show images** and **Always show from this sender**. `.combine`
+makes both unreachable. The card reads as one label and the buttons vanish from the rotor.
 
-`NCChip` has the same constraint and solves it, by re-surfacing removal as an accessibility
-action. `NCNoteCard` has no equivalent, so the bar puts its buttons *outside* the card in an
-enclosing `VStack`. The result is correct and it is not the composition
-[../architecture/rendering.md](../architecture/rendering.md) describes, which is one card
-with its actions.
+`NCChip` has the same constraint and solves it by re-surfacing removal as an accessibility
+action (`Components/Chip/NCChip.swift:135-141`). `NCNoteCard` has no equivalent, so the bar
+puts its buttons outside the card in an enclosing `VStack`. The result is correct and it is
+not one card with its actions, which is what the architecture document describes and what
+the design wants.
 
-**What would have been better:** an `actions:` slot — `NCNoteCard(_:title:content:actions:)` —
-that stays outside the combined element, or `children: .contain` when the content builder
-contains anything focusable. A banner with a "Retry" or "Show anyway" button is the common
-case, not an unusual one: it is also what the failed-body state and the phishing card in
-this same screen want.
+**What would have been better:** an `actions:` slot,
+`NCNoteCard(_:title:content:actions:)`, laid out by the component and left outside the
+combined element. Failing that, `children: .contain` when the content builder holds anything
+focusable. The failed-body state and the phishing card on this same screen want the same
+thing, so it is three call sites in one app.
+
+### `NCNavigationItem` does not combine its children, so the caller must
+**Workstream:** WS-07 · **Component:** `NCNavigationItem` · **Severity:** friction
+**Where:** `NextcloudMail/Views/Sidebar/SidebarView.swift:82`;
+`Sources/NextcloudUI/Components/NavigationItem/NCNavigationItem.swift:72`
+
+The sidebar's acceptance criterion is "VoiceOver reads a mailbox row as name plus unread
+count". `NCNavigationItem`'s body is a plain `HStack`: the title `Text`, `NCCounterBubble`
+and the trailing-actions `Menu` are three separate accessibility elements, with none of the
+`.accessibilityElement(children: .combine)` that `NCListItem` already applies
+(`ListItem/NCListItem.swift:115`). Left alone, VoiceOver stops on "Inbox" and then again on
+"7 unread" instead of once.
+
+Worked around at the call site: `MailboxTreeRowView.label` applies the combine itself. That
+is safe here only because a plain mailbox row carries no other focusable content. Its
+context menu is a native `.contextMenu`, not a persistent button, so nothing disappears from
+the rotor the way `NCNoteCard`'s buttons did. The account header deliberately does not get
+the same treatment, because its trailing actions `Menu` needs its own stop, and
+`NCNavigationCaption` already leaves its children uncombined, which is the right default for
+a component carrying a control.
+
+**What would have been better:** `NCNavigationItem` combining its own children the way
+`NCListItem` does when there is no `actions:` closure. `NCNavigationItem<EmptyView>` has
+nothing a combine could break, and the common sidebar row (icon, title, count, no menu) is
+exactly that shape.
+
+**The rule the pair suggests**, offered rather than asserted: a component should combine
+its children when its generic parameters prove it has no focusable content, and should not
+when a caller has supplied any. Both of these components get it wrong for one of their two
+shapes, and both got it wrong in the direction of their own most common use.
+
+## Missing icons
+
+**Workstreams:** design pass, WS-07, WS-09, WS-12, WS-13 · **Component:** `NCSymbolCatalog`
+· **Severity:** friction
+**Where:** `NextcloudMail/MailSymbol.swift` (one file, seventeen cases, the whole app's
+icon surface); `Sources/NextcloudIcons/NCSymbolCatalog.swift`
+
+The catalogue ships 91 Material Design Icon assets behind 92 named constants (counted at
+`1e753cb`). **Eleven of this app's seventeen icons are not among them** and resolve through
+`systemFallback` to an SF Symbol.
+
+The design pass predicted ten before any code existed. WS-13 built `MailSymbol` to that
+list and needed nine of them. WS-09 added one more. WS-12 added three settings-tab glyphs,
+two of which turned out to be in the catalogue already. Nothing else was needed by any of
+the five workstreams that draw. That is a useful signal for the roadmap's open question of
+which icons to curate next: the floor for a mail client is these eleven on top of the 91.
+
+In the order a mail client hits them:
+
+| MDI name | Drawn for | Fallback used today |
+| --- | --- | --- |
+| `inbox` | Inbox mailbox, the nothing-selected state | `tray` |
+| `send` | Sent mailbox | `paperplane` |
+| `paperclip` | Attachment indicator, attachment chips | `paperclip` |
+| `email-open-outline` | Mark unread | `envelope.open` |
+| `sync` | Syncing, downloading and failed states | `arrow.triangle.2.circlepath` |
+| `tag-outline` | Tags | `tag` |
+| `reply` | Answered indicator | `arrowshape.turn.up.left` |
+| `archive-arrow-down-outline` | Archive action and mailbox | `archivebox` |
+| `file-document-outline` | Drafts mailbox | `doc.text` |
+| `image-off-outline` | Blocked-content bar | `photo.badge.exclamationmark` |
+| `harddisk` | Storage settings tab | `internaldrive` |
+
+`alarm` makes twelve if snooze lands in v1.1. It is not drawn today, so it is listed
+separately rather than counted.
+
+Already present and used: `alertOctagonOutline` (junk), `trashCanOutline`, `folderOutline`,
+`star`, `cogOutline`, `accountOutline`, plus `email`, `magnify`, `clockOutline`,
+`download`/`trayArrowDown`, `openInNew`, `dotsHorizontal` and `chevron*` in components.
+
+Two notes a maintainer would want. `image-off-outline` is the one whose absence is visible
+rather than approximate: the blocked-content bar currently leans on `NCNoteCard(.warning)`'s
+own alert glyph, which says "warning" rather than "pictures not shown". And the fallback
+mechanism itself worked exactly as documented for all eleven, which is why this is friction
+and not a blocker.
+
+## API friction
+
+### A list row needs an accessory column, and the leading slot holds one view
+**Workstreams:** design pass and WS-08, independently · **Component:** `NCListItem` ·
+**Severity:** friction
+**Where:** `NextcloudMail/Views/MessageList/MessageListRow.swift:35-46` and `:63-88`;
+`Sources/NextcloudUI/Components/ListItem/NCListItem.swift:79`
+
+**Seen twice.** The design pass predicted it from the component's signature before any code
+existed. WS-08 hit it building the real row and recorded the shape it forced.
+
+A mail row is `[unread dot | star | attachment clip] [avatar] [sender / subject] [date /
+count]`. Three state glyphs, each optional, then the avatar.
+`NCListItem(_:subtitle:leading:details:trailing:)` gives the leading slot one view, so the
+row builds `HStack { threeFixedSlots; NCAvatar(...) }` inside it and sizes the slots itself
+from `theme.metrics.icon.small` and `theme.metrics.spacing.hairline`. Every absent glyph is
+a `Color.clear` of that size, because without a fixed width a row with no glyphs puts its
+avatar two points left of a row with one, and a list scanned vertically stops lining up.
+
+It works, it is twenty lines, and the twenty lines are the library's alignment
+reimplemented by a caller who cannot see the library's spacing decisions.
+
+**What would have been better:** an `accessories:` slot ahead of `leading:`, laid out by the
+component at a width it picks from the metric scale. Files wants the same shape for shared,
+favourite and locked; Talk wants it for unread and mention markers. Three apps reimplementing
+one alignment is the argument for putting it in the library.
+
+Worth reading beside this: `NCNavigationItem`'s two optional slots are exactly right for a
+sidebar row, and WS-07 built a three-level mailbox tree with no accessory `HStack` and no
+manual width at all. The gap is specific to rows that carry per-item state, not general.
 
 ### `NCListItem` has no initialiser with `details:` and no `leading:`
 **Workstream:** WS-09 · **Component:** `NCListItem` · **Severity:** friction
-**Where:** `NextcloudMail/Views/Message/MessageThreadStrip.swift:48`
+**Where:** `NextcloudMail/Views/Message/MessageThreadStrip.swift:46-62`
 
-The thread strip wants sender, subject and date, and no avatar — the avatar is already in
-the header six points above, and repeating it per sibling is noise. The five initialisers
-cover every combination except that one, and the source comment says why: an unlabelled
-trailing closure would match two overloads. So the strip draws an avatar it did not want.
+The thread strip wants sender, subject and date, and no avatar, because the avatar is
+already in the header six points above and repeating it per sibling is noise. The five
+initialisers cover every combination except that one, and the source comment says why: an
+unlabelled trailing closure would match two overloads. So the strip draws an avatar it did
+not want, and says so in a comment.
 
-**What would have been better:** the labelled form the comment already suggests,
-`NCListItem(_:subtitle:details:)`. The ambiguity argument does not apply once the argument
-is labelled, which is the case here.
-
-### Nothing in the library knows about a `WKWebView`, and that is the right answer
-**Workstream:** WS-09 · **Component:** — · **Severity:** —
-**Where:** `NextcloudMail/WebView/**`
-
-Recorded because the question will be asked. The whole of `NextcloudMail/WebView/**` is
-app-specific: the scheme, the allowlist, the content rule list, the rewrite. None of it
-belongs in `NextcloudUI`, and the library not reaching for it is correct rather than a gap.
-The one thing that would help is a **message-header block** — sender bubble, recipients
-collapsing past three, date — which `ui-components.md` already lists as a candidate. WS-09
-built it in 90 lines out of `NCUserBubble` and `NCChip`, and the two decisions inside it
-(collapse threshold, and what the "+3" control looks like) are the kind of thing a library
-should settle once.
-
-### `NCChip` inside a `Button` loses the chip's own pointer and hit target
-**Workstream:** WS-09 · **Component:** `NCChip` · **Severity:** polish
-**Where:** `NextcloudMail/Views/Message/MessageAttachmentsView.swift:41`
-
-An attachment chip is a control: clicking it saves the file or previews it. `NCChip` takes
-`onRemove:` and nothing else, so the chip goes inside a `Button` with `.buttonStyle(.plain)`
-and the app supplies the label and the tooltip. It works. A chip that is *activatable* — the
-`action:` that `NCUserBubble` already has — would make the attachment row three lines shorter
-and would get the pointer style and hit target from the library rather than from the caller
-remembering.
-
-### The icon list from the design pass held, with one addition
-**Workstream:** WS-09 · **Component:** `NCSymbolCatalog` · **Severity:** friction
-**Where:** `NextcloudMail/MailSymbol.swift`
-
-WS-09 needed `paperclip` (attachment chips), `sync` (the downloading and failed states) and
-`inbox` (the nothing-selected state), all three already in WS-13's mapping and all three
-still absent from the catalogue. Nothing new was needed, which is a good sign for that list.
-The one it would have used if it existed is MDI `image-off-outline`, for the blocked-content
-bar: the bar currently leans on `NCNoteCard(.warning)`'s own alert glyph, which says
-"warning" rather than "pictures not shown".
-
-### The leading slot holds one view, and a mail row needs four
-**Workstream:** WS-08 · **Component:** `NCListItem` · **Severity:** friction
-**Where:** `NextcloudMail/Views/MessageList/MessageListRow.swift:32`
-
-Confirmed, with the shape it forced. A message row carries three state glyphs — starred, has
-an attachment, replied to — and each is optional. They have to sit in a column of fixed width
-or rows with no glyphs put their avatars two points left of rows with one, and a list scanned
-vertically stops lining up.
-
-`NCListItem(_:subtitle:leading:details:trailing:)` gives the leading slot one view, so the
-row builds `HStack { threeFixedSlots; NCAvatar(…) }` inside it and sizes the slots itself
-from `theme.metrics.icon.small` and `theme.metrics.spacing.hairline`. Every absent glyph is a
-`Color.clear` of that size. It works, it is 20 lines, and the 20 lines are the library's
-alignment reimplemented by a caller who cannot see the library's spacing decisions.
-
-**What would have been better:** an `accessories:` slot ahead of `leading:`, laid out by the
-component at a width it decides from the metric scale, so every Nextcloud list that has
-per-row state glyphs lines up the same way. Files wants exactly this too — shared, favourite,
-locked.
+**What would have been better:** the labelled form the library's own comment already
+suggests, `NCListItem(_:subtitle:details:)`. The ambiguity argument does not apply once the
+argument is labelled, which is the case here.
 
 ### The short relative date is wrong for a mail list past about a week
-**Workstream:** WS-08 · **Component:** `NCRelativeDateFormatter`, `NCListItemDetails` · **Severity:** friction
-**Where:** `NextcloudMail/Views/MessageList/MessageListRow.swift:40`
+**Workstream:** WS-08 · **Component:** `NCRelativeDateFormatter`, `NCListItemDetails` ·
+**Severity:** friction
+**Where:** `NextcloudMail/Views/MessageList/MessageListRow.swift:47`;
+`Sources/NextcloudUI/Components/ListItemDetails/NCListItemDetails.swift:36-40`
 
-`ui-components.md` question 5, answered. `NCListItemDetails`'s default is
-`NCRelativeDateFormatter(width: .short, ignoresSeconds: true)`, which is
-`Date.RelativeFormatStyle(presentation: .named, unitsStyle: .abbreviated)`. Measured output,
-`en_US`:
+`NCListItemDetails`'s default is `NCRelativeDateFormatter(width: .short, ignoresSeconds:
+true)`, which is `Date.RelativeFormatStyle(presentation: .named, unitsStyle:
+.abbreviated)`. Measured output, `en_US`:
 
 | Age | Rendered |
 | --- | --- |
@@ -599,348 +284,579 @@ locked.
 | 40 days | `last mo.` |
 | 280 days | `9 mo. ago` |
 
-The first four are right and are what the design pass expected. The rest are not what a mail
-list shows. Every mail client switches to an absolute date past about a week — "12 Mar" — and
-`presentation: .named` actively loses information doing the opposite: two messages three weeks
-apart both read `last mo.`, so the column that is supposed to order the list stops ordering
-it. `9 mo. ago` is also longer than `12 Mar` in a column that is 280 points wide in total.
+The first four are right. The rest are not what a mail list shows. Every mail client
+switches to an absolute date past about a week, and `presentation: .named` loses information
+doing the opposite: two messages three weeks apart both read `last mo.`, so the column that
+orders the list stops ordering it. `9 mo. ago` is also longer than `12 Mar` in a column that
+is 280 points wide in total.
 
 The escape hatch does not escape. `NCListItemDetails(date:unreadCount:formatter:)` takes an
-`NCRelativeDateFormatter`, and that type has `width`, `ignoresSeconds` and `locale` — there is
-no way to express "relative under a week, absolute over it" through it, so a caller who wants
-mail rules cannot use `NCListItemDetails` at all. WS-08 kept the library's default rather than
-forking the row, because a row that draws its own date is a row that loses the component.
+`NCRelativeDateFormatter`, and that type has `width`, `ignoresSeconds` and `locale`
+(`NextcloudDesign/Formatting/NCRelativeDateFormatter.swift:40-46`). There is no way to say
+"relative under a week, absolute over it", so a caller who wants mail rules cannot use
+`NCListItemDetails` at all. WS-08 kept the library's default rather than fork the row,
+because a row that draws its own date is a row that has lost the component.
 
 **What would have been better:** a `cutoff: Duration?` on `NCRelativeDateFormatter`, past
-which it formats absolutely — `.dateTime.day().month(.abbreviated)` within the year,
+which it formats absolutely, `.dateTime.day().month(.abbreviated)` within the year and
 `.year()` beyond it. Talk wants the same rule for a conversation list. Failing that, a
-`formatter:` parameter on `NCListItemDetails` typed as `some FormatStyle<Date, String>` so a
-caller can supply anything.
+`formatter:` parameter on `NCListItemDetails` typed as `some FormatStyle<Date, String>`, so
+a caller can supply anything.
 
-### `NCListItem` was never asked to be 50,000 rows, and that is the right answer
-**Workstream:** WS-08 · **Component:** `NCListItem` · **Severity:** —
-**Where:** `NextcloudMailTests/MessageList/MessageListPerformanceTests.swift:59`
+### `NCChip` inside a `Button` loses the chip's own pointer and hit target
+**Workstream:** WS-09 · **Component:** `NCChip` · **Severity:** polish
+**Where:** `NextcloudMail/Views/Message/MessageAttachmentsView.swift:40-43`
 
-`ui-components.md` question 1, answered as far as it can be answered here. The list is a
-window over the database, so the largest array `ForEach` ever sees in this app is 60 rows on
-selection and 2,580 after twenty-one scroll extensions, never 50,000. At a real 50,000-row
-mailbox, selection to rows assigned is **1.8 ms flat and 2.3 ms threaded**, and extending the
-window is **3.5 ms** — the database and the projection, measured, with no view in it.
+An attachment chip is a control: clicking it saves or previews the file. `NCChip` takes
+`onRemove:` and nothing else (`Components/Chip/NCChip.swift:36-42`), so the chip goes inside
+a `Button` with `.buttonStyle(.plain)` and the app supplies the label and the tooltip.
 
-So the question "does its `HStack` of optional slots cost enough to need a cheaper row" does
-not arise at the counts this app builds. What was **not** measured is SwiftUI drawing those
-rows and scrolling them at 60 fps: that needs a window, and there is no GUI in this
-environment. WS-08's report says so plainly rather than implying a trace exists.
+**What would have been better:** the `action:` parameter `NCUserBubble` already has
+(`Components/UserBubble/NCUserBubble.swift:50`). An activatable chip would make the
+attachment row three lines shorter and would take its pointer style and hit target from the
+library rather than from the caller remembering.
 
-### `NCCounterBubble(count: 0)` drawing nothing is what made the thread badge one line
-**Workstream:** WS-08 · **Component:** `NCCounterBubble` · **Severity:** —
-**Where:** `NextcloudMail/Views/MessageList/MessageListRow.swift:44`
+### `NCHighlight` matches a substring, and a full-text index matches terms
+**Workstream:** WS-11 · **Component:** `NCHighlight`, `NCHighlightText` · **Severity:**
+friction
+**Where:** `Sources/NextcloudUI/Components/Highlight/NCHighlight.swift:24`;
+this app's terms are built in
+`Packages/NCMailStore/Sources/NCMailStore/Search/FTS5MatchExpression.swift:32-34`
 
-Recorded because the small correct decisions deserve a line too. The thread-count badge is
-wanted on a thread of three and not on a thread of one, and `count: 0` rendering nothing at
-all means that is `count: row.threadCount > 1 ? row.threadCount : 0` rather than an `if` and
-a branch in the view builder. `NCListItemDetails` collapsing to zero width on a nil date and
-a zero count has the same shape and the same payoff.
-
-### Unanswered, because it needs a window
-**Workstream:** WS-08 · **Component:** `NCListItem`, `NCAccentPolicy` · **Severity:** —
-**Where:** —
-
-`ui-components.md` question 2 — does `.fontWeight(.semibold)` still mark unread when the row
-is selected and tinted by the brand colour — cannot be answered here. There is no GUI and
-`screencapture` does not work, so nothing was rendered.
-
-What can be said from the source is that the two do not compete for one property:
-`NCListItem` sets `.font(.body)` with no explicit weight, with a comment saying that is so a
-caller's `.fontWeight` on the whole row wins, and `List` draws selection as a background fill.
-Whether semibold reads as heavier against a saturated brand fill is a contrast question and
-needs eyes. It stays open, alongside question 3 (brand tint against the macOS selection
-highlight in a three-column split view) and question 4 (MDI glyphs in a signed, sandboxed
-release build).
-
-### Nothing new from `NextcloudUI` — the queue draws nothing
-**Workstream:** WS-06 · **Component:** — · **Severity:** —
-**Where:** —
-
-WS-06 is `NCMailSync/Operations/**` and its tests. It has no view, no symbol and no theme,
-and it publishes a count for WS-13 to draw rather than drawing one. The library was not
-exercised and there is nothing to report about it. The entries below are about
-`NCMailStore` and `NCMailTestSupport`, which is where this workstream's friction actually
-was.
-
-### `NCMailStore` has the queue's table and no queries over it
-**Workstream:** WS-06 · **Component:** `MailStore` · **Severity:** blocker
-**Where:** `Packages/NCMailSync/Tests/NCMailSyncTests/OperationStoreSupport.swift:29`
-
-The fourth time this file has recorded a missing store DAO, and the first time it stopped
-the work rather than costing a workaround. `pendingOperation` and `PendingOperationRecord`
-exist; nothing reads or writes them. `MailStore.write` is internal since ADR-0034, correctly,
-so `applyLocally` and the queue insert cannot be put in one transaction from `NCMailSync` at
-all — and that transaction is the whole of ADR-0005.
-
-What we did instead: declared `OperationStoring` in `Operations/**` and conformed `MailStore`
-to it in the **test** target, where `@testable` reaches `read`/`write`. Every test runs
-against the real schema, and nothing outside `NCMailSync` can construct a `MutationQueue`.
-ADR-0043 names the five methods and the file they belong in. The pattern to notice: WS-04
-needed two DAOs, WS-05 needed four, WS-06 needs five and cannot ship without them. A store
-that owns the GRDB stack has to own the queries too, or the boundary stops being a boundary
-and starts being a queue of requests.
-
-### `@testable import` reaches a module's types but not this free function
-**Workstream:** WS-06 · **Component:** `MailStore`, `databaseQuestionMarks` · **Severity:** friction
-**Where:** `Packages/NCMailSync/Tests/NCMailSyncTests/OperationStoreSupport.swift:154`
-
-From `NCMailSyncTests`, `@testable import NCMailStore` resolves `MailStore.write`,
-`PendingOperationRecord` and every record type, and does **not** resolve
-`databaseQuestionMarks(count:)`, an internal file-scope function in the same module. The
-compiler does not say "cannot find"; it says `error: failed to produce diagnostic for
-expression; please submit a bug report`, which costs twenty minutes of bisecting a
-thirty-line method to find out which symbol it meant. Worth an upstream report against the
-toolchain. We copied the three lines rather than fight it.
-
-### GRDB's names are not re-exported, so a cross-package test file must import it directly
-**Workstream:** WS-06 · **Component:** `NCMailStore` · **Severity:** friction
-**Where:** `Packages/NCMailSync/Tests/NCMailSyncTests/OperationStoreSupport.swift:5`
-
-`Records/**` and `Projections/**` have `public import GRDB`, and ADR-0034 notes that "GRDB's
-names are still visible to a module that imports `NCMailStore`". Partly. `Int.fetchOne(_:sql:)`
-resolves through the re-export; `Database`, `StatementArguments` and `DatabaseValueConvertible`
-named as types do not. So a test file that writes a store DAO needs `import GRDB` for a module
-its package does not declare as a dependency. It compiles because SwiftPM has GRDB in the
-search path, which is a coincidence rather than a contract. One more reason the DAO belongs in
-`NCMailStore`, where the import is declared.
-
-### `FakeTransport.fail` still cannot say "never succeeds"
-**Workstream:** WS-06 · **Component:** `FakeTransport` · **Severity:** polish
-**Where:** `Packages/NCMailSync/Tests/NCMailSyncTests/OperationDrainTests.swift:318`
-
-Independently hit, and reported here a second time because WS-05's entry asked whether it was
-a one-off. It is not: "the network is gone" is the central situation of this workstream, and
-it is spelled `fail(route, times: 10_000, then: .status(200))`. The comment explaining that
-10,000 means "forever" is now in two packages. `fail(route, alwaysWith: URLError(...))` would
-remove both, and would also let a test choose the error — every failure this fake produces is
-`URLError(.networkConnectionLost)`, so a test cannot tell a timeout from a DNS failure.
-Not widened here: it is WS-14's API and this workstream is not the one to change it.
-
-## From WS-07 (sidebar: accounts and mailbox tree)
-
-### `NCNavigationItem` composes inside `DisclosureGroup` with no fighting at all
-**Workstream:** WS-07 · **Component:** `NCNavigationItem` · **Severity:** —
-
-The question the design pass and WS-08's `NCListItem` entry both raised for this row shape
-does not arise here. A sidebar row needs exactly one icon and one count, which is precisely
-`NCNavigationItem`'s two optional slots, so `MailboxTreeRowView` is `NCNavigationItem(...)`
-used as a `DisclosureGroup`'s `label:` with nothing built around it — no accessory `HStack`,
-no manual width. The component's own doc comment says nesting is `DisclosureGroup`'s job and
-declines a `children:` parameter for exactly that reason; the decision holds up in a real
-three-level tree (`NextcloudMail/Views/Sidebar/SidebarView.swift`).
-
-### `NCNavigationItem` does not combine its children into one accessibility element
-**Workstream:** WS-07 · **Component:** `NCNavigationItem` · **Severity:** friction
-**Where:** `Sources/NextcloudUI/Components/NavigationItem/NCNavigationItem.swift:72`
-
-The brief's acceptance criterion is "VoiceOver reads a mailbox row as name plus unread
-count." `NCNavigationItem`'s body is a plain `HStack` — the title `Text`, `NCCounterBubble`
-and the trailing-actions `Menu` are three separate accessibility elements, with no
-`.accessibilityElement(children: .combine)` the way `NCListItem` already has
-(`ListItem/NCListItem.swift:115`). Left alone, VoiceOver would swipe through "Inbox", then
-separately "7 unread", instead of one stop.
-
-Worked around at the call site: `MailboxTreeRowView.label` wraps the row in
-`.accessibilityElement(children: .combine)` itself, which is safe here only because a plain
-mailbox row carries no other focusable content — its context menu is a native
-`.contextMenu`, not a persistent button, so nothing disappears from the rotor the way
-`NCNoteCard`'s buttons did for WS-09. The account header does **not** get the same
-treatment, because its trailing actions `Menu` does need its own stop; `NCNavigationCaption`
-already leaves its own children uncombined, which is the right default for a component with a
-control on it.
-
-**What would have been better:** `NCNavigationItem` combining its own children the same way
-`NCListItem` does, since a row with no `actions:` closure (`NCNavigationItem<EmptyView>`) has
-nothing that a combine could break, and the common sidebar case — icon, title, count, no
-actions menu — is exactly that shape.
-
-### The icon list holds; nothing new past what WS-13 already built
-**Workstream:** WS-07 · **Component:** `NCSymbolCatalog` · **Severity:** —
-
-Every role this workstream draws — inbox, drafts, sent, archive, junk, trash, plus the plain
-folder for an ordinary or synthetic container — was already a `MailSymbol` case. No new icon
-was needed.
-
-### Question 3 (brand tint vs. macOS selection in a three-column split view) is still open
-**Workstream:** WS-07 · **Component:** `NCAccentPolicy` · **Severity:** —
-
-Still unanswerable here: no GUI, no `screencapture`, and `RootSplitView` still shows a
-placeholder in the sidebar's slot rather than this workstream's view (see the report). The
-sidebar is the column with the densest selection surface of the three — a `List` several
-levels deep, nested in `DisclosureGroup`s — so it is the strongest test of this question once
-someone can actually look.
-
-## From the store-DAO pass (ADR-0045)
-
-### `NCAvatar` and `NCUserBubble` take exactly the loader a local-first client wants
-**Workstream:** store-DAO pass · **Component:** `NCAvatar`, `NCUserBubble` · **Severity:** —
-
-`load: (@Sendable () async throws -> Image)?` is the right shape and worth recording as such,
-because the obvious alternative — a URL, the way `AsyncImage` takes one — would have been
-unusable here. This app must never let a view reach the network, so the picture has to come
-out of the mirror; a closure lets the caller decide where bytes come from, and `nil` is a
-first-class "do not try". Wiring both call sites was a one-line change each once
-`MailStore.avatar(for:)` existed.
-
-The fallback contract helps too: the component draws coloured initials when the loader
-throws, so "no row yet" and "the server answered 404" need no branch at the call site even
-though they are different facts the fetcher will have to tell apart.
-
-### `NCAvatar`'s cache key includes the diameter, which is right and worth saying out loud
-**Workstream:** store-DAO pass · **Component:** `NCAvatar` · **Severity:** —
-
-`NCAvatar.cacheIdentity` folds the size into the key
-(`Components/Avatar/NCAvatar.swift:135`). A mail client draws the same sender at two sizes on
-one screen — `.medium` in the list row and `.medium` in the message header today, and the
-header will want to grow — and a key that ignored the size would hand one of them the other's
-bitmap. Nothing to change; it is the sort of decision that is invisible until it is wrong.
-
-### Nothing new otherwise
-This pass was store queries and the two call sites above. No component was bent, and no icon
-was missing.
-
-## From WS-10 (triage actions, toolbar, keyboard)
-
-### `NCKeyboardShortcut` is the right shape, and it is the reason the shortcut table has one source
-**Workstream:** WS-10 · **Component:** `NCKeyboardShortcut`, `NCKeyboardShortcutGlyphs` · **Severity:** —
-
-One value renders as `⌘⇧F` and hands `.keyboardShortcut` a `KeyEquivalent`, so the key in the
-tooltip, the key in the menu bar and the key in the shortcut window come from the same
-`TriageAction.shortcut` and cannot drift. `accessibilityDescription(for:)` — "Command Shift
-F" — is the part that would have been forgotten if it had to be written per call site; the
-glyphs read as punctuation to VoiceOver and the shortcut window uses it on every row.
-
-The one thing it does not have is a `Set<NCKeyboardShortcut>` collision check. A table of
-thirteen keys wants to assert that no two of them are the same, and the test that does it
-here (`TriageCommandsTests.theTableMatchesTheSpecification`) compares rendered strings because
-that was shorter than making the type `Hashable` do it. It already is `Hashable`, so this is a
-note rather than a request.
-
-### `NCColorTokens` has no muted-text colour
-**Workstream:** WS-10 · **Component:** `NCColorTokens` · **Severity:** minor
-
-The "No folders match." line in the move popover wants the colour a Nextcloud client uses for
-secondary text — the web's `--color-text-maxcontrast`. `NCColorTokens` has `primary`,
-`primaryHover`, `primarySurface`, `onPrimary`, `onPrimarySurface`, the four status families,
-`favorite` and `highlight`, and nothing for text that should recede. The fallback is SwiftUI's
-`.secondary`, which is correct on macOS and is not a hard-coded colour, but it means one
-string in a Nextcloud-themed popover is coloured by the system rather than by the theme.
-
-Every empty state, caption and timestamp in this app will want the same token.
-
-### `.buttonStyle(.icon)` and a disabled control: the tooltip is unreachable
-**Workstream:** WS-10 · **Component:** `NCButtonStyle.icon` · **Severity:** —
-
-Not the library's fault — a disabled AppKit control does not track the pointer, so `.help` on
-a greyed-out button never appears. Recording it because `ui-components.md` recommends
-`NCButtonStyle.icon` "with `.help` tooltips carrying the shortcut" for the toolbar, and that
-advice is silently wrong for the disabled state. `accessibilityHint` still reaches VoiceOver.
-ADR-0050 has what this app does instead.
-
-### A menu cannot hold a text field, and the specification asked for one
-**Workstream:** WS-10 · **Component:** — (SwiftUI `Menu`) · **Severity:** —
-
-Nothing for `NextcloudUI` to fix. Noted here because the next person to read
-"`Menu` … with a filter field" in `ux-spec.md` will start where this workstream started.
-ADR-0052.
-
-## From the settings pass
-
-### `Form` and `NCNoteCard` composed with nothing to work around
-**Workstream:** WS-12 · **Component:** `NCNoteCard`, system `Form` · **Severity:** —
-
-`SettingsSections.md`'s claim that a wrapper would add nothing held up in a real settings
-pane with three tabs and a destructive-confirmation flow on every tab. `Form { Section { } }`
-plus `.formStyle(.grouped)` gave the grouped background, headers, footers and row separators
-with no fighting, and `NCNoteCard(.info) { }` slotted the "local copies only" and
-oldest-sort-order explanations in without a custom banner. Nothing here forced a numeric
-literal, a hard-coded colour, or a workaround.
-
-### No generic icon exists for a settings tab
-**Workstream:** WS-12 · **Component:** `MailSymbol` (app-owned, not the library) · **Severity:** —
-
-Not a `NextcloudUI` gap: the library's catalogue is Nextcloud- and mail-specific by design.
-`TabView`'s three tabs (General, Accounts, Storage) wanted a gear, a person and a disk glyph
-that nothing in `MailSymbol.swift` maps to, and adding a case is WS-13's file, not this one's.
-The tabs use plain text labels instead of asking for an icon mid-review; a `gear`,
-`accountOutline` and `harddisk` (or similar) case would be a small, reusable addition if
-another settings-shaped screen ever needs the same three.
-
-## From the app shell, wiring pass
-
-### `NCIcon` carried four more fallbacks without complaint
-**Workstream:** WS-13 · **Component:** `NCSymbol`, `NCIcon` · **Severity:** —
-
-`MailSymbol` grew four cases while wiring the columns: `image-off-outline` for the blocked
-content bar (WS-09 asked), and `cog-outline`, `account-outline` and `harddisk` for the
-settings tabs (WS-12 asked). Two of the four are in the catalogue already — `.cogOutline` and
-`.accountOutline` — and the other two resolve through `systemFallback`, which is the
-mechanism working as documented. The catalogue gaps worth generating next, in the order a
-mail client hits them: `inbox`, `send`, `paperclip`, `email-open-outline`, `sync`,
-`tag-outline`, `reply`, `archive-arrow-down-outline`, `file-document-outline`,
-`image-off-outline`, `harddisk`. Eleven of the app's seventeen icons are fallbacks today.
-
-### `NCTheme` has no slot for a window's column widths
-**Workstream:** WS-13 · **Component:** `NCTheme.metrics` · **Severity:** minor
-
-Not a request to add one. `NavigationSplitView`'s three breakpoints are the window's shape
-rather than a spacing token, so they live in the app as a private `ColumnWidth` enum and the
-`no hard-coded metrics` rule reads them as literals in a file it cannot distinguish from a
-padding. If `NCTheme.metrics` ever grows a `layout` group, "a column's min/ideal/max" is the
-first thing that would belong in it.
-
-## From WS-11 (local full-text search)
-
-### `NCHighlight` matches a substring; an FTS index matches terms
-**Workstream:** WS-11 · **Component:** `NCHighlight`, `NCHighlightText` · **Severity:** medium
-
-`NCHighlight.ranges(in:matching:)` trims the query and looks for that whole string inside the
-text (`Components/Highlight/NCHighlight.swift:26`). That is right for filtering a list of
-names, which is what the component was written for. It disagrees with a full-text index as
-soon as the query has two words in it.
+`NCHighlight.ranges(in:matching:)` trims the query and looks for that whole string inside
+the text. That is right for filtering a list of names, which is what the component was
+written for. It disagrees with a full-text index as soon as the query has two words in it.
 
 `hedgehog census` against this app's index is `"hedgehog"* AND "census"*`: two terms, either
 order, anywhere in the message. A row matching it can have "hedgehog" in the subject and
-"census" forty words into the preview, and `NCHighlight` highlights neither, because the
-literal string "hedgehog census" does not appear. The reader is shown a result with nothing
-marked and no clue why it is a result.
+"census" forty words into the preview, and `NCHighlight` marks neither, because the literal
+string "hedgehog census" does not appear. The reader sees a result with nothing marked and
+no clue why it is a result.
 
-**What would help:** an overload taking the terms rather than the query —
-`NCHighlight.ranges(in: text, matchingAny: ["hedgehog", "census"])` and a matching
-`NCHighlightText(_:matchingAny:)` — so a caller that has already split the query hands the
+**What would help:** an overload taking the terms rather than the query,
+`NCHighlight.ranges(in: text, matchingAny: ["hedgehog", "census"])` with a matching
+`NCHighlightText(_:matchingAny:)`, so a caller that has already split the query hands the
 pieces over instead of re-joining them into something that cannot match. Prefix semantics
-come free: each term is already matched as a substring, so a term is its own prefix.
+come free, because each term is already matched as a substring and a term is its own prefix.
 
-Everything else about the component is the right shape. `attributed(_:matching:background:)`
-being separate from the view is what lets the matching be tested without SwiftUI, the
-diacritic folding agrees with the schema's `remove_diacritics 2` without either side knowing
-about the other, and an empty query yielding no ranges is exactly what "highlight as you
-type" needs before the first character.
-
-Not used in the shipped app yet, for the ownership reason in
+Everything else about the component is right, and the good parts are listed under "Things
+that worked". Not wired into the shipped app yet, for the ownership reason in
 [ADR-0057](../decisions/0057-search-borrows-the-message-list.md): the row that would call it
 belongs to WS-08.
 
-### There is no search field, and `.searchable` was the right answer anyway
-**Workstream:** WS-11 · **Component:** — · **Severity:** —
+### `NCColorTokens` has no colour for text that should recede
+**Workstream:** WS-10 · **Component:** `NCColorTokens` · **Severity:** minor
+**Where:** `NextcloudMail/Actions/MoveDestinationList.swift:50`;
+`NextcloudDesign/Tokens/NCColorTokens.swift:32-65`
 
-`NextcloudUI` has no search-field component, and it should not grow one. `.searchable` puts
-the field in the window's toolbar where macOS users look for it, brings the scope control
-(`.searchScopes`), the clear button, Escape-to-clear and `.searchFocused` with it, and none
-of that is reimplementable at a component's level — the modifier needs the navigation
-container above it. A component would be a worse field in the wrong place.
+The "No folders match." line in the move popover wants the colour a Nextcloud client uses
+for secondary text, the web's `--color-text-maxcontrast`. `NCColorTokens` has `primary`,
+`primaryHover`, `primarySurface`, `onPrimary`, `onPrimarySurface`, the four status families,
+`favorite`, `highlight`, `userStatus` and `assistant`, and nothing for muted text.
+
+The fallback is SwiftUI's `.secondary`, which is correct on macOS and is not a hard-coded
+colour, but it means one string in a Nextcloud-themed popover is coloured by the system
+rather than by the theme. Every empty state, caption and timestamp in this app wants the
+same token.
+
+### `NCTheme.metrics` has no group for a window's layout
+**Workstream:** WS-13 · **Component:** `NCTheme.metrics` · **Severity:** minor
+
+Recorded, and not a request to add one. `NavigationSplitView`'s three column breakpoints
+are the window's shape rather than a spacing token, so they live in the app as a private
+`ColumnWidth` enum, and the project's "no hard-coded metrics" rule reads them as literals in
+a file it cannot tell apart from a padding. If `NCTheme.metrics` ever grows a `layout`
+group, a column's min, ideal and max is the first thing that belongs in it.
+
+### `NCKeyboardShortcut` has no collision check
+**Workstream:** WS-10 · **Component:** `NCKeyboardShortcut` · **Severity:** polish
+**Where:** `NextcloudMailTests/Actions/TriageCommandsTests.swift:16`
+
+A note rather than a request. A table of thirteen shortcuts wants to assert that no two of
+them are the same key. The test that does it here compares rendered strings, because that
+was shorter than making the type's `Hashable` conformance do it. It already is `Hashable`,
+so a `Set` check is available to any caller who thinks of it. A documented "put them in a
+`Set` and compare counts" line would be enough.
+
+## Composition gaps
+
+### There is no message-header block
+**Workstreams:** design pass and WS-09, independently · **Severity:** polish
+**Where:** `NextcloudMail/Views/Message/MessageHeaderView.swift`, about 90 lines
+
+**Seen twice**, and both times with the same conclusion. Sender, recipients, date and an
+actions row is a shape every mail client has, and the app builds it from `NCUserBubble`,
+`NCChip` and `Text`. The two decisions inside it are the kind a library should settle once:
+where recipients collapse (this app collapses past three) and what the "+3" control looks
+like.
+
+Whether it generalises is the open question. Talk has a message header, Files has a file
+header, and if the answer is that they are three different shapes then the right outcome is
+for the library to say so rather than to grow a component nobody else fits.
+
+### What the library should not grow, confirmed by building against it
+
+Four cases where the answer was "the library is right to be absent", recorded because the
+question will come up when the API is frozen.
+
+- **No search field.** `.searchable` puts the field in the window's toolbar where macOS
+  users look for it, and brings `.searchScopes`, the clear button, Escape-to-clear and
+  `.searchFocused` with it. None of that is reachable from a component, because the modifier
+  needs the navigation container above it. A component would be a worse field in the wrong
+  place. (WS-11, `NextcloudMail/Views/Search/SearchableMessageList.swift`)
+- **No `WKWebView` anything.** The whole of `NextcloudMail/WebView/**` is app-specific: the
+  scheme, the allowlist, the content rule list, the rewrite. The library not reaching for it
+  is correct. (WS-09)
+- **No `NCEmptyContent` or `NCSettingsSection`.** `ContentUnavailableView` and
+  `Form(.grouped)` are what this app uses, and the DocC notes explaining why are the right
+  kind of documentation. Held up across a three-tab settings pane with a
+  destructive-confirmation flow on every tab. (design pass, WS-12)
+- **No `children:` parameter on `NCNavigationItem`.** Its doc comment says nesting is
+  `DisclosureGroup`'s job and declines the parameter for that reason. The decision holds up
+  in a real three-level mailbox tree. (WS-07)
+
+One that is smaller: a **toolbar segmented control** for threaded versus flat. The system
+`Picker` works. Noted for the parity conversation and nothing more.
+
+## Things that worked
+
+A feedback document that only complains is not evidence.
+
+- **The loader closure instead of `AsyncImage`.** `load: (@Sendable () async throws ->
+  Image)?` is the right shape, and the obvious alternative of taking a URL would have been
+  unusable here. This app must never let a view reach the network, so the picture comes out
+  of the local mirror. A closure lets the caller decide where the bytes come from, and `nil`
+  is a first-class "do not try". Wiring both call sites was one line each once
+  `MailStore.avatar(for:)` existed. (`NCAvatar`, `NCUserBubble`, store-DAO pass)
+- **`NCAvatar`'s fallback contract.** The component draws coloured initials when the loader
+  throws, so "no row yet" and "the server answered 404" need no branch at the call site,
+  even though they are different facts the fetcher has to tell apart.
+- **`NCAvatar`'s cache key includes the diameter** (`Components/Avatar/NCAvatar.swift:135`).
+  A mail client draws the same sender at two sizes on one screen, and a key that ignored the
+  size would hand one of them the other's bitmap. Invisible until it is wrong.
+- **Non-optional `NCAccessibilityLabel`.** Unlabelled construction does not compile, so the
+  app cannot accumulate unlabelled controls the way it otherwise would.
+- **`.ncTheme(.nextcloud)` at a scene root is one line and it works.** Three columns wear
+  the brand colour from a single modifier on the `WindowGroup` content plus
+  `@Environment(\.ncTheme)` in the column view. No setup, no injection, no `@StateObject`.
+  `NCDynamicColor` conforming to `ShapeStyle` means `.foregroundStyle(theme.colors.primary)`
+  composes with no unwrapping. Reassignment recolours the running app, one line after the
+  capabilities call. (WS-00, `NextcloudMail/App/NextcloudMailApp.swift`)
+- **`NCCounterBubble(count: 0)` draws nothing.** The thread badge is wanted on a thread of
+  three and not on a thread of one, and that is
+  `count: row.threadCount > 1 ? row.threadCount : 0` rather than an `if` in a view builder
+  (`MessageListRow.swift:51`). `NCListItemDetails` collapsing to zero width on a nil date
+  and a zero count has the same shape and the same payoff.
+- **`NCNavigationItem` composes inside `DisclosureGroup` with nothing to fight.** One icon
+  and one count is exactly its two optional slots, so `MailboxTreeRowView` is the component
+  used as a `DisclosureGroup` label with nothing built around it. (WS-07)
+- **`NCKeyboardShortcut` gives the shortcut table one source.** One value renders as `⌘⇧F`
+  and hands `.keyboardShortcut` a `KeyEquivalent`, so the key in the tooltip, the key in the
+  menu bar and the key in the shortcut window come from the same `TriageAction.shortcut` and
+  cannot drift. `accessibilityDescription(for:)` giving "Command Shift F" is the part that
+  would have been forgotten per call site, because the glyphs read as punctuation to
+  VoiceOver. (WS-10, `NextcloudMail/Actions/TriageAction.swift:83`)
+- **`NCButtonStyle`, `NCNoteCard` and `NCProgressStyle` covered a login screen exactly.** A
+  server field, a Continue button, a waiting state and an error banner, with no workaround
+  and no custom view. `.ncAccessibilityLabel(.text(...))` labelled the plain `TextField` and
+  `ProgressView` that are not library components, which the component map did not call out
+  and which worked like the library's own controls. (WS-01,
+  `NextcloudMail/Views/Login/LoginView.swift:36`)
+- **`NCNoteCard(.info)` inside a system `Form`.** The "local copies only" and sort-order
+  explanations slotted into a grouped settings pane with no custom banner and no fighting
+  over the grouped background, headers, footers or separators. (WS-12,
+  `NextcloudMail/Views/Settings/StorageSettingsView.swift:99`)
+- **`NCHighlight`'s split between matching and drawing.** `attributed(_:matching:background:)`
+  being separate from the view is what lets matching be tested without SwiftUI. Its
+  diacritic folding agrees with the schema's `remove_diacritics 2` without either side
+  knowing about the other, and an empty query yielding no ranges is what "highlight as you
+  type" needs before the first character.
+- **The `MailScreenDemo` in the showcase** is a useful reference composition. It is what the
+  sidebar and list briefs pointed at.
+
+## Performance
+
+Everything measured, with the caveat that matters attached to each number.
+
+### `NCListItem` was never asked to be 50,000 rows
+**Workstream:** WS-08 · **Component:** `NCListItem` · **Severity:** none
+**Where:** `NextcloudMailTests/MessageList/MessageListPerformanceTests.swift:60`
+
+The list is a window over the database, so the largest array `ForEach` ever sees in this app
+is 60 rows on selection and 2,580 after twenty-one scroll extensions, never 50,000. At a
+real 50,000-row mailbox, selection to rows assigned is **1.8 ms flat and 2.3 ms threaded**,
+and extending the window is **3.5 ms**. That is the database and the projection, with no
+view in it.
+
+So the question of whether the component's `HStack` of optional slots needs a cheaper row
+does not arise at the counts this app builds.
+
+**What was not measured:** SwiftUI drawing those rows and scrolling them at 60 fps. That
+needs a window, and there was no GUI in the environment these workstreams ran in. No trace
+exists and none is implied.
+
+### The icon bundle survives a signed, sandboxed Release build
+**Workstream:** WS-13 · **Component:** `NCIcon.rendersBundledAssets` · **Severity:** none
+
+`xcodebuild -configuration Release SUPPRESS_WARNINGS=NO build` produces a signed, hardened
+`NextcloudMail.app` (`codesign -dv` reports `flags=0x10002(adhoc,runtime)`), and its
+`nextcloud-ui-swift_NextcloudIcons.bundle/Contents/Resources/Assets.car` still carries every
+generated symbol. `assetutil --info` lists 1,566 `"Name"` entries in that one catalogue,
+including the four `MailSymbol` cases that resolve to a bundled asset rather than an SF
+Symbol. [ADR-0001](../decisions/0001-xcode-project-in-git.md)'s assumption holds for Release
+as well as Debug. Evidence from the build product, not from a screenshot: nothing was run
+under an opened window.
+
+## Open questions
+
+The six questions the design pass wrote down before implementation, with what the
+implementation answered. The two that remain open need eyes on a running window, which no
+workstream had.
+
+| # | Question | Status |
+| --- | --- | --- |
+| 1 | `NCListItem` at 50,000 rows | **Answered** (WS-08). The question does not arise: the list is a window over the database. Rendering and scroll smoothness remain unmeasured. |
+| 2 | Does `.fontWeight(.semibold)` still read as unread when the row is selected and tinted? | **Open.** Needs a window. |
+| 3 | Is `.ncTheme` setting `.tint` globally right for a mail client, or is `NCAccentPolicy.brandSurfacesOnly` the better default? | **Open**, with a provisional yes. |
+| 4 | Do MDI glyphs survive a signed, sandboxed Release build? | **Answered: yes** (WS-13). See "Performance". |
+| 5 | Is `NCRelativeDateFormatter`'s short form right for a mail list? | **Answered: no, past about a week** (WS-08). See "The short relative date is wrong for a mail list past about a week". |
+| 6 | Does `NCAvatar`'s loader compose with a database-backed cache? | **Answered: yes** (store-DAO pass). See "Things that worked". |
+
+**Question 2 in detail.** What can be said from the source is that the two do not compete
+for one property: `NCListItem` sets `.font(.body)` with no explicit weight, with a comment
+saying that is so a caller's `.fontWeight` on the whole row wins, and `List` draws selection
+as a background fill. Whether semibold reads as heavier against a saturated brand fill is a
+contrast question and needs eyes.
+
+**Question 3 in detail.** Nothing in the app shell fought the brand tint driving selection
+and focus, and the default `.instance` policy was kept with no evidence against it. But the
+shell was three placeholder columns when that was checked, and the sidebar is the column
+with the densest selection surface: a `List` several levels deep, nested in
+`DisclosureGroup`s. It is the strongest test of this question and it has not been run.
+
+## Not a library gap, recorded where it was found
+
+### The brand colour assumes one instance, and multi-account has no rule for two
+**Workstream:** WS-13 · **Severity:** friction
+**Where:** `NextcloudMail/App/AppSession.swift`, `refreshTheme()`
+
+[S-09](../product/user-stories.md) and `ui-components.md`'s theme section both write as if
+there is one server. The app supports multiple accounts, each with its own mailbox tree, and
+nothing in the product specification says whose brand colour wins when two accounts live on
+different Nextcloud instances with different colours. `AppSession` picks the first account
+in a stable (server, login name) sort, which is deterministic and arbitrary rather than a
+considered answer.
+
+Still unanswered at curation: `docs/product/ux-spec.md` has no rule for it. This is a
+product question, not a `NextcloudUI` gap, which is why it is recorded here rather than
+filed against the library.
+
+### A disabled `.buttonStyle(.icon)` control cannot show its tooltip
+**Workstream:** WS-10 · **Component:** `NCButtonStyle.icon` · **Severity:** none
+
+Not the library's fault: a disabled AppKit control does not track the pointer, so `.help` on
+a greyed-out button never appears. Recorded because
+[ui-components.md](../reference/ui-components.md) recommends `NCButtonStyle.icon` "with
+`.help` tooltips carrying the shortcut" for the toolbar, and that advice is silently wrong
+for the disabled state. `accessibilityHint` still reaches VoiceOver.
+[ADR-0050](../decisions/0050-an-unavailable-action-says-why-in-the-menu.md) has what this
+app does instead.
+
+### A SwiftUI `Menu` cannot hold a text field, and the specification asked for one
+**Workstream:** WS-10 · **Severity:** none
+
+Nothing for `NextcloudUI` to fix. Recorded because the next person to read "`Menu` with a
+filter field" in `ux-spec.md` will start where this workstream started.
+[ADR-0052](../decisions/0052-move-is-a-popover-because-a-menu-cannot-hold-a-field.md).
 
 ### The coverage footer is a `Text` and did not want a component
-**Workstream:** WS-11 · **Component:** `NCNoteCard` · **Severity:** —
+**Workstream:** WS-11 · **Component:** `NCNoteCard` · **Severity:** none
+**Where:** `NextcloudMail/Views/Search/SearchModel.swift:150`
 
 "Searching 31,204 of 48,902 downloaded messages." is one caption-sized line under the list.
-`NCNoteCard` was the nearest component and is too loud for it — it is a card with a border
-for something the reader is meant to stop at, and this is a footnote they are meant to
-absorb without stopping. A plain `Text` with `theme.metrics.spacing` was right, and nothing
-was bent to get there.
+`NCNoteCard` was the nearest component and is too loud for it: a card with a border is for
+something the reader should stop at, and this is a footnote they should absorb without
+stopping. A plain `Text` with `theme.metrics.spacing` was right, and nothing was bent.
+
+### No generic icon exists for a settings tab, by design
+**Workstream:** WS-12 · **Component:** `MailSymbol` · **Severity:** none
+
+Not a `NextcloudUI` gap: the catalogue is Nextcloud- and mail-specific on purpose. The three
+settings tabs wanted a gear, a person and a disk glyph. Two of the three turned out to be in
+the catalogue (`cogOutline`, `accountOutline`) and the third is `harddisk`, now in the
+missing-icons table.
+
+---
+
+# Part 2: not NextcloudUI
+
+These entries landed in this file because it was the project's only append-only place. They
+are kept in full, grouped by who could act on them.
+
+## `NCMailStore`, this repository's own package
+
+One shape runs through all of these. `MailStore.read` and `MailStore.write` became internal
+in [ADR-0034](../decisions/0034-the-store-returns-its-own-sequence.md), which is right, and
+it means a gap in the DAOs is a gap the caller cannot route around. WS-04 needed two, WS-05
+needed four, WS-06 needed five and could not ship without them. The store's write surface
+was designed around the backfill, and sync writes different columns.
+
+### `NCMailStore` had the queue's table and no queries over it
+**Workstream:** WS-06 · **Component:** `MailStore` · **Severity:** blocker
+**Status: resolved**, by the store-DAO pass
+([ADR-0045](../decisions/0045-the-store-grows-the-queue-dao-and-the-readers.md)).
+
+`pendingOperation` and `PendingOperationRecord` existed and nothing read or wrote them, so
+`applyLocally` and the queue insert could not be put in one transaction from `NCMailSync` at
+all, and that transaction is the whole of ADR-0005. WS-06 declared an `OperationStoring`
+protocol and conformed `MailStore` to it in the test target, where `@testable` reaches
+`read`/`write`. The consequence that mattered: nothing outside `NCMailSync` could construct
+a `MutationQueue`, so the queue was unreachable from the app.
+
+`Queries/MailStore+Operations.swift` now holds `enqueue(_:applying:)`,
+`pendingOperations(accountId:)`, `markInFlight(ids:)`,
+`reschedule(ids:attempts:nextAttemptAt:lastError:)`, `finish(ids:applying:)` and
+`threadMessages(accountId:rootId:)`. `OperationStoring` is deleted.
+
+### Four DAO gaps the sync engine worked around, three of which still stand
+**Workstream:** WS-05 · **Component:** `NCMailStore` · **Severity:** friction
+**Where:** `SyncScheduler+Mailbox.swift`, `SyncScheduler.swift`
+
+WS-05 listed four. The first is half closed and three stand, re-checked at curation against
+the store's current public surface.
+
+1. **Reading `pendingOperation` inside the sync write transaction.** Half closed.
+   `pendingOperations(accountId:)` exists, so the read is a DAO call now, but
+   `upsert(envelopes:preservingPendingOperationsFor:)` still does not exist, so the engine
+   still reads the queue either side of the write and repairs afterwards.
+   [ADR-0037](../decisions/0037-the-queue-is-read-twice-around-the-sync-write.md) names the
+   replacement and is still the live arrangement.
+2. **No `setMailboxStats(unread:total:mailboxId:)`.** A sync response's `stats` is two
+   integers, and writing them means rebuilding a fifteen-column `MailboxWrite` from the
+   `MailboxRecord` that was just read and calling `upsert(mailboxes:)`. Safe, because the
+   write omits every mirror-bookkeeping column by design, and fifteen columns to move two.
+3. **No `recordSyncSuccess(mailboxId:at:)`.** `recordSyncFailure(mailboxId:message:)` exists
+   with no counterpart. `setEnvelopeCursor(_:complete:mailboxId:lastSyncAt:)` is the only
+   DAO that stamps `lastSyncAt` and clears `syncFailureCount` and `lastSyncError`, which is
+   exactly what a successful sync means, so the engine calls it with the mailbox's existing
+   cursor and completion flag passed straight back in. It works, and a reader is entitled to
+   think sync is moving stage 1's cursor, which it must never do.
+4. **`account.lastDeepReconcileAt` has no setter.** The column is on `AccountRecord` and
+   nothing writes it, so the weekly timer lives in `meta` under
+   `sync.lastDeepReconcile.<accountId>`. Two homes for one fact, cheap to fix now and
+   confusing in a year.
+
+### A caller outside the package cannot put two store calls in one transaction
+**Workstream:** WS-04 · **Component:** `NCMailStore` · **Severity:** friction
+**Where:** `MailStore.upsert(envelopes:)`,
+`MailStore.setEnvelopeCursor(_:complete:mailboxId:lastSyncAt:)`
+
+[local-mirror.md](../architecture/local-mirror.md) asked stage 1 for one transaction over a
+page and its cursor. `upsert(envelopes:)` opens its own, and the pieces it uses,
+`SearchIndexWriter` and `EnvelopeWrite.indexedPeople`, are internal to the package, so a
+caller cannot reproduce the page write inside its own transaction without reimplementing the
+address rewrite and the FTS row from outside the module that owns them.
+
+Resolved by ordering rather than by a new method
+([ADR-0030](../decisions/0030-stage-one-owns-its-cursor.md)): envelopes commit first, the
+cursor second, and a crash between them re-reads one page.
+`upsert(envelopes:cursor:complete:mailboxId:)` remains a small addition if the store's owner
+would rather have it than the ordering argument. The general form still stands, and it is
+the same wall ADR-0037 hit from the other side.
+
+### `mailbox.lastPrimedAt` had no DAO
+**Workstream:** WS-04 · **Component:** `NCMailStore` · **Severity:** friction
+**Status: resolved.** `MailStore.setLastPrimedAt(_:mailboxId:)` exists and
+`MirrorCoordinator.storePrimed` uses it.
+
+Not a courtesy: once `MailStore.read`/`write` became internal, the raw-SQL escape hatch
+stage 0 had been using was gone and the DAO had to exist for the coordinator to compile.
+
+### `MailClient` never reports how many bytes came back
+**Workstream:** WS-05 · **Component:** `NCMailNet` · **Severity:** friction
+**Where:** `SyncMetrics.envelopeBytesDown`
+
+[sync-engine.md](../architecture/sync-engine.md) asks the instrumentation for "bytes down".
+`MailClient.get` hands back a decoded value, and `bytes(_:)`, the one verb that returns
+`Data`, is typed `Endpoint<Data>` and so is unavailable for a JSON endpoint. The counter
+sums the `rawJSON` each envelope carries, which is the payload and not the response, and its
+documentation has to say so. A `(value, byteCount)` overload, or a transport-level meter
+`MailClient` could be handed, would make the number the one the document asks for. The live
+measurement test works around it with its own `MailTransport` wrapper, which is fine for a
+test and not something the app can do.
+
+## `NCMailTestSupport`
+
+### `FakeTransport.fail` cannot say "never succeeds"
+**Workstreams:** WS-05 and WS-06, independently · **Component:** `FakeTransport` ·
+**Severity:** polish
+**Where:** `FakeTransport.swift:72`; three call sites in two packages:
+`NCMailSyncTests/SyncSchedulerTests.swift:176`,
+`NCMailSyncTests/OperationDrainTests.swift:352`,
+`NCMailSyncTests/OperationSyncConflictTests.swift:36`
+
+**Seen twice, and this is the entry where seeing it twice is the finding.** WS-05 recorded
+it and asked whether it was a one-off. WS-06 hit it independently and said it is not: "the
+network is gone" is the central situation of the offline queue, and it is spelled
+`fail(route, times: 10_000, then: .status(200))`. The doc comment on `fail` tells callers to
+write exactly that, so the magic number is documented rather than accidental, and it still
+needs a comment at every call site explaining that 10,000 means forever.
+
+Two changes would remove it. A `.always` case, or `times: Int? = nil` meaning forever. And
+`fail(route, alwaysWith: URLError(...))`, which would also let a test choose the error:
+every failure this fake produces is `MailError.transport(URLError(.networkConnectionLost))`
+(`FakeTransport.swift:170`), so a test cannot tell a timeout from a DNS failure.
+
+Not widened by either workstream, because it is WS-14's API. WS-14 appended no entry of its
+own to this file; this is the gap its consumers recorded on its behalf.
+
+### `NCMailTestSupport` could not be used by the tests it was created for
+**Workstream:** WS-02 · **Component:** `Packages/NCMailTestSupport/Package.swift` ·
+**Severity:** blocker at the time
+**Status: resolved** by WS-14
+([ADR-0026](../decisions/0026-fixtures-through-a-dependency-free-target.md), superseding
+[ADR-0022](../decisions/0022-fixtures-by-path-not-bundle.md) for `NCMailCoreTests` and
+`NCMailStoreTests`).
+
+The package depended on `NCMailCore`, `NCMailNet` and `NCMailStore`, so none of their test
+targets could depend on it: SwiftPM rejects the cycle. `Bundle.module`, which
+[testing-strategy.md](../delivery/testing-strategy.md) tells every package to load fixtures
+through, was reachable only from `NCMailTestSupportTests`. WS-02 worked around it by
+resolving the fixture directory from `#filePath`.
+
+WS-14 took the second of the two fixes WS-02 named: a dependency-free `NCMailFixtures`
+target inside the package, vending the recorded bytes, with `FakeTransport` and
+`MailStoreFixtures` above it in a second product. `NCMailNetTests` still takes the full
+product and still lives with ADR-0022's arrangement, which is why that record is superseded
+in part rather than in whole.
+
+## GRDB
+
+### `ValueObservation` over a `WITHOUT ROWID` table never fires
+**Workstream:** WS-03 · **Severity:** trap
+**Where:** [ADR-0025](../decisions/0025-rowid-tables-for-anything-observed.md)
+
+`ValueObservation` is built on `sqlite3_update_hook`, and
+[SQLite does not call that hook for `WITHOUT ROWID` tables](https://www.sqlite.org/c3ref/update_hook.html).
+An observation of such a table delivers its first value and then waits forever. No error, no
+warning, no timeout. The first symptom was a test that hung. Four tables in `schema.sql`
+were `WITHOUT ROWID` and three of them were things a view would want to watch.
+
+**Worth an upstream report.** GRDB could detect this when an observation starts, where it
+already resolves the tracked region against the schema, and trap with "cannot observe
+WITHOUT ROWID table `avatar`". The information is all there and the failure mode is silence.
+
+### `ValueObservation.start` has two overloads and picks the wrong one
+**Workstream:** wave-2 fixes · **Severity:** friction
+**Where:** `MailStore.swift`, `startTracking(_:in:scheduling:onError:onChange:)`
+
+GRDB 7 declares `start(in:scheduling:onError:onChange:)` twice: a `nonisolated` one taking
+`some ValueObservationScheduler`, and a `@MainActor` one taking
+`some ValueObservationMainActorScheduler`. `.mainActor` satisfies both, and passing it from
+a `nonisolated` context selects the `@MainActor` overload and fails with "call to main
+actor-isolated instance method in a synchronous nonisolated context", which reads as a
+concurrency mistake rather than an overload-resolution one. The workaround is a helper whose
+scheduler parameter is an opaque `some ValueObservationScheduler`, which the main-actor
+overload cannot match.
+
+### GRDB's names are not fully re-exported
+**Workstream:** WS-06 · **Severity:** friction
+
+`Records/**` and `Projections/**` use `public import GRDB`, and ADR-0034 notes that GRDB's
+names stay visible to a module that imports `NCMailStore`. Partly.
+`Int.fetchOne(_:sql:)` resolves through the re-export; `Database`, `StatementArguments` and
+`DatabaseValueConvertible` named as types do not. A test file that wrote a store DAO needed
+`import GRDB` for a module its package does not declare as a dependency, which compiled only
+because SwiftPM had GRDB in the search path. That is a coincidence rather than a contract,
+and one more reason the DAO belongs in `NCMailStore` where the import is declared. Moot
+since ADR-0045 moved those DAOs.
+
+## SQLite
+
+### FTS5 virtual tables reject `ON CONFLICT`, so there is no upsert
+**Workstream:** WS-03 · **Severity:** friction
+**Where:** `SearchIndexWriter`
+
+`messageSearch` is written from two places: an envelope supplies subject, preview and
+people, a body supplies the text. Neither may clobber the other's columns, and a virtual
+table has no `INSERT ... ON CONFLICT DO UPDATE` to express that. The shape that works is
+`UPDATE ...; if changesCount == 0 { INSERT ... }`, which reads like a mistake until you know
+why. There is a comment in the file saying so.
+
+### An index helps only if the predicate lets the planner choose it
+**Workstream:** WS-03 · **Severity:** none
+
+The threaded list took 196 ms for its first fifty rows out of fifty thousand, against 0.5 ms
+for the flat one. Nothing was missing: `idxMessageThread` existed and the plan used it for
+two of the three subqueries. The unread count was written
+`count(*) ... WHERE mailboxId = ? AND threadRootId = ? AND isSeen = 0`, and that third term
+made `idxMessageMailboxSeen` look attractive, so the planner took it, matching every unread
+message in the mailbox and filtering by thread afterwards. Rewriting it as
+`sum(CASE WHEN isSeen THEN 0 ELSE 1 END)` over the same two-column predicate took it to
+0.8 ms.
+
+The lesson generalises past this query. `EXPLAIN QUERY PLAN` saying "uses an index" is not
+the assertion worth making. Which index, and over how many rows, is.
+
+## The Swift toolchain
+
+### `@testable import` reaches a module's types but not its file-scope functions
+**Workstream:** WS-06 · **Severity:** friction
+
+From `NCMailSyncTests`, `@testable import NCMailStore` resolved `MailStore.write`,
+`PendingOperationRecord` and every record type, and did not resolve
+`databaseQuestionMarks(count:)`, an internal file-scope function in the same module. The
+compiler did not say "cannot find". It said `error: failed to produce diagnostic for
+expression; please submit a bug report`, which cost twenty minutes of bisecting a thirty-line
+method to find out which symbol it meant. **Worth an upstream report against the toolchain.**
+Three lines were copied rather than fight it.
+
+### `swift format` disagrees with `#expect` about trailing closures
+**Workstream:** WS-02 · **Severity:** polish
+
+`#expect(list.allSatisfy(\.isSelectable))` does not compile: the macro expands the key path
+into a position where the `rethrows` overload is selected and the call is not marked `try`.
+`#expect(list.allSatisfy { $0.isSelectable })` is fine. Worth knowing before the third time
+it happens. `Testing.Tag` also collides with this project's `Tag` model, so a test that names
+the model in a type annotation has to qualify it as `NCMailCore.Tag`.
+
+## The Mail server
+
+WS-02 found that the server's JSON needs a lenient decoder in four specific places, and each
+is a decoding failure for anyone who writes the obvious `Codable` conformance. An empty
+`tags` map serialises as `[]` rather than `{}`, `mentionsMe` is `0`/`1` rather than a
+boolean, `specialRole` is the integer `0` when there is no special use, and an unknown id
+answers 403 with a body of `[]` rather than the documented error envelope.
+
+Those were recorded here first because this file was the only place to append to. They
+belong to the server's audience and are now findings 7 and 8 in
+[server-findings.md](server-findings.md), counted against the recorded fixtures, with the
+payloads documented in [api-payloads.md](../reference/api-payloads.md).
+
+---
+
+# Part 3: what each workstream contributed
+
+Fifteen workstreams plus three cross-cutting passes appended to this file. This table is how
+"every workstream is represented" is checked rather than claimed.
+
+| Source | Contributed | Where it is now |
+| --- | --- | --- |
+| design pass | Missing icons, `NCListItem` leading slot, message-header block, six open questions, first "things that worked" list | Merged throughout Part 1. Both composition entries were later confirmed independently. |
+| WS-00 | The warnings-as-errors blocker; `.ncTheme` in one line; `actool` emplaces `Assets.car` | Round-trip section; things that worked; question 4. |
+| WS-01 | Nothing new, and it meant it. `NCButtonStyle`, `NCNoteCard`, `NCProgressStyle` covered a login screen with no workaround | Things that worked. Its open note that `LoginView` was unreachable is resolved: `RootSplitView.swift:38` shows it. |
+| WS-02 | Test-support package cycle; `swift format` versus `#expect`; four server decoding quirks | Part 2, package cycle marked resolved. Server quirks moved to `server-findings.md`. |
+| WS-03 | `WITHOUT ROWID` and `ValueObservation`; FTS5 has no upsert; the index the planner would not choose | Part 2, GRDB and SQLite. |
+| WS-04 | Two store calls cannot share a transaction; `lastPrimedAt` had no DAO; the mirror draws nothing | Part 2, `NCMailStore`. One marked resolved. |
+| WS-05 | Four store DAO gaps; `MailClient` reports no byte count; `FakeTransport.fail`; no view layer | Part 2. One gap half closed, three stand. The fake-transport entry is merged with WS-06's. |
+| WS-06 | The queue had no store queries (blocker); `@testable` and a free function; GRDB re-export; `FakeTransport.fail` again | Part 2. The blocker is marked resolved; the fake-transport entry is merged with WS-05's. |
+| WS-07 | `NCNavigationItem` does not combine its children; it composes inside `DisclosureGroup` perfectly; no new icons; question 3 still open | Accessibility pair; things that worked; open questions. |
+| WS-08 | Leading slot confirmed with the shape it forced; the relative date measured; 50,000 rows measured; `NCCounterBubble(0)`; question 2 | API friction; performance; open questions. |
+| WS-09 | `NCNoteCard` blocker; `NCListItem` missing initialiser; `NCChip` not activatable; the WebView belongs to the app; message-header block; `image-off-outline` | Leads Part 1. |
+| WS-10 | `NCKeyboardShortcut` is right; `NCColorTokens` has no muted text; disabled icon buttons and `.help`; a `Menu` cannot hold a field | Things that worked; API friction; not-a-library-gap. |
+| WS-11 | `NCHighlight` matches substrings, not terms; `.searchable` is the right answer; the coverage footer wanted no component | API friction; composition; not-a-library-gap. |
+| WS-12 | `Form` and `NCNoteCard` composed with nothing to work around; settings tabs wanted three glyphs | Things that worked; missing icons. |
+| WS-13 | Question 4 answered; question 3 answered provisionally; `MailSymbol` matches the design pass list; the eleven catalogue gaps in order; multi-account brand colour; `NCTheme` has no layout group | Missing icons; performance; open questions; not-a-library-gap. |
+| WS-14 | **No entry of its own.** | Deliberate note rather than an omission: what WS-14 built closed WS-02's package-cycle entry, and the `FakeTransport.fail` gap its consumers recorded twice is the feedback on its API. A workstream whose deliverable is other workstreams' tooling is exactly the one whose feedback comes from its consumers. |
+| wave-2 fixes | `lastPrimedAt` DAO landed; GRDB's overload pair; nothing drawn | Part 2. |
+| store-DAO pass | `NCAvatar` and `NCUserBubble` take the right loader; the cache key includes the diameter; the queue DAO and four readers landed | Things that worked; question 6; Part 2 resolution markers. |

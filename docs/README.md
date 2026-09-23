@@ -62,9 +62,11 @@ first place to look for an endpoint this app does not use yet.
 | --- | --- |
 | [feedback/library-feedback.md](feedback/library-feedback.md) | Running list of everywhere `NextcloudUI` needed a workaround. The deliverable its README is waiting for |
 | [feedback/server-findings.md](feedback/server-findings.md) | Things found in `nextcloud/mail` worth raising upstream |
+| [feedback/upstream-issues.md](feedback/upstream-issues.md) | The issue text itself, ready for a human to post. Written by WS-15 from the two files above |
 
-Both are append-only during implementation. A workstream that touched the library or the
-server API and added nothing to these files has probably not finished.
+The first two are append-only during implementation, and WS-15 curated them at the end. A
+workstream that touched the library or the server API and added nothing to them has probably
+not finished.
 
 ## Reading order for a new agent
 
