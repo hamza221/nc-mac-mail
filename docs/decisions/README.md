@@ -52,6 +52,11 @@ old one stays.*
 | [0037](0037-the-queue-is-read-twice-around-the-sync-write.md) | The operation queue is read twice around a sync write, until the store can read it inside one | Accepted, with a named replacement |
 | [0038](0038-the-message-view-observes-the-thread.md) | The message view observes its thread, because the store cannot observe one body | Accepted, with a named replacement |
 | [0039](0039-a-rendered-message-holds-only-urls-we-would-fetch.md) | A rendered message holds only URLs we would fetch | Accepted |
+| [0040](0040-list-view-is-remembered-per-app.md) | Threaded or flat is remembered once for the app, not once per account | Accepted |
+| [0041](0041-unread-is-the-threads-unread-count.md) | A row is unread when its thread has unread messages, in both views | Accepted |
+| [0042](0042-the-list-watches-one-mailbox-through-its-account.md) | The message list watches one mailbox through its account's mailbox observation | Accepted, with a named replacement |
+| [0043](0043-the-queue-names-the-storage-it-needs.md) | The mutation queue talks to a protocol, because `NCMailStore` has no queue DAO | Accepted, with a named replacement |
+| [0044](0044-the-queue-type-is-not-called-operationqueue.md) | The queue type is `MutationQueue`, not `OperationQueue` | Accepted |
 
 ## Which ones matter most
 

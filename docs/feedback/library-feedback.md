@@ -559,3 +559,165 @@ still absent from the catalogue. Nothing new was needed, which is a good sign fo
 The one it would have used if it existed is MDI `image-off-outline`, for the blocked-content
 bar: the bar currently leans on `NCNoteCard(.warning)`'s own alert glyph, which says
 "warning" rather than "pictures not shown".
+
+### The leading slot holds one view, and a mail row needs four
+**Workstream:** WS-08 · **Component:** `NCListItem` · **Severity:** friction
+**Where:** `NextcloudMail/Views/MessageList/MessageListRow.swift:32`
+
+Confirmed, with the shape it forced. A message row carries three state glyphs — starred, has
+an attachment, replied to — and each is optional. They have to sit in a column of fixed width
+or rows with no glyphs put their avatars two points left of rows with one, and a list scanned
+vertically stops lining up.
+
+`NCListItem(_:subtitle:leading:details:trailing:)` gives the leading slot one view, so the
+row builds `HStack { threeFixedSlots; NCAvatar(…) }` inside it and sizes the slots itself
+from `theme.metrics.icon.small` and `theme.metrics.spacing.hairline`. Every absent glyph is a
+`Color.clear` of that size. It works, it is 20 lines, and the 20 lines are the library's
+alignment reimplemented by a caller who cannot see the library's spacing decisions.
+
+**What would have been better:** an `accessories:` slot ahead of `leading:`, laid out by the
+component at a width it decides from the metric scale, so every Nextcloud list that has
+per-row state glyphs lines up the same way. Files wants exactly this too — shared, favourite,
+locked.
+
+### The short relative date is wrong for a mail list past about a week
+**Workstream:** WS-08 · **Component:** `NCRelativeDateFormatter`, `NCListItemDetails` · **Severity:** friction
+**Where:** `NextcloudMail/Views/MessageList/MessageListRow.swift:40`
+
+`ui-components.md` question 5, answered. `NCListItemDetails`'s default is
+`NCRelativeDateFormatter(width: .short, ignoresSeconds: true)`, which is
+`Date.RelativeFormatStyle(presentation: .named, unitsStyle: .abbreviated)`. Measured output,
+`en_US`:
+
+| Age | Rendered |
+| --- | --- |
+| 3 minutes | `3 min. ago` |
+| 2 hours | `2 hr. ago` |
+| 1 day | `yesterday` |
+| 5 days | `5 days ago` |
+| 9 days | `last wk.` |
+| 40 days | `last mo.` |
+| 280 days | `9 mo. ago` |
+
+The first four are right and are what the design pass expected. The rest are not what a mail
+list shows. Every mail client switches to an absolute date past about a week — "12 Mar" — and
+`presentation: .named` actively loses information doing the opposite: two messages three weeks
+apart both read `last mo.`, so the column that is supposed to order the list stops ordering
+it. `9 mo. ago` is also longer than `12 Mar` in a column that is 280 points wide in total.
+
+The escape hatch does not escape. `NCListItemDetails(date:unreadCount:formatter:)` takes an
+`NCRelativeDateFormatter`, and that type has `width`, `ignoresSeconds` and `locale` — there is
+no way to express "relative under a week, absolute over it" through it, so a caller who wants
+mail rules cannot use `NCListItemDetails` at all. WS-08 kept the library's default rather than
+forking the row, because a row that draws its own date is a row that loses the component.
+
+**What would have been better:** a `cutoff: Duration?` on `NCRelativeDateFormatter`, past
+which it formats absolutely — `.dateTime.day().month(.abbreviated)` within the year,
+`.year()` beyond it. Talk wants the same rule for a conversation list. Failing that, a
+`formatter:` parameter on `NCListItemDetails` typed as `some FormatStyle<Date, String>` so a
+caller can supply anything.
+
+### `NCListItem` was never asked to be 50,000 rows, and that is the right answer
+**Workstream:** WS-08 · **Component:** `NCListItem` · **Severity:** —
+**Where:** `NextcloudMailTests/MessageList/MessageListPerformanceTests.swift:59`
+
+`ui-components.md` question 1, answered as far as it can be answered here. The list is a
+window over the database, so the largest array `ForEach` ever sees in this app is 60 rows on
+selection and 2,580 after twenty-one scroll extensions, never 50,000. At a real 50,000-row
+mailbox, selection to rows assigned is **1.8 ms flat and 2.3 ms threaded**, and extending the
+window is **3.5 ms** — the database and the projection, measured, with no view in it.
+
+So the question "does its `HStack` of optional slots cost enough to need a cheaper row" does
+not arise at the counts this app builds. What was **not** measured is SwiftUI drawing those
+rows and scrolling them at 60 fps: that needs a window, and there is no GUI in this
+environment. WS-08's report says so plainly rather than implying a trace exists.
+
+### `NCCounterBubble(count: 0)` drawing nothing is what made the thread badge one line
+**Workstream:** WS-08 · **Component:** `NCCounterBubble` · **Severity:** —
+**Where:** `NextcloudMail/Views/MessageList/MessageListRow.swift:44`
+
+Recorded because the small correct decisions deserve a line too. The thread-count badge is
+wanted on a thread of three and not on a thread of one, and `count: 0` rendering nothing at
+all means that is `count: row.threadCount > 1 ? row.threadCount : 0` rather than an `if` and
+a branch in the view builder. `NCListItemDetails` collapsing to zero width on a nil date and
+a zero count has the same shape and the same payoff.
+
+### Unanswered, because it needs a window
+**Workstream:** WS-08 · **Component:** `NCListItem`, `NCAccentPolicy` · **Severity:** —
+**Where:** —
+
+`ui-components.md` question 2 — does `.fontWeight(.semibold)` still mark unread when the row
+is selected and tinted by the brand colour — cannot be answered here. There is no GUI and
+`screencapture` does not work, so nothing was rendered.
+
+What can be said from the source is that the two do not compete for one property:
+`NCListItem` sets `.font(.body)` with no explicit weight, with a comment saying that is so a
+caller's `.fontWeight` on the whole row wins, and `List` draws selection as a background fill.
+Whether semibold reads as heavier against a saturated brand fill is a contrast question and
+needs eyes. It stays open, alongside question 3 (brand tint against the macOS selection
+highlight in a three-column split view) and question 4 (MDI glyphs in a signed, sandboxed
+release build).
+
+### Nothing new from `NextcloudUI` — the queue draws nothing
+**Workstream:** WS-06 · **Component:** — · **Severity:** —
+**Where:** —
+
+WS-06 is `NCMailSync/Operations/**` and its tests. It has no view, no symbol and no theme,
+and it publishes a count for WS-13 to draw rather than drawing one. The library was not
+exercised and there is nothing to report about it. The entries below are about
+`NCMailStore` and `NCMailTestSupport`, which is where this workstream's friction actually
+was.
+
+### `NCMailStore` has the queue's table and no queries over it
+**Workstream:** WS-06 · **Component:** `MailStore` · **Severity:** blocker
+**Where:** `Packages/NCMailSync/Tests/NCMailSyncTests/OperationStoreSupport.swift:29`
+
+The fourth time this file has recorded a missing store DAO, and the first time it stopped
+the work rather than costing a workaround. `pendingOperation` and `PendingOperationRecord`
+exist; nothing reads or writes them. `MailStore.write` is internal since ADR-0034, correctly,
+so `applyLocally` and the queue insert cannot be put in one transaction from `NCMailSync` at
+all — and that transaction is the whole of ADR-0005.
+
+What we did instead: declared `OperationStoring` in `Operations/**` and conformed `MailStore`
+to it in the **test** target, where `@testable` reaches `read`/`write`. Every test runs
+against the real schema, and nothing outside `NCMailSync` can construct a `MutationQueue`.
+ADR-0043 names the five methods and the file they belong in. The pattern to notice: WS-04
+needed two DAOs, WS-05 needed four, WS-06 needs five and cannot ship without them. A store
+that owns the GRDB stack has to own the queries too, or the boundary stops being a boundary
+and starts being a queue of requests.
+
+### `@testable import` reaches a module's types but not this free function
+**Workstream:** WS-06 · **Component:** `MailStore`, `databaseQuestionMarks` · **Severity:** friction
+**Where:** `Packages/NCMailSync/Tests/NCMailSyncTests/OperationStoreSupport.swift:154`
+
+From `NCMailSyncTests`, `@testable import NCMailStore` resolves `MailStore.write`,
+`PendingOperationRecord` and every record type, and does **not** resolve
+`databaseQuestionMarks(count:)`, an internal file-scope function in the same module. The
+compiler does not say "cannot find"; it says `error: failed to produce diagnostic for
+expression; please submit a bug report`, which costs twenty minutes of bisecting a
+thirty-line method to find out which symbol it meant. Worth an upstream report against the
+toolchain. We copied the three lines rather than fight it.
+
+### GRDB's names are not re-exported, so a cross-package test file must import it directly
+**Workstream:** WS-06 · **Component:** `NCMailStore` · **Severity:** friction
+**Where:** `Packages/NCMailSync/Tests/NCMailSyncTests/OperationStoreSupport.swift:5`
+
+`Records/**` and `Projections/**` have `public import GRDB`, and ADR-0034 notes that "GRDB's
+names are still visible to a module that imports `NCMailStore`". Partly. `Int.fetchOne(_:sql:)`
+resolves through the re-export; `Database`, `StatementArguments` and `DatabaseValueConvertible`
+named as types do not. So a test file that writes a store DAO needs `import GRDB` for a module
+its package does not declare as a dependency. It compiles because SwiftPM has GRDB in the
+search path, which is a coincidence rather than a contract. One more reason the DAO belongs in
+`NCMailStore`, where the import is declared.
+
+### `FakeTransport.fail` still cannot say "never succeeds"
+**Workstream:** WS-06 · **Component:** `FakeTransport` · **Severity:** polish
+**Where:** `Packages/NCMailSync/Tests/NCMailSyncTests/OperationDrainTests.swift:318`
+
+Independently hit, and reported here a second time because WS-05's entry asked whether it was
+a one-off. It is not: "the network is gone" is the central situation of this workstream, and
+it is spelled `fail(route, times: 10_000, then: .status(200))`. The comment explaining that
+10,000 means "forever" is now in two packages. `fail(route, alwaysWith: URLError(...))` would
+remove both, and would also let a test choose the error — every failure this fake produces is
+`URLError(.networkConnectionLost)`, so a test cannot tell a timeout from a DNS failure.
+Not widened here: it is WS-14's API and this workstream is not the one to change it.

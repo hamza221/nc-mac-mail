@@ -25,6 +25,14 @@ actions taken on a train, quit, relaunched, and reconnected three days later.
 
 ## Build
 
+*As built, two names differ from this sketch and one method was added. The actor is
+`MutationQueue`, because `OperationQueue` is Foundation's
+([ADR-0044](../../decisions/0044-the-queue-type-is-not-called-operationqueue.md)); its
+storage is the `OperationStoring` protocol rather than `MailStore`, because the store has no
+queue DAO ([ADR-0043](../../decisions/0043-the-queue-names-the-storage-it-needs.md)); and
+`MutationQueue.localMailboxId(for:accountId:)` exists because `account.archiveMailboxId`
+turned out to be the server's id, not the mirror's.*
+
 ```swift
 public enum MailOperation: Sendable {
     case setFlags(messageIds: [Int64], flags: [String: Bool])
@@ -51,14 +59,13 @@ public actor OperationDrainer {
 **The transaction rule** is the whole workstream:
 
 ```swift
-try await store.write { db in
-    try applyLocally(operation, db)
-    try PendingOperation(from: operation).insert(db)
-}
+try await store.enqueue(rows, applying: effects)
 drainer.wake()
 ```
 
-Nothing in between, no `await` between the two statements, no optimistic-then-queue.
+Nothing in between, no `await` between applying and inserting, no optimistic-then-queue.
+`MailStore.write` is internal since ADR-0034, so the transaction lives behind
+`OperationStoring.enqueue(_:applying:)`; the guarantee is the same one.
 
 **Payloads are absolute intent** — `{"seen": true}`, never a toggle — so replay is
 idempotent and collapsing is well defined.
