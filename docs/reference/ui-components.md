@@ -87,6 +87,13 @@ func avatarLoader(for address: String) -> @Sendable () async throws -> Image {
 `NCAvatar` draws coloured initials when the loader throws, so a 404 needs no special case —
 but record it in `avatar.missing` so the client stops asking every launch.
 
+**Not built yet.** `store.avatar(for:)` and `avatarFetcher` above are the shape, not the
+code: the mirror has an `avatar` table (`Migrations.swift`, `schema.sql`) and `MailStore` has
+no reader or writer for it, and nothing fetches one. WS-09's message header and WS-08's list
+rows therefore pass no `load:` at all and get coloured initials for everyone. Two workstreams
+have now asked for the same three methods — a reader, a writer, and whichever workstream owns
+the fetch.
+
 ## Gaps: what the library does not give us
 
 The running list with full context is
@@ -137,14 +144,22 @@ scatter `Image(systemName:)` through the views.**
 Each of these is a real question the showcase cannot answer, and WS-13 and WS-08 must
 record the answer either way:
 
-1. Does `NCListItem` stay smooth in a `List` of 50,000 rows, or does its `HStack` of
-   optional slots cost enough to need a cheaper row?
-2. Does `.fontWeight(.semibold)` on the row still mark unread correctly when the row is
-   also selected and tinted by the brand colour?
-3. Do the brand tint and macOS selection highlight fight in a three-column
+1. **Answered by WS-08: the question does not arise.** The list is a window over the
+   database, so `ForEach` never sees more than 60 rows on selection and 2,580 after
+   twenty-one scroll extensions. Selection to rows at a real 50,000-row mailbox is 1.8 ms
+   flat and 2.3 ms threaded. Rendering and scroll smoothness are still unmeasured: they need
+   a window, and there is no GUI in the agents' environment.
+2. **Open.** Does `.fontWeight(.semibold)` on the row still mark unread correctly when the
+   row is also selected and tinted by the brand colour? Needs eyes; WS-08 could not render.
+3. **Open.** Do the brand tint and macOS selection highlight fight in a three-column
    `NavigationSplitView`?
-4. Does `NCIcon` render MDI glyphs in a signed, sandboxed app build, not only under Xcode
-   run? [ADR-0001](../decisions/0001-xcode-project-in-git.md) assumes yes; nobody has
+4. **Open.** Does `NCIcon` render MDI glyphs in a signed, sandboxed app build, not only under
+   Xcode run? [ADR-0001](../decisions/0001-xcode-project-in-git.md) assumes yes; nobody has
    checked in a release configuration.
-5. Is `NCRelativeDateFormatter`'s short form right for a mail list — "3m", "Yesterday",
-   "12 Mar" — or does a mail list want its own rules?
+5. **Answered by WS-08: no, past about a week.** `.short` + `ignoresSeconds` gives
+   "3 min. ago", "2 hr. ago", "yesterday", "5 days ago" — all right — and then "last wk.",
+   "last mo.", "9 mo. ago", which is not what a mail list shows and loses ordering
+   information: two messages three weeks apart both read "last mo.". A mail list wants an
+   absolute "12 Mar" past that point, and `NCListItemDetails(formatter:)` has no way to say
+   so. Measured output and the suggested `cutoff:` parameter are in
+   [../feedback/library-feedback.md](../feedback/library-feedback.md).

@@ -70,23 +70,35 @@ Row is `NCListItem` with the Mail shape:
 
 ```swift
 NCListItem(senderDisplayName, subtitle: subject) {
-    NCAvatar(displayName: senderDisplayName, user: senderEmail, load: avatarLoader(senderEmail))
+    HStack { accessoryColumn; NCAvatar(displayName: senderDisplayName, user: senderEmail) }
 } details: {
-    NCListItemDetails(date: sentAt, unreadCount: isSeen ? 0 : 1)
+    NCListItemDetails(date: sentAt, unreadCount: row.threadUnreadCount)
+} trailing: {
+    NCCounterBubble(count: row.threadCount > 1 ? row.threadCount : 0, role: .neutral, label: .decorative)
 }
-.fontWeight(isSeen ? nil : .semibold)
+.fontWeight(row.threadUnreadCount > 0 ? .semibold : nil)
 ```
 
-- **Unread** is the semibold weight plus the counter bubble, matching the showcase.
+- **Unread** is the semibold weight plus the counter bubble, matching the showcase. It is the
+  *thread's* unread count, not the drawn message's `isSeen`, which is one rule for both views
+  rather than two ([../decisions/0041-unread-is-the-threads-unread-count.md](../decisions/0041-unread-is-the-threads-unread-count.md)).
+- **No avatar photo yet.** `NCAvatar` takes no `load:`, so it draws coloured initials: the
+  `avatar` table exists and `MailStore` has no reader for it. WS-08's report carries the
+  request.
 - **Starred** shows `star` in the leading accessory column; **attachments** show a clip;
   **answered** a reply arrow. Three optional glyphs in a fixed-width column so rows stay
   aligned — and the reason the library's leading slot is noted as a gap.
 - **Threaded view** shows the newest message of each thread with a count badge; flat shows
-  every message. Toolbar `Picker`, remembered per account.
+  every message. Toolbar `Picker`, remembered once for the app rather than per account
+  ([../decisions/0040-list-view-is-remembered-per-app.md](../decisions/0040-list-view-is-remembered-per-app.md)).
 - **Date grouping** — Today / Yesterday / This week / Earlier as section headers. Cheap,
   and it is how people navigate a long list.
-- **Sort** follows the account's server-side `sort-order` preference, so the two clients
-  agree.
+- **Sort** is newest first, and does **not** yet follow the account's server-side
+  `sort-order` preference. Nothing persists that preference — `SyncScheduler` reads it and
+  keeps it in memory ([../decisions/0036-sort-order-decides-the-cursor.md](../decisions/0036-sort-order-decides-the-cursor.md))
+  — and the store's list queries are `ORDER BY m.sentAt DESC` with the index that makes them
+  fast. Making the two clients agree needs a column on `account` and an ordering parameter on
+  `observeMessages`; WS-08's report carries the request.
 - **Selection** — click selects, ⇧-click extends, ⌘-click toggles. Toolbar and context menu
   act on the whole selection.
 
@@ -96,7 +108,7 @@ NCListItem(senderDisplayName, subtitle: subject) {
 | --- | --- |
 | Mirrored, has messages | The list |
 | Mirroring, first page in | The list, growing. No spinner |
-| Mirrored, empty mailbox | `ContentUnavailableView("No messages", systemImage:)` |
+| Mirrored, empty mailbox | `ContentUnavailableView("No messages", …)`, with the icon through `MailSymbol` |
 | Search, no hits | `ContentUnavailableView.search` with the query |
 | Mailbox unselectable | Never reachable: the row does not select |
 | Never mirrored, offline | "Not downloaded yet" plus what will happen on reconnect |
