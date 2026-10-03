@@ -51,6 +51,7 @@ first place to look for an endpoint this app does not use yet.
 | File | Answers |
 | --- | --- |
 | [delivery/roadmap.md](delivery/roadmap.md) | Milestones M0–M7, each with an exit criterion you can demonstrate |
+| [delivery/v2-roadmap-plan.md](delivery/v2-roadmap-plan.md) | The v2 plan: parity with the Nextcloud Mail web client plus Contacts — ADRs, parity matrix, milestones M8–M16, workstreams WS-16–WS-44 |
 | [delivery/workstreams.md](delivery/workstreams.md) | The 16 workstreams, their dependencies, and the file ownership that keeps agents out of each other's way |
 | [delivery/briefs/](delivery/briefs/) | One ready-to-assign brief per workstream. This is the "mapped to other agents" part |
 | [delivery/definition-of-done.md](delivery/definition-of-done.md) | The gates. No workstream is finished without all of them |
