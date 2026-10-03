@@ -1,0 +1,76 @@
+{
+  "ocs": {
+    "meta": {
+      "status": "ok",
+      "statuscode": 200,
+      "message": "OK"
+    },
+    "data": {
+      "name": "Files",
+      "isPaginated": true,
+      "entries": [
+        {
+          "thumbnailUrl": "http://cloud.example.com/index.php/core/preview?x=32&y=32&fileId=294",
+          "title": "fixture (7).txt",
+          "subline": "",
+          "resourceUrl": "http://cloud.example.com/index.php/f/294",
+          "icon": "/index.php/apps/theming/img/core/filetypes/text.svg?v=30fdf852",
+          "rounded": false,
+          "attributes": {
+            "fileId": "294",
+            "path": "/fixture (7).txt"
+          }
+        },
+        {
+          "thumbnailUrl": "",
+          "title": "Fixture OCS send (7).eml",
+          "subline": "",
+          "resourceUrl": "http://cloud.example.com/index.php/f/292",
+          "icon": "/index.php/apps/theming/img/core/filetypes/file.svg?v=30fdf852",
+          "rounded": false,
+          "attributes": {
+            "fileId": "292",
+            "path": "/Fixture OCS send (7).eml"
+          }
+        },
+        {
+          "thumbnailUrl": "http://cloud.example.com/index.php/core/preview?x=32&y=32&fileId=291",
+          "title": "fixture (6).txt",
+          "subline": "",
+          "resourceUrl": "http://cloud.example.com/index.php/f/291",
+          "icon": "/index.php/apps/theming/img/core/filetypes/text.svg?v=30fdf852",
+          "rounded": false,
+          "attributes": {
+            "fileId": "291",
+            "path": "/fixture (6).txt"
+          }
+        },
+        {
+          "thumbnailUrl": "",
+          "title": "Fixture remote images trial 1791061876.eml",
+          "subline": "",
+          "resourceUrl": "http://cloud.example.com/index.php/f/289",
+          "icon": "/index.php/apps/theming/img/core/filetypes/file.svg?v=30fdf852",
+          "rounded": false,
+          "attributes": {
+            "fileId": "289",
+            "path": "/Fixture remote images trial 1791061876.eml"
+          }
+        },
+        {
+          "thumbnailUrl": "http://cloud.example.com/index.php/core/preview?x=32&y=32&fileId=288",
+          "title": "fixture (5).txt",
+          "subline": "",
+          "resourceUrl": "http://cloud.example.com/index.php/f/288",
+          "icon": "/index.php/apps/theming/img/core/filetypes/text.svg?v=30fdf852",
+          "rounded": false,
+          "attributes": {
+            "fileId": "288",
+            "path": "/fixture (5).txt"
+          }
+        }
+      ],
+      "cursor": 5
+    }
+  }
+}

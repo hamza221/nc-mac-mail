@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+<d:multistatus xmlns:d="DAV:" xmlns:s="http://sabredav.org/ns" xmlns:card="urn:ietf:params:xml:ns:carddav" xmlns:oc="http://owncloud.org/ns" xmlns:nc="http://nextcloud.org/ns">
+ <d:response>
+  <d:href>/remote.php/dav/addressbooks/users/user/contacts/23BFCB2D-7C85-4570-8537-F9B524F8EF68.vcf</d:href>
+  <d:propstat>
+   <d:prop>
+    <d:getetag>&quot;04da8071d748c539a8a93249dce97818&quot;</d:getetag>
+   </d:prop>
+   <d:status>HTTP/1.1 200 OK</d:status>
+  </d:propstat>
+ </d:response>
+ <d:response>
+  <d:href>/remote.php/dav/addressbooks/users/user/contacts/ws17-alice.vcf</d:href>
+  <d:propstat>
+   <d:prop>
+    <d:getetag>&quot;eae2a04a3199cf5b5f1ad8bfb63ab6f6&quot;</d:getetag>
+   </d:prop>
+   <d:status>HTTP/1.1 200 OK</d:status>
+  </d:propstat>
+ </d:response>
+ <d:response>
+  <d:href>/remote.php/dav/addressbooks/users/user/contacts/ws17-bob.vcf</d:href>
+  <d:propstat>
+   <d:prop>
+    <d:getetag>&quot;5a599f4c1a1a943278b0279cd13fa0f8&quot;</d:getetag>
+   </d:prop>
+   <d:status>HTTP/1.1 200 OK</d:status>
+  </d:propstat>
+ </d:response>
+ <d:response>
+  <d:href>/remote.php/dav/addressbooks/users/user/contacts/ws19-temp-removed.vcf</d:href>
+  <d:propstat>
+   <d:prop>
+    <d:getetag>&quot;24e47760b0d78db50e3c82728f8ab92e&quot;</d:getetag>
+   </d:prop>
+   <d:status>HTTP/1.1 200 OK</d:status>
+  </d:propstat>
+ </d:response>
+ <d:sync-token>http://sabre.io/ns/sync/61</d:sync-token>
+</d:multistatus>

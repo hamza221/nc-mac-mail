@@ -334,6 +334,87 @@ through `/api/avatars/image` too, so a client needs one route for every avatar.
 
 ---
 
+## Client configuration a non-browser client cannot read (WS-16, v2)
+
+Found while writing [../reference/server-flags.md](../reference/server-flags.md) against
+Mail 5.12.0-rc.1 on Nextcloud 36, 2026-10-03.
+
+### 17. The appendix flags exist only as initial state in the HTML page
+
+**Where:** `lib/Controller/PageController.php::index` (`provideInitialState` for
+`allow-new-accounts`, `disable-scheduled-send`, `disable-snooze`,
+`importance_classification_default`, `google-oauth-url`, `microsoft-oauth-url`, and the
+`preferences` blob carrying `attachment-size-limit`)
+**Kind:** design for one client · **Impact:** medium
+
+Capabilities carry no `mail` section and `GET /api/preferences/{key}` reads user
+preferences only, so these seven values are unreachable without loading and parsing the
+web page. The provisioning API exposes three of the underlying app-config keys, to admins
+only. A native client therefore treats them as "on" (ADR-0078) and learns otherwise from an
+error — when there is one.
+
+**Suggestion:** a `mail` capability (or `GET /ocs/v2.php/apps/mail/config`) with the same
+values `PageController` already computes.
+
+### 18. "New accounts disabled" answers a generic error
+
+**Where:** `lib/Controller/AccountsController.php::create`, the
+`ALLOW_NEW_MAIL_ACCOUNTS` check → `MailJsonResponse::error('Could not create account')`
+**Kind:** error message · **Impact:** low
+
+The same text as an unexpected `ServiceException` a few lines later, so a client surfacing
+the server's message cannot tell the user that their admin turned this off.
+
+**Suggestion:** a 403 with "Creating mail accounts is disabled by your administrator".
+
+### 19. Omitting `classificationEnabled` on create ignores the admin default
+
+**Where:** `lib/Controller/AccountsController.php::create` passes `null` to
+`SetupService::createNewAccount`; `lib/Db/MailAccount.php` keeps its property default
+`classificationEnabled = true`; only `Command/CreateImapAccount.php` and
+`CreateJmapAccount.php` call `isClassificationEnabledByDefault()`
+**Kind:** probably unintended · **Impact:** low
+
+The web form sends the admin's default explicitly, so it never notices. Any other client
+that omits the parameter gets `true`.
+
+**Suggestion:** apply `ClassificationSettingsService::isClassificationEnabledByDefault()`
+when the parameter is null, as the CLI commands do.
+
+### 20. `attachment-size-limit` and the cron-mode flags are not enforced
+
+**Where:** `attachment-size-limit` is read only by `src/components/Composer.vue`;
+`disable-scheduled-send`/`disable-snooze` only by `PageController` — `AttachmentsController`,
+`OutboxController` and the snooze routes never check them
+**Kind:** client-side policy · **Impact:** low
+
+A client that cannot read the flags (finding 17) cannot honour them either, and the server
+accepts the oversized upload or the scheduled send on an ajax-cron instance silently.
+
+### 21. 202 means two opposite things
+
+**Where:** `lib/Controller/MailboxesController.php` (sync: `JsonResponse::fail([], 202)`,
+"not done") versus `DraftsController::update`/`destroy`/`move` and
+`OutboxController::update`/`send`/`destroy` (`JsonResponse::success(…, 202)`, "done")
+**Kind:** shape · **Impact:** high for a client that maps statuses once
+
+A typed client that learned 202 from sync throws on every successful draft save and every
+send — and a queue that retries a "failed" send sends twice. This client reads the envelope
+to tell them apart (ADR-0077).
+
+**Suggestion:** 200 for the drafts and outbox successes; 202 stays sync's.
+
+### 22. Sieve-off filter routes answer an HTML 500
+
+**Where:** `GET`/`PUT /api/filter/{accountId}` with ManageSieve disabled
+**Kind:** error shape · **Impact:** low
+
+The sibling routes (`/api/sieve/active/{id}`, `/api/out-of-office/{id}`) answer a clean 400
+`{"status":"fail","data":{"message":"ManageSieve is disabled"}}`; the filter routes answer
+the full Nextcloud HTML error page with status 500, so a client has no message to show.
+
+**Suggestion:** catch the same `ClientException` and answer the 400 the siblings do.
+
 ## Deliberate behaviour that looks like a bug, and should be documented as deliberate
 
 ### 14. The 1x1 tracking pixel is unrecoverable, which is right

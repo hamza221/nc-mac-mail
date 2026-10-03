@@ -1,0 +1,12 @@
+{
+  "status": "success",
+  "data": [
+    {
+      "id": 8,
+      "type": "group",
+      "shareWith": "admin",
+      "textBlockId": 8,
+      "displayName": "admin"
+    }
+  ]
+}

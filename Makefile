@@ -24,6 +24,11 @@ XCODEFLAGS := -project NextcloudMail.xcodeproj -scheme NextcloudMail \
 # common way this Makefile gets broken by a well-meaning edit.
 FORMAT_PATHS := Packages/*/Package.swift Packages/*/Sources Packages/*/Tests NextcloudMail NextcloudMailTests
 
+# Swift 6.3's default build system links NCMailNetTests with NCMailNet.o twice
+# (the target is reached both directly and through NCMailTestSupport) and the
+# link fails with duplicate symbols. The classic build system links it once.
+BUILDSYS := --build-system native
+
 .PHONY: help
 help: ## Show this help
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -41,15 +46,15 @@ setup: ## Resolve dependencies and check the tools are installed
 
 .PHONY: build
 build: ## Build every package, warnings as errors
-	@for p in $(PACKAGES); do echo "== $$p"; (cd Packages/$$p && swift build $(SWIFTFLAGS)) || exit 1; done
+	@for p in $(PACKAGES); do echo "== $$p"; (cd Packages/$$p && swift build $(BUILDSYS) $(SWIFTFLAGS)) || exit 1; done
 
 .PHONY: test
 test: ## Run every package's tests, warnings as errors
-	@for p in $(PACKAGES); do echo "== $$p"; (cd Packages/$$p && swift test $(SWIFTFLAGS)) || exit 1; done
+	@for p in $(PACKAGES); do echo "== $$p"; (cd Packages/$$p && swift test $(BUILDSYS) $(SWIFTFLAGS)) || exit 1; done
 
 .PHONY: test-tsan
 test-tsan: ## Run every package's tests under Thread Sanitizer
-	@for p in $(PACKAGES); do echo "== $$p"; (cd Packages/$$p && swift test --sanitize=thread) || exit 1; done
+	@for p in $(PACKAGES); do echo "== $$p"; (cd Packages/$$p && swift test $(BUILDSYS) --sanitize=thread) || exit 1; done
 
 .PHONY: build-app
 build-app: ## Build the app target with xcodebuild

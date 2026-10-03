@@ -100,6 +100,66 @@ one — an honest gap, not a flaky assertion waiting for cache luck.
 enough that catching either requires racing the request against the server, which the
 recorder does not attempt yet — left for whichever workstream first needs them.
 
+### v2: every WS-16 route, DAV, and the send rule (WS-19)
+
+The recorder now covers the whole v2 surface. Reads are plain fetches; **mutating routes
+are recorded as scratch-object lifecycles** — the recorder creates a throwaway tag, alias,
+mailbox, draft, outbox message, quick action, text block, uploaded attachment,
+self-signed S/MIME certificate and delegation grant (to a second server user), records
+each mutation's response as the fixture
+(`tag-created.json` → `tag-updated.json` → `tag-deleted.json`, and so on), and deletes the
+object in the same run, so a rerun leaves the account as it found it
+([ADR-0080](../decisions/0080-recorder-scratch-lifecycles-and-send-to-self.md)). Scratch
+state survives a dead run: the scratch mailbox name carries the run's timestamp and
+leftovers are swept, so the next run never collides with the last. The full
+target list lives in `Scripts/record-fixtures.sh` itself — the script is the honest
+enumeration, and its output table prints the HTTP status next to every file it writes.
+
+Recorded bodies carry payload, not server internals: a debug-mode JSON error loses its
+`trace`/`file`/`line`, HTML error pages get the install root rewritten, and DAV header
+fixtures drop `Set-Cookie`, `X-Request-Id` and `X-Debug-Token`. `FixtureBytesTests`
+fails on any of them.
+
+**Send fixtures are recorded by sending to the test account's own address only.** No
+recorder target, present or future, may put any other address on a message
+(`outbox-sent.json`, `ocs-message-sent.json`, the HTML attachment message behind
+`message-html-plain.html` and the remote-content message behind
+`message-html-remote-images.html` all address the account's own
+`emailAddress`). Account create/replace/delete are the deliberate gaps: they cannot be
+aimed at scratch state on a one-account server, so they have no fixtures rather than
+fake ones.
+
+A route whose precondition the test server cannot meet — LLM processing off
+(`thread-summary.json`, `message-smartreply.json`), ManageSieve disabled
+(`sieve-active.json`, `error-filter-500.html`, `error-filter-put-500.html`,
+`out-of-office*.json`), the notifications app absent
+(`notifications.json`), no MDN requested (`message-mdn.json`) — still gets its fixture:
+the server's error body under the route's name, because that body is exactly what the
+client decodes in that situation. This is not the `error-*.json` convention (which names
+a response deliberately provoked with a bad id); it is the route's honest answer on this
+server, and re-recording against a better-equipped server upgrades it in place.
+
+CardDAV/CalDAV fixtures (`dav-*.xml`, `contact-*.vcf`, `event-*.ics`, `todo-*.ics`) are
+recorded through DAV-specific helpers. XML multistatus bodies get the hostname, the login
+segment of DAV paths and all addresses rewritten; **vCard and iCalendar bodies get only a
+plain `sed` address rewrite — no jq, no tracking pass — because WS-17's round-trip tests
+compare the fixture's exact bytes, server line folding included.** The DAV sync fixtures
+are arranged with temporary contacts so `dav-sync-incremental.xml` always carries exactly
+one removed entry and at least one changed one, and `dav-sync-truncated.xml` records what
+truncation actually looks like on sabre: HTTP 207 with an inline per-response
+`HTTP/1.1 507 Insufficient Storage` status and a valid sync-token, not a top-level 507.
+The recorder assumes the default addressbook keeps two synthetic contacts named *alice*
+and *bob*, the personal calendar a *standup* event, and some calendar in the home a
+*task*/*todo* object; they exist on the test server precisely so the script can re-record
+them.
+
+`FakeTransport`'s matchers speak DAV and multipart for the same routes:
+`.propfind`/`.report`/`.mkcol`/`.proppatch`, `.depth(_:)`, `.header(_:_:)` and
+`.header(_:contains:)`, `.bodyContains(_:)` for pinning a stub to one XML report, and
+`.multipart`/`.multipartField(named:)` for the attachment and S/MIME uploads. Body
+matchers read `httpBody` only; a streamed body deliberately never matches, because
+consuming the stream would starve the code under test.
+
 ## Store — real GRDB, in memory
 
 - Migrate from empty; assert the result equals

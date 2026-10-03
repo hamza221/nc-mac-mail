@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 public import Foundation
+public import NCMailCore
 
 /// One call, described: where it goes, how it is spelled, and what comes back.
 ///
@@ -14,6 +15,7 @@ public struct Endpoint<Response>: Sendable {
         case post = "POST"
         case put = "PUT"
         case delete = "DELETE"
+        case patch = "PATCH"
     }
 
     /// Which prefix the path hangs off.
@@ -103,10 +105,11 @@ extension CharacterSet {
 /// A response body the client decodes but does not read.
 ///
 /// The mutation endpoints answer with `{"status":"success"}`, with the changed
-/// object, or with nothing at all depending on the controller. All three decode
-/// to this, so a caller that only cares whether the call worked does not have to
-/// know which.
-public struct EmptyResponse: Decodable, Sendable {
+/// object, with a bare `[]`, or with nothing at all depending on the controller.
+/// All of them decode to this, so a caller that only cares whether the call
+/// worked does not have to know which. `EmptyBodyRepresentable` covers the
+/// "nothing at all" case: a 204 or an empty 200 never reaches `JSONDecoder`.
+public struct EmptyResponse: Decodable, Sendable, EmptyBodyRepresentable {
     public init() {}
     public init(from decoder: any Decoder) throws {}
 }

@@ -128,12 +128,14 @@ struct MessageListMirror: Sendable {
 
 /// Spins the main actor until `condition` holds.
 ///
-/// Not a sleep and not a clock read: `StoreObservation` delivers on the main actor, so
-/// yielding is exactly what lets a pending delivery run. The bound produces a failed
-/// expectation rather than a hung suite.
+/// Yielding is what lets a pending `StoreObservation` delivery run, but the database write
+/// behind a delivery happens off the main actor, so under load a yield count can be spent
+/// before the write lands. The bound is a clock; it produces a failed expectation rather
+/// than a hung suite.
 @MainActor
-func waitUntil(_ condition: @MainActor () -> Bool, limit: Int = 20_000) async -> Bool {
-    for _ in 0..<limit {
+func waitUntil(_ condition: @MainActor () -> Bool, limit: Duration = .seconds(10)) async -> Bool {
+    let deadline = ContinuousClock.now + limit
+    while ContinuousClock.now < deadline {
         if condition() { return true }
         await Task.yield()
     }

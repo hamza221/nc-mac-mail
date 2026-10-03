@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html class="ng-csp" data-placeholder-focus="false" lang="en" data-locale="en" translate="no" >
+	<head
+ data-requesttoken="">
+		<meta charset="utf-8">
+		<title>
+			Nextcloud		</title>
+		<meta name="csp-nonce" nonce="mqgSQ6BR0CbqB8qCPl+LokzD6+BSxa5Bb0QaSbMX1ZA=">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
+				<meta name="apple-itunes-app" content="app-id=1125420102">
+				<meta name="theme-color" content="#00679e">
+		<link rel="icon" href="/core/img/favicon.ico">
+		<link rel="apple-touch-icon" href="/core/img/favicon-touch.png">
+		<link rel="mask-icon" sizes="any" href="/core/img/favicon-mask.svg" color="#00679e">
+		<link rel="manifest" href="/core/img/manifest.json" crossorigin="use-credentials">
+		<link rel="stylesheet" href="/apps-extra/profiler/css/profiler-toolbar.css">
+<link rel="stylesheet" href="/apps/calendar/css/calendar-contacts-menu.css">
+<link rel="stylesheet" href="/core/css/styles.css">
+<link rel="stylesheet" href="/core/css/header.css">
+<link rel="stylesheet" href="/core/css/exception.css">
+<link rel="stylesheet" href="/apps/theming/css/default.css">
+<link rel="stylesheet" href="/core/css/guest.css">
+		<script nonce="mqgSQ6BR0CbqB8qCPl+LokzD6+BSxa5Bb0QaSbMX1ZA=" defer src="/apps/calendar/js/calendar-contacts-menu.js"></script>
+			</head>
+	<body id="body-login" data-theme-default  data-themes="default">
+		<noscript>
+	<div id="nojavascript">
+		<div>
+			This application requires JavaScript for correct operation. Please <a href="https://www.enable-javascript.com/" target="_blank" rel="noreferrer noopener">enable JavaScript</a> and reload the page.		</div>
+	</div>
+</noscript>
+		<div id="initial-state-container" style="display: none;">
+			<input type="hidden" id="initial-state-profiler-request-token" value="TRACKINGID==">
+			<input type="hidden" id="initial-state-core-versionHash" value="IjNhMDk1ZTQxIg==">
+			<input type="hidden" id="initial-state-comments-maxAutoCompleteResults" value="MTA=">
+	</div>
+		<div class="wrapper">
+			<div class="v-align">
+									<header>
+						<div id="header" class="header-guest">
+							<div class="logo"></div>
+						</div>
+					</header>
+								<div class="guest-content">
+					<h1 class="hidden-visually">
+						Nextcloud					</h1>
+					<div class="guest-box wide">
+	<h2>Internal Server Error</h2>
+	<p>The server was unable to complete your request.</p>
+	<p>If this happens again, please send the technical details below to the server administrator.</p>
+	<p>More details can be found in the server log.</p>
+	
+	<h3>Technical details</h3>
+	<ul>
+		<li>Remote Address: 192.168.21.2</li>
+		<li>Request ID: pKySLQTWCwdGApsgwbxm</li>
+					<li>Type: OCA\Mail\Exception\ClientException</li>
+			<li>Code: 0</li>
+			<li>Message: ManageSieve is disabled</li>
+			<li>File: /srv/nextcloud/apps/mail/lib/Service/SieveService.php</li>
+			<li>Line: 73</li>
+			</ul>
+
+			<br />
+		<h3>Trace</h3>
+		<pre>#0 /srv/nextcloud/apps/mail/lib/Service/SieveService.php(32): OCA\Mail\Service\SieveService-&gt;getClient(&#039;admin&#039;, 1)
+#1 /srv/nextcloud/apps/mail/lib/Service/FilterService.php(58): OCA\Mail\Service\SieveService-&gt;getActiveScript(&#039;admin&#039;, 1)
+#2 /srv/nextcloud/apps/mail/lib/Controller/FilterController.php(64): OCA\Mail\Service\FilterService-&gt;update(Object(OCA\Mail\Db\MailAccount), Array)
+#3 /srv/nextcloud/lib/private/AppFramework/Http/Dispatcher.php(198): OCA\Mail\Controller\FilterController-&gt;updateFilters(1, Array)
+#4 /srv/nextcloud/lib/private/AppFramework/Http/Dispatcher.php(86): OC\AppFramework\Http\Dispatcher-&gt;executeController(Object(OCA\Mail\Controller\FilterController), &#039;updateFilters&#039;)
+#5 /srv/nextcloud/lib/private/AppFramework/App.php(138): OC\AppFramework\Http\Dispatcher-&gt;dispatch(Object(OCA\Mail\Controller\FilterController), &#039;updateFilters&#039;)
+#6 /srv/nextcloud/lib/private/Route/Router.php(324): OC\AppFramework\App::main(&#039;OCA\\Mail\\Contro...&#039;, &#039;updateFilters&#039;, Object(OC\AppFramework\DependencyInjection\DIContainer), Array)
+#7 /srv/nextcloud/lib/OC.php(1216): OC\Route\Router-&gt;match(&#039;/apps/mail/api/...&#039;)
+#8 /srv/nextcloud/index.php(28): OC::handleRequest()
+#9 /srv/nextcloud/lib/OC.php(1382): {closure:/srv/nextcloud/index.php:25}()
+#10 /srv/nextcloud/index.php(25): OC::handleRequests(Object(Closure))
+#11 {main}</pre>	</div>
+				</div>
+			</div>
+		</div>
+				<footer class="guest-box ">
+			<p class="info">
+				<a href="https://nextcloud.com" target="_blank" rel="noreferrer noopener" class="entity-name">Nextcloud</a> – a safe home for all your data			</p>
+		</footer>
+	</body>
+</html>

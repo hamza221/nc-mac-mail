@@ -17,8 +17,11 @@ struct FixtureBytesTests {
     func loadsEveryFixture() throws {
         let names = try FixtureBytes.allNames()
         #expect(!names.isEmpty)
+        // Emptiness is not an error: a 204 (thread summary and smartreply with LLM
+        // processing off) and the avatar 404 genuinely have zero-byte bodies, and the
+        // fixture records what the server sent. Loadability is the invariant.
         for name in names {
-            #expect(!(try FixtureBytes.data(name)).isEmpty || name == "avatar-404.txt")
+            _ = try FixtureBytes.data(name)
         }
     }
 
@@ -33,6 +36,22 @@ struct FixtureBytesTests {
         for name in try FixtureBytes.allNames() {
             let text = String(decoding: try FixtureBytes.data(name), as: UTF8.self).lowercased()
             for forbidden in Self.forbiddenSubstrings {
+                #expect(!text.contains(forbidden), "\(name) contains \"\(forbidden)\"")
+            }
+        }
+    }
+
+    // Server internals the recorder strips: a debug-mode JSON error's PHP stack, the
+    // install path, and the live session cookies a DAV response's headers carry.
+    private static let forbiddenServerInternals = [
+        "\"trace\"", "/var/www/", "set-cookie", "oc_sessionpassphrase", "x-request-id", "x-debug-token",
+    ]
+
+    @Test("no fixture carries a stack trace, an install path or a session cookie")
+    func fixturesCarryNoServerInternals() throws {
+        for name in try FixtureBytes.allNames() {
+            let text = String(decoding: try FixtureBytes.data(name), as: UTF8.self).lowercased()
+            for forbidden in Self.forbiddenServerInternals {
                 #expect(!text.contains(forbidden), "\(name) contains \"\(forbidden)\"")
             }
         }

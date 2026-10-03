@@ -62,7 +62,8 @@ struct BodyBackfillTests {
         let (store, seed) = try await seededStore()
         let transport = FakeTransport()
         try await stubQuietStageOne(transport)
-        await transport.stub(MirrorTest.bodyRoute, with: try .fixture("message-body.json"))
+        // The recorder's HTML self-send, which also carries an attachment.
+        await transport.stub(MirrorTest.bodyRoute, with: try .fixture("message-body-attachments.json"))
         await transport.stub(MirrorTest.htmlRoute, with: try .fixture("message-html-plain.html"))
 
         let mirror = try coordinator(store: store, transport: transport, configuration: MirrorTest.configuration())
@@ -109,11 +110,9 @@ struct BodyBackfillTests {
         let (store, _) = try await seededStore(messages: 2)
         let transport = FakeTransport()
         try await stubQuietStageOne(transport)
-        // The mirror skips the fragment when `hasHtmlBody` is false, and that branch has no
-        // test because no recording has a plain-text body in it — editing one to say false
-        // would test the editor, not the server. Asked of WS-14 in the report. Both recorded
-        // bodies are HTML, so what is covered here is the two-request path.
-        await transport.stub(MirrorTest.bodyRoute, with: try .fixture("message-body.json"))
+        // `message-body-attachments.json` is the recorder's HTML self-send and
+        // `message-html-plain.html` its fragment, so this is the two-request path.
+        await transport.stub(MirrorTest.bodyRoute, with: try .fixture("message-body-attachments.json"))
         await transport.stub(MirrorTest.htmlRoute, with: try .fixture("message-html-plain.html"))
 
         let mirror = try coordinator(store: store, transport: transport, configuration: MirrorTest.configuration())
@@ -124,6 +123,28 @@ struct BodyBackfillTests {
         let fragments = await transport.requestPaths.filter { $0.hasSuffix("/html") }.count
         #expect(bodies == 2)
         #expect(fragments == 2)
+    }
+
+    @Test("a plain-text message costs one request: there is no fragment to ask for")
+    func aPlainTextMessageCostsOneRequest() async throws {
+        let (store, seed) = try await seededStore(messages: 2)
+        let transport = FakeTransport()
+        try await stubQuietStageOne(transport)
+        // `message-body.json` records a plain-text message, so the mirror skips the
+        // fragment. A stubbed html route that is never asked is the proof.
+        await transport.stub(MirrorTest.bodyRoute, with: try .fixture("message-body.json"))
+        await transport.stub(MirrorTest.htmlRoute, with: try .fixture("message-html-plain.html"))
+
+        let mirror = try coordinator(store: store, transport: transport, configuration: MirrorTest.configuration())
+        await mirror.start()
+        await mirror.awaitCurrentRun()
+
+        #expect(await transport.requestPaths.filter { $0.hasSuffix("/body") }.count == 2)
+        #expect(await transport.requestPaths.filter { $0.hasSuffix("/html") }.isEmpty)
+        let first = try #require(seed.messageIds.first)
+        let stored = try #require(try await store.body(messageId: first))
+        #expect(stored.body.hasHtmlBody == false)
+        #expect(stored.body.plainBody?.isEmpty == false)
     }
 
     @Test("a relaunch re-fetches no body it already has")
@@ -230,7 +251,7 @@ struct BodyBackfillTests {
         let (store, seed) = try await seededStore(messages: 1)
         let transport = FakeTransport()
         try await stubQuietStageOne(transport)
-        await transport.stub(MirrorTest.bodyRoute, with: try .fixture("message-body.json"))
+        await transport.stub(MirrorTest.bodyRoute, with: try .fixture("message-body-attachments.json"))
         await transport.stub(MirrorTest.htmlRoute, with: .status(404))
 
         let mirror = try coordinator(store: store, transport: transport, configuration: MirrorTest.configuration())
@@ -291,13 +312,15 @@ struct BodyBackfillTests {
 
     @Test("Low Power Mode holds stage 2 and lets stage 1 finish")
     func lowPowerModeHoldsBodiesOnly() async throws {
+        let inboxRemote = try MirrorTest.recordedMailboxes().inbox
         let store = try MailStore.inMemory()
         _ = try await MirrorTest.mirroredAccount(store)
         let transport = FakeTransport()
         try await MirrorTest.stubBootstrap(transport)
-        try await MirrorTest.stubQuietMailboxes(transport, except: 5)
-        await transport.stub(MirrorTest.syncRoute(mailboxId: 5), with: try .fixture("sync-initial.json"))
-        await transport.stub(MirrorTest.messagesRoute(mailboxId: 5), with: try .fixture("messages-inbox-page2.json"))
+        try await MirrorTest.stubQuietMailboxes(transport, except: inboxRemote)
+        await transport.stub(MirrorTest.syncRoute(mailboxId: inboxRemote), with: try .fixture("sync-initial.json"))
+        await transport.stub(
+            MirrorTest.messagesRoute(mailboxId: inboxRemote), with: try .fixture("messages-inbox-page2.json"))
         await transport.stub(MirrorTest.bodyRoute, with: try .fixture("message-body.json"))
 
         let mirror = try coordinator(

@@ -9,11 +9,13 @@ import Testing
 
 /// The rewrite, against the body a real server sent.
 ///
-/// `message-html-plain.html` is 31.5 KB of marketing mail: nine blocked remote images, a
-/// 1×1 tracking pixel the server stripped the URL from, a `@import` of a font stylesheet on
-/// a fourth host, and thirteen links to a click tracker. Nothing in it was invented, which
-/// is the point — the per-recipient ids were redacted to `TRACKINGID` and the URL structure
-/// left intact.
+/// `message-html-remote-images.html` is what the server's sanitiser made of a
+/// marketing-shaped self-send the recorder delivers to the test account
+/// (`Scripts/record-fixtures.sh`, "a remote-content HTML self-send"): nine blocked remote
+/// images, a 1×1 tracking pixel the server stripped the URL from, a `@import` of a font
+/// stylesheet on a fourth host, and five links onto two click-tracker URLs. The markup the
+/// recorder sends is authored; every byte this suite reads is the server's answer for it —
+/// placeholders, proxy URLs and the dropped pixel URL included — with the hmac scrubbed.
 ///
 /// The one document here that is *not* recorded is ``hostileFragment``. It could not be:
 /// no real server sends markup designed to get past this code, and the brief asks for one
@@ -27,16 +29,30 @@ struct MessageHTMLRewriterTests {
         try #require(URL(string: "http://cloud.example.com"))
     }
 
-    /// The server id the recorded proxy URLs carry (`?id=166`), which is also the message
-    /// whose attachments the handler will serve.
-    private static let messageRemoteId: Int64 = 166
+    /// The server id of the recorded message, read from the envelope recorded beside its
+    /// body. The body's proxy URLs carry the same id (`?id=…`), and it is the message whose
+    /// attachments the handler will serve.
+    private static func recordedRemoteId() throws -> Int64 {
+        let envelope = try JSONSerialization.jsonObject(
+            with: try FixtureBytes.data("message-remote-images-envelope.json")
+        )
+        let id = try #require((envelope as? [String: Any])?["databaseId"] as? Int)
+        return Int64(id)
+    }
+
+    /// The message id the hand-written fragments below put in their attachment URLs.
+    private static let fragmentRemoteId: Int64 = 166
     private static let baseFontSize = 13.0
 
     private static func recordedBody() throws -> String {
-        String(decoding: try FixtureBytes.data("message-html-plain.html"), as: UTF8.self)
+        String(decoding: try FixtureBytes.data("message-html-remote-images.html"), as: UTF8.self)
     }
 
-    private static func render(_ fragment: String, showsRemoteImages: Bool) throws -> RenderedMessage {
+    private static func render(
+        _ fragment: String,
+        showsRemoteImages: Bool,
+        messageRemoteId: Int64 = fragmentRemoteId
+    ) throws -> RenderedMessage {
         let policy = MessageRenderPolicy(
             server: try server(),
             messageRemoteId: messageRemoteId,
@@ -45,11 +61,15 @@ struct MessageHTMLRewriterTests {
         return MessageHTMLRewriter(policy: policy).render(fragment: fragment, baseFontSize: baseFontSize)
     }
 
+    private static func renderRecorded(showsRemoteImages: Bool) throws -> RenderedMessage {
+        try render(try recordedBody(), showsRemoteImages: showsRemoteImages, messageRemoteId: try recordedRemoteId())
+    }
+
     // MARK: - The recorded body, blocked
 
     @Test("a recorded message with remote images asks the network for nothing")
     func recordedBodyLoadsNothing() throws {
-        let rendered = try Self.render(try Self.recordedBody(), showsRemoteImages: false)
+        let rendered = try Self.renderRecorded(showsRemoteImages: false)
 
         #expect(rendered.hasBlockedRemoteContent)
         #expect(rendered.remoteImagesShown == 0)
@@ -63,7 +83,7 @@ struct MessageHTMLRewriterTests {
 
     @Test("the server's blocked placeholder is not a request we make either")
     func placeholderIsDropped() throws {
-        let rendered = try Self.render(try Self.recordedBody(), showsRemoteImages: false)
+        let rendered = try Self.renderRecorded(showsRemoteImages: false)
 
         // `/apps/mail/img/blocked-image.png` is on our own server and would authenticate
         // fine. It is still nine requests for a picture of nothing, and the images carrying
@@ -74,16 +94,16 @@ struct MessageHTMLRewriterTests {
     @Test("the font stylesheet on a fourth host goes with the @import that pulled it")
     func importsAreRemoved() throws {
         let recorded = try Self.recordedBody()
-        #expect(recorded.contains("@import url(https://static-forms.klaviyo.com"))
+        #expect(recorded.contains("@import url(https://fonts.example.org"))
 
-        let rendered = try Self.render(recorded, showsRemoteImages: false)
+        let rendered = try Self.renderRecorded(showsRemoteImages: false)
         #expect(!rendered.document.lowercased().contains("@import"))
-        #expect(!rendered.document.contains("static-forms.klaviyo.com"))
+        #expect(!rendered.document.contains("fonts.example.org"))
     }
 
     @Test("the blocked originals stay in the document, inert, for the moment the reader asks")
     func blockedOriginalsAreKept() throws {
-        let rendered = try Self.render(try Self.recordedBody(), showsRemoteImages: false)
+        let rendered = try Self.renderRecorded(showsRemoteImages: false)
         #expect(RenderedDocument.occurrences(of: "data-original-src", in: rendered.document) == 9)
         // And nothing else: an original that points off the server is not restorable, so it
         // is not carried along either.
@@ -95,7 +115,7 @@ struct MessageHTMLRewriterTests {
 
     @Test("show images turns nine originals into nine asset URLs and nothing else")
     func showImagesRewritesTheOriginals() throws {
-        let rendered = try Self.render(try Self.recordedBody(), showsRemoteImages: true)
+        let rendered = try Self.renderRecorded(showsRemoteImages: true)
 
         #expect(rendered.remoteImagesShown == 9)
         let loadable = try RenderedDocument.loadableURLs(in: rendered.document)
@@ -106,7 +126,7 @@ struct MessageHTMLRewriterTests {
             let kind = MailAssetPolicy.classify(
                 decoded,
                 server: try Self.server(),
-                messageRemoteId: Self.messageRemoteId
+                messageRemoteId: try Self.recordedRemoteId()
             )
             #expect(kind == .proxiedRemoteImage)
         }
@@ -114,8 +134,8 @@ struct MessageHTMLRewriterTests {
 
     @Test("showing images restores the author's style and drops the injected display:none")
     func showImagesRestoresTheSavedStyle() throws {
-        let blocked = try Self.render(try Self.recordedBody(), showsRemoteImages: false)
-        let shown = try Self.render(try Self.recordedBody(), showsRemoteImages: true)
+        let blocked = try Self.renderRecorded(showsRemoteImages: false)
+        let shown = try Self.renderRecorded(showsRemoteImages: true)
 
         // Thirteen in the blocked document: nine images the server hid, the tracking pixel,
         // and three rules in the message's own `<style>` block that are none of our
@@ -129,7 +149,7 @@ struct MessageHTMLRewriterTests {
 
     @Test("a tracking pixel stays blocked after show images, because there is nothing to restore")
     func trackingPixelStaysBlocked() throws {
-        let shown = try Self.render(try Self.recordedBody(), showsRemoteImages: true)
+        let shown = try Self.renderRecorded(showsRemoteImages: true)
         let images = RenderedDocument.elements("img", in: shown.document)
 
         #expect(images.count == 10)
@@ -149,13 +169,13 @@ struct MessageHTMLRewriterTests {
 
     @Test("the anchor text of every link is collected, and none of this message's links lie")
     func linkTextsAreCollected() throws {
-        let rendered = try Self.render(try Self.recordedBody(), showsRemoteImages: false)
+        let rendered = try Self.renderRecorded(showsRemoteImages: false)
 
-        // Two distinct hrefs, not thirteen: the recording redacted the per-recipient click
-        // ids to the literal `TRACKINGID`, so the thirteen links collapse onto two URLs.
+        // Two distinct hrefs, not five: four anchors share the shop URL and one is the
+        // unsubscribe link, so the five links collapse onto two URLs.
         #expect(rendered.linkTexts.count == 2)
         #expect(rendered.linkTexts.values.allSatisfy { !$0.isEmpty })
-        // Thirteen links to `ctrk.klclick.com` with text like "Hoodies": the text claims no
+        // Links to `click.example.net` with text like "Hoodies": the text claims no
         // host, so the confirmation must not fire. A rule that asks about every marketing
         // link is a rule people click through.
         for (href, text) in rendered.linkTexts {
@@ -305,13 +325,15 @@ struct MessageHTMLRewriterTests {
     @Test("rewriting a real body is cheap enough to do when the message opens")
     func rewritingIsCheap() throws {
         let recorded = try Self.recordedBody()
+        let remoteId = try Self.recordedRemoteId()
         let started = ContinuousClock.now
         for _ in 0..<10 {
-            _ = try Self.render(recorded, showsRemoteImages: false)
+            _ = try Self.render(recorded, showsRemoteImages: false, messageRemoteId: remoteId)
         }
         let elapsed = (ContinuousClock.now - started) / 10
 
-        // Measured at 8.7 ms per pass over the 31.5 KB recorded body, debug build, on this
+        // Measured at 8.7 ms per pass over a 31.5 KB recorded marketing body (the recording
+        // this suite used before WS-19), debug build, on this
         // machine. That is half a frame at 60 Hz, which is why the view model runs the
         // rewrite off the main actor rather than inline. The bound is an order of magnitude
         // above the measurement, so the test reports a change in complexity rather than the
@@ -333,8 +355,8 @@ struct MessageHTMLRewriterTests {
         let elapsed = ContinuousClock.now - started
 
         #expect(rendered.inlineAttachmentIds.count == 40)
-        // Measured at 0.80 s for 5.1 MB, debug build: 26 times the bytes of the recorded
-        // body for 92 times the time, so the walk is linear and the constant is the string
+        // Measured at 0.80 s for 5.1 MB, debug build: 26 times the bytes of that 31.5 KB
+        // recorded body for 92 times the time, so the walk is linear and the constant is the string
         // copy. One pass, no reparse, and nothing proportional to the number of images.
         #expect(elapsed < .seconds(10), "rewrite took \(elapsed)")
     }

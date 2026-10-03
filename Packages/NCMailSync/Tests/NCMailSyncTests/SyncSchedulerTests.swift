@@ -42,7 +42,7 @@ struct IncrementalSyncTests {
             configuration: SyncTest.configuration(clock: clock)
         )
         await transport.stub(
-            MirrorTest.syncRoute(mailboxId: 5),
+            MirrorTest.syncRoute(mailboxId: seeded.inboxRemoteId),
             with: try Recorded.syncResponse(
                 changed: survivors,
                 vanished: [doomed],
@@ -50,7 +50,8 @@ struct IncrementalSyncTests {
                 unread: 20
             )
         )
-        await transport.stub(MirrorTest.messagesRoute(mailboxId: 5), with: try Recorded.page(survivors))
+        await transport.stub(
+            MirrorTest.messagesRoute(mailboxId: seeded.inboxRemoteId), with: try Recorded.page(survivors))
 
         await scheduler.syncNow(mailboxId: seeded.inboxId)
 
@@ -65,11 +66,13 @@ struct IncrementalSyncTests {
     func theTailScanFindsThreadSiblings() async throws {
         // The trap: `newMessages` joins the message table to itself on `thread_root_id` and
         // keeps only rows with no newer sibling, so a reply to a conversation the mirror
-        // already holds is never mentioned. Here the server knows all 95 and says nothing
-        // new; only the tail scan can find the one that is missing locally.
+        // already holds is never mentioned. Here the server knows every recorded message and
+        // says nothing new; only the tail scan can find the one that is missing locally —
+        // one of the pair that shares a `dateInt`, the hardest place for a message to hide.
         let rows = try Recorded.inbox()
-        let sibling = try #require(rows.first { Recorded.id($0) == 45 })
-        let known = rows.filter { Recorded.id($0) != 45 }
+        let pair = try Recorded.sharedDateIntPair(rows)
+        let sibling = Recorded.id(pair.second)
+        let known = rows.filter { Recorded.id($0) != sibling }
         let seeded = try await SyncTest.seed(messages: known)
 
         let transport = FakeTransport()
@@ -79,17 +82,20 @@ struct IncrementalSyncTests {
             configuration: SyncTest.configuration(clock: TestClock())
         )
         await transport.stub(
-            MirrorTest.syncRoute(mailboxId: 5),
+            MirrorTest.syncRoute(mailboxId: seeded.inboxRemoteId),
             with: try Recorded.syncResponse(changed: known, total: rows.count, unread: 23)
         )
-        await transport.stub(MirrorTest.messagesRoute(mailboxId: 5), with: try Recorded.page(rows))
+        await transport.stub(MirrorTest.messagesRoute(mailboxId: seeded.inboxRemoteId), with: try Recorded.page(rows))
 
         await scheduler.syncNow(mailboxId: seeded.inboxId)
 
         let remaining = try await seeded.store.messages(mailboxId: seeded.inboxId, view: .flat, range: 0..<500)
-        #expect(remaining.map(\.remoteId).contains(45))
+        #expect(remaining.map(\.remoteId).contains(sibling))
         #expect(remaining.count == rows.count)
-        #expect(Recorded.dateInt(sibling) == 1_778_515_439, "the sibling is the twin of the duplicate-dateInt pair")
+        #expect(
+            Recorded.dateInt(pair.second) == Recorded.dateInt(pair.first),
+            "the sibling is the twin of the duplicate-dateInt pair"
+        )
     }
 
     @Test("In the steady state the tail scan is one request that finds nothing")
@@ -104,25 +110,26 @@ struct IncrementalSyncTests {
             configuration: SyncTest.configuration(clock: clock)
         )
         await transport.stub(
-            MirrorTest.syncRoute(mailboxId: 5),
+            MirrorTest.syncRoute(mailboxId: seeded.inboxRemoteId),
             with: try Recorded.syncResponse(changed: rows, total: rows.count, unread: 23)
         )
-        await transport.stub(MirrorTest.messagesRoute(mailboxId: 5), with: try Recorded.page(rows))
+        await transport.stub(MirrorTest.messagesRoute(mailboxId: seeded.inboxRemoteId), with: try Recorded.page(rows))
         try await SyncTest.stubQuietMailboxes(transport)
 
         await scheduler.pass(mailboxIds: nil, forced: false)
         let first = await scheduler.metrics.requestsInLastCycle
 
-        // Far enough for every mailbox to be due again, so the second cycle covers all five.
+        // Far enough for every mailbox to be due again, so the second cycle covers them all.
         clock.advance(by: 1_000)
         await scheduler.pass(mailboxIds: nil, forced: false)
         let second = await scheduler.metrics.requestsInLastCycle
 
-        // Five mirrored, selectable mailboxes. The inbox costs two — one sync, one tail
-        // page — and the four the fixture leaves empty cost one each: with no rows to claim
-        // there is no window worth sending, so those mailboxes are carried by the tail scan
-        // alone until they have something in them.
-        #expect(second == 6)
+        // Every mirrored, selectable mailbox. The inbox costs two — one sync, one tail
+        // page — and the others the fixture leaves empty cost one each: with no rows to
+        // claim there is no window worth sending, so those mailboxes are carried by the tail
+        // scan alone until they have something in them.
+        let others = try MirrorTest.recordedMailboxes().others
+        #expect(second == 2 + others.count)
         #expect(first == second + SyncTest.boilerplateRequests, "only the first cycle reads the folder list")
         for entry in await scheduler.metrics.mailboxes.values {
             #expect(entry.lastTailScanPages == 1)
@@ -141,18 +148,18 @@ struct IncrementalSyncTests {
         )
         // 428, then the prime's own answer, then the sync that follows it.
         await transport.stubSequence(
-            MirrorTest.syncRoute(mailboxId: 5),
+            MirrorTest.syncRoute(mailboxId: seeded.inboxRemoteId),
             [
                 .status(428),
                 try .fixture("sync-initial.json"),
                 try Recorded.syncResponse(changed: rows, total: rows.count, unread: 23),
             ]
         )
-        await transport.stub(MirrorTest.messagesRoute(mailboxId: 5), with: try Recorded.page(rows))
+        await transport.stub(MirrorTest.messagesRoute(mailboxId: seeded.inboxRemoteId), with: try Recorded.page(rows))
 
         await scheduler.syncNow(mailboxId: seeded.inboxId)
 
-        let syncCalls = await transport.requestPaths.count { $0.hasSuffix("/mailboxes/5/sync") }
+        let syncCalls = await transport.requestPaths.count { $0.hasSuffix("/mailboxes/\(seeded.inboxRemoteId)/sync") }
         #expect(syncCalls == 3, "the 428, the re-prime, and the retry")
         let entry = await scheduler.metrics.mailboxes[seeded.inboxId]
         #expect(entry?.consecutiveFailures == 0)
@@ -173,8 +180,8 @@ struct IncrementalSyncTests {
         )
         // `times` large rather than unbounded: `FakeTransport.fail` has no "never succeeds",
         // which is the one gap WS-14 named and the doc comment tells callers to spell this way.
-        await transport.fail(MirrorTest.syncRoute(mailboxId: 5), times: 10_000, then: .status(500))
-        await transport.stub(MirrorTest.messagesRoute(mailboxId: 5), with: try Recorded.page(rows))
+        await transport.fail(MirrorTest.syncRoute(mailboxId: seeded.inboxRemoteId), times: 10_000, then: .status(500))
+        await transport.stub(MirrorTest.messagesRoute(mailboxId: seeded.inboxRemoteId), with: try Recorded.page(rows))
         try await SyncTest.stubQuietMailboxes(transport)
 
         await scheduler.syncNow()
@@ -183,7 +190,9 @@ struct IncrementalSyncTests {
         #expect(remaining.count == rows.count, "a failed sync never clears what is mirrored")
         let metrics = await scheduler.metrics
         #expect(metrics.mailboxes[seeded.inboxId]?.consecutiveFailures == 1)
-        for other in [3, 4, 6, 7] {
+        let others = try MirrorTest.recordedMailboxes().others
+        try #require(!others.isEmpty, "the test needs a second mirrored mailbox to keep going")
+        for other in others {
             let mailbox = try #require(
                 try await seeded.store.mailbox(remoteId: Int64(other), accountId: seeded.accountId)
             )
@@ -205,10 +214,10 @@ struct IncrementalSyncTests {
             configuration: SyncTest.configuration(clock: TestClock())
         )
         await transport.stub(
-            MirrorTest.syncRoute(mailboxId: 5),
+            MirrorTest.syncRoute(mailboxId: seeded.inboxRemoteId),
             with: try Recorded.syncResponse(changed: rows, total: rows.count, unread: 23)
         )
-        await transport.stub(MirrorTest.messagesRoute(mailboxId: 5), with: try Recorded.page(rows))
+        await transport.stub(MirrorTest.messagesRoute(mailboxId: seeded.inboxRemoteId), with: try Recorded.page(rows))
 
         await scheduler.apply(conditions: MirrorConditions(isOffline: true))
         await scheduler.syncNow(mailboxId: seeded.inboxId)
@@ -231,10 +240,10 @@ struct IncrementalSyncTests {
             configuration: SyncTest.configuration(clock: TestClock())
         )
         await transport.stub(
-            MirrorTest.syncRoute(mailboxId: 5),
+            MirrorTest.syncRoute(mailboxId: seeded.inboxRemoteId),
             with: try Recorded.syncResponse(changed: rows, total: rows.count, unread: 23)
         )
-        await transport.stub(MirrorTest.messagesRoute(mailboxId: 5), with: try Recorded.page(rows))
+        await transport.stub(MirrorTest.messagesRoute(mailboxId: seeded.inboxRemoteId), with: try Recorded.page(rows))
 
         await scheduler.apply(conditions: MirrorConditions(isExpensive: true, isConstrained: true))
         await scheduler.syncNow(mailboxId: seeded.inboxId)
@@ -252,10 +261,10 @@ struct IncrementalSyncTests {
             configuration: SyncTest.configuration(clock: TestClock())
         )
         await transport.stub(
-            MirrorTest.syncRoute(mailboxId: 5),
+            MirrorTest.syncRoute(mailboxId: seeded.inboxRemoteId),
             with: try Recorded.syncResponse(changed: rows, total: 4_242, unread: 7)
         )
-        await transport.stub(MirrorTest.messagesRoute(mailboxId: 5), with: try Recorded.page(rows))
+        await transport.stub(MirrorTest.messagesRoute(mailboxId: seeded.inboxRemoteId), with: try Recorded.page(rows))
 
         await scheduler.syncNow(mailboxId: seeded.inboxId)
 
@@ -274,9 +283,9 @@ struct IncrementalSyncTests {
             transport: transport,
             configuration: SyncTest.configuration(clock: TestClock())
         )
-        await transport.stub(MirrorTest.messagesRoute(mailboxId: 5), with: try Recorded.page([]))
+        await transport.stub(MirrorTest.messagesRoute(mailboxId: seeded.inboxRemoteId), with: try Recorded.page([]))
 
-        async let stalled = transport.stall(MirrorTest.syncRoute(mailboxId: 5))
+        async let stalled = transport.stall(MirrorTest.syncRoute(mailboxId: seeded.inboxRemoteId))
         let task = Task { await scheduler.syncNow(mailboxId: seeded.inboxId) }
         // Awaiting the handle proves the request has arrived and is suspended inside the
         // transport. Cancelling — and never also resuming, which would resume the
@@ -304,10 +313,10 @@ struct DrainOrderingTests {
             drainer: drainer
         )
         await transport.stub(
-            MirrorTest.syncRoute(mailboxId: 5),
+            MirrorTest.syncRoute(mailboxId: seeded.inboxRemoteId),
             with: try Recorded.syncResponse(changed: rows, total: rows.count, unread: 23)
         )
-        await transport.stub(MirrorTest.messagesRoute(mailboxId: 5), with: try Recorded.page(rows))
+        await transport.stub(MirrorTest.messagesRoute(mailboxId: seeded.inboxRemoteId), with: try Recorded.page(rows))
 
         #expect(drainer.drainCount == 0)
         await scheduler.syncNow(mailboxId: seeded.inboxId)
@@ -339,10 +348,10 @@ struct DrainOrderingTests {
             rows.filter { Recorded.id($0) != target }
             + Recorded.settingFlag("seen", to: false, on: rows.filter { Recorded.id($0) == target })
         await transport.stub(
-            MirrorTest.syncRoute(mailboxId: 5),
+            MirrorTest.syncRoute(mailboxId: seeded.inboxRemoteId),
             with: try Recorded.syncResponse(changed: serverView, total: rows.count, unread: 23)
         )
-        await transport.stub(MirrorTest.messagesRoute(mailboxId: 5), with: try Recorded.page(rows))
+        await transport.stub(MirrorTest.messagesRoute(mailboxId: seeded.inboxRemoteId), with: try Recorded.page(rows))
 
         await scheduler.syncNow(mailboxId: seeded.inboxId)
 
@@ -374,10 +383,10 @@ struct DrainOrderingTests {
             rows.filter { Recorded.id($0) != target }
             + Recorded.settingFlag("seen", to: false, on: rows.filter { Recorded.id($0) == target })
         await transport.stub(
-            MirrorTest.syncRoute(mailboxId: 5),
+            MirrorTest.syncRoute(mailboxId: seeded.inboxRemoteId),
             with: try Recorded.syncResponse(changed: serverView, total: rows.count, unread: 23)
         )
-        await transport.stub(MirrorTest.messagesRoute(mailboxId: 5), with: try Recorded.page(rows))
+        await transport.stub(MirrorTest.messagesRoute(mailboxId: seeded.inboxRemoteId), with: try Recorded.page(rows))
 
         await scheduler.syncNow(mailboxId: seeded.inboxId)
 

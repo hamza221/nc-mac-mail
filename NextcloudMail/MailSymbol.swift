@@ -30,6 +30,30 @@ enum MailSymbol: CaseIterable {
     case settings
     case account
     case storage
+    // Editor toolbar (WS-20).
+    case bold
+    case italic
+    case underline
+    case strikethrough
+    case subscriptText
+    case superscriptText
+    case insertImage
+    case alignLeft
+    case alignCenter
+    case alignRight
+    case alignJustify
+    case directionLeftToRight
+    case directionRightToLeft
+    case bulletedList
+    case numberedList
+    case blockQuote
+    case link
+    case clearFormatting
+    case findReplace
+    case sourceCode
+    case undo
+    case redo
+    case formatting
 
     /// The symbol to hand a library component whose icon slot takes one directly, such as
     /// `NCNavigationItem(icon:)`. `NCIcon` already falls back to `systemFallback` for any
@@ -68,6 +92,32 @@ enum MailSymbol: CaseIterable {
         case .account: .accountOutline
         // MDI `harddisk` — not in the catalogue.
         case .storage: NCSymbol(asset: "harddisk", systemFallback: "internaldrive")
+        // MDI `format-bold` and friends — none of the editor glyphs are in the catalogue.
+        case .bold: NCSymbol(asset: "format-bold", systemFallback: "bold")
+        case .italic: NCSymbol(asset: "format-italic", systemFallback: "italic")
+        case .underline: NCSymbol(asset: "format-underline", systemFallback: "underline")
+        case .strikethrough: NCSymbol(asset: "format-strikethrough-variant", systemFallback: "strikethrough")
+        case .subscriptText: NCSymbol(asset: "format-subscript", systemFallback: "textformat.subscript")
+        case .superscriptText: NCSymbol(asset: "format-superscript", systemFallback: "textformat.superscript")
+        case .insertImage: NCSymbol(asset: "image-plus", systemFallback: "photo.badge.plus")
+        case .alignLeft: NCSymbol(asset: "format-align-left", systemFallback: "text.alignleft")
+        case .alignCenter: NCSymbol(asset: "format-align-center", systemFallback: "text.aligncenter")
+        case .alignRight: NCSymbol(asset: "format-align-right", systemFallback: "text.alignright")
+        case .alignJustify: NCSymbol(asset: "format-align-justify", systemFallback: "text.justify")
+        case .directionLeftToRight:
+            NCSymbol(asset: "format-pilcrow-arrow-right", systemFallback: "arrow.right.to.line")
+        case .directionRightToLeft:
+            NCSymbol(asset: "format-pilcrow-arrow-left", systemFallback: "arrow.left.to.line")
+        case .bulletedList: NCSymbol(asset: "format-list-bulleted", systemFallback: "list.bullet")
+        case .numberedList: NCSymbol(asset: "format-list-numbered", systemFallback: "list.number")
+        case .blockQuote: NCSymbol(asset: "format-quote-close", systemFallback: "text.quote")
+        case .link: NCSymbol(asset: "link-variant", systemFallback: "link")
+        case .clearFormatting: NCSymbol(asset: "format-clear", systemFallback: "eraser")
+        case .findReplace: NCSymbol(asset: "find-replace", systemFallback: "magnifyingglass")
+        case .sourceCode: NCSymbol(asset: "code-tags", systemFallback: "chevron.left.forwardslash.chevron.right")
+        case .undo: NCSymbol(asset: "undo", systemFallback: "arrow.uturn.backward")
+        case .redo: NCSymbol(asset: "redo", systemFallback: "arrow.uturn.forward")
+        case .formatting: NCSymbol(asset: "format-text", systemFallback: "textformat")
         }
     }
 
@@ -92,6 +142,29 @@ enum MailSymbol: CaseIterable {
         case .settings: .text("Settings")
         case .account: .text("Account")
         case .storage: .text("Storage")
+        case .bold: .text("Bold")
+        case .italic: .text("Italic")
+        case .underline: .text("Underline")
+        case .strikethrough: .text("Strikethrough")
+        case .subscriptText: .text("Subscript")
+        case .superscriptText: .text("Superscript")
+        case .insertImage: .text("Insert image")
+        case .alignLeft: .text("Align left")
+        case .alignCenter: .text("Align centre")
+        case .alignRight: .text("Align right")
+        case .alignJustify: .text("Justify")
+        case .directionLeftToRight: .text("Left to right")
+        case .directionRightToLeft: .text("Right to left")
+        case .bulletedList: .text("Bulleted list")
+        case .numberedList: .text("Numbered list")
+        case .blockQuote: .text("Block quote")
+        case .link: .text("Link")
+        case .clearFormatting: .text("Remove formatting")
+        case .findReplace: .text("Find and replace")
+        case .sourceCode: .text("Source")
+        case .undo: .text("Undo")
+        case .redo: .text("Redo")
+        case .formatting: .text("Formatting")
         }
     }
 

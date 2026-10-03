@@ -1,0 +1,47 @@
+{
+  "ocs": {
+    "meta": {
+      "status": "ok",
+      "statuscode": 200,
+      "message": "OK"
+    },
+    "data": [
+      {
+        "id": "calendar",
+        "title": "Calendar",
+        "icon_url": "http://cloud.example.com/apps/calendar/img/calendar-dark.svg",
+        "order": 20
+      },
+      {
+        "id": "kudos-board",
+        "title": "Kudos boards",
+        "icon_url": "http://cloud.example.com/apps/kudos/img/app-dark.svg",
+        "order": 51,
+        "search_providers_ids": [
+          "kudos-boards"
+        ]
+      },
+      {
+        "id": "polls",
+        "title": "Poll",
+        "icon_url": "/apps/polls/img/polls.svg",
+        "order": 51,
+        "search_providers_ids": [
+          "search-poll"
+        ]
+      },
+      {
+        "id": "profile_picker",
+        "title": "Profile picker",
+        "icon_url": "/apps/profile/img/app-dark.svg",
+        "order": 10
+      },
+      {
+        "id": "files",
+        "title": "Files",
+        "icon_url": "/apps/files/img/folder.svg",
+        "order": 0
+      }
+    ]
+  }
+}

@@ -186,6 +186,82 @@ always mirrored. The app never shows an empty screen where a message should be.
   downloaded messages." Honest, and it disappears when the mirror completes.
 - Escape clears and returns to the mailbox.
 
+## Composer editor (WS-20)
+
+The rich text editor the composer (WS-27) embeds. A TextKit 2 `NSTextView` that serialises
+to the fixed HTML tag set itself ([ADR-0065](../decisions/0065-native-rich-text-editor.md),
+[ADR-0073](../decisions/0073-editor-canonical-html.md)); the §6.5 checklist rows are the
+parity target. The editor owns no mail types and no network: HTML comes in through
+`HTMLImporter` and leaves through `HTMLSerializer`, and nothing in between can fetch.
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│ Paragraph ▾  Font ▾  13 ▾ │ B I U S │ A⃞ ▨ x₂ x² │ 🖼 │ ≡▾ ⇥ ⇤ │ • 1. ❝ │
+│ 🔗  ⌫fmt  🔍  </>  ↶ ↷                                                   │
+├──────────────────────────────────────────────────────────────────────────┤
+│ The quarterly numbers are in — see the chart below.                      │
+│                                                                          │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+**Modes.** `EditorDocument.mode` is `.plain` or `.rich`. Which one a new message starts in
+is the account's writing mode — wired by WS-27/WS-39, not here. Turning formatting on is
+instant. Turning it off while the document carries any formatting asks first: "Turn off
+formatting" — **Turn off and remove formatting** / **Keep formatting** — because the
+strip is destructive. In plain mode the toolbar shows Undo/Redo only and typing attributes
+are pinned to the base font.
+
+**Toolbar** (rich mode, every control labelled for VoiceOver, shortcuts in `.help`):
+
+| Control | Behaviour |
+| --- | --- |
+| Paragraph style | Menu: Paragraph, Heading 1–3 → `p`, `h1`–`h3` |
+| Font family | Menu: Default + the web client's list (Arial, Courier New, Georgia, Lucida Sans Unicode, Tahoma, Times New Roman, Trebuchet MS, Verdana) → `span[style=font-family]` |
+| Font size | Menu: Default, 9–24 → `span[style=font-size]`, px |
+| B / I / U / S | `strong`, `em`, `u`, `s`; reflect the selection's state |
+| Text colour / background | `ColorPicker`s → `span[style=color]`, `span[style=background-color]` |
+| Subscript / superscript | `sub`, `sup`, mutually exclusive |
+| Insert image | Open panel (png/jpeg/gif/bmp/webp, >10 MB refused) → `img[src=data:…]`, embedded base64, width kept in the HTML |
+| Alignment | Menu: left, centre, right, justify → `text-align` on the paragraph |
+| LTR / RTL | `dir` on the selected paragraphs |
+| Lists | Bulleted / numbered → `ul`/`ol` + `li`; toggling again lifts back to paragraphs |
+| Quote | `blockquote` around the selected paragraphs |
+| Link | Popover with a URL field; applies to the selection, inserts the URL as text when there is none |
+| Remove format | Strips inline formatting, keeps blocks |
+| Find and replace | `NSTextFinder` find bar with replace, incremental |
+| Source | Swaps the editor for an editable HTML text view; toggling back re-imports through `HTMLImporter`, accepting the canonical-form loss |
+| Undo / redo | The view's `UndoManager`; formatting operations register their inverse |
+
+**Triggers**, typed at a word boundary (start of paragraph or after whitespace):
+
+- `:` opens the system emoji palette (`NCEmojiPalette`). The palette inserts at the caret;
+  when an emoji lands right after the trigger the colon is removed, and typing anything
+  else — including Space — cancels and keeps the colon
+  ([ADR-0074](../decisions/0074-editor-triggers.md)).
+- `@` mention, `!` text block, `/` Smart Picker: one session API. The characters typed
+  after the trigger are the query; a popover anchored at the caret lists what the
+  `MentionProvider` / `TextBlockProvider` / `SmartPickerProvider` returns (implemented by
+  WS-26/WS-27; without a provider the trigger is inert). Choosing a row replaces the
+  trigger and query: a mention becomes a `mailto:` link and is reported through
+  `onMention` so the composer can add the address to To; a text block inserts its HTML
+  through the importer; a Smart Picker row inserts a titled link. Escape, Space or moving
+  the caret out of the session cancels.
+
+**Paste and drop.** The readable pasteboard types are plain text, RTF, RTFD, images, HTML
+and file URLs — nothing else. HTML goes through `HTMLImporter` only, never
+`NSAttributedString(html:)`, so pasting never makes a network request; RTF is normalised
+to the attribute set the serialiser understands (pasted fonts and sizes survive, per
+§6.5). Pasted or dropped files — including screenshots off the pasteboard — become
+attachments through the `onFileDrop` callback, not inline content. In plain mode only
+plain text is readable.
+
+**Out of editor scope** (owned elsewhere, listed so reviewers do not look for them here):
+the composer window and fields (WS-27), "Insert image from Files" (WS-33 via WS-27),
+account writing-mode default and signature handling (WS-27/WS-39), the ~300 ms live
+source-sync of the web client — the native source view syncs on toggle instead.
+Interactive image resize handles are not in v2's editor; width survives the round trip and
+is the serialised unit (library feedback records the TextKit 2 gap).
+
 ## Settings
 
 `Settings` scene, `Form` + `.formStyle(.grouped)`, three tabs.

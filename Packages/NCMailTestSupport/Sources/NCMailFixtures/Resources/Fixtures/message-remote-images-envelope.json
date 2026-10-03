@@ -1,0 +1,48 @@
+{
+  "databaseId": 66,
+  "uid": 44,
+  "remoteId": null,
+  "subject": "Subject redacted",
+  "dateInt": 1791062222,
+  "flags": {
+    "seen": false,
+    "flagged": false,
+    "answered": false,
+    "deleted": false,
+    "draft": false,
+    "forwarded": false,
+    "hasAttachments": false,
+    "important": false,
+    "$junk": false,
+    "$notjunk": false,
+    "$mdnsent": false
+  },
+  "tags": [],
+  "from": [
+    {
+      "label": "Name redacted",
+      "email": "user@example.com"
+    }
+  ],
+  "to": [
+    {
+      "label": "Name redacted",
+      "email": "user@example.com"
+    }
+  ],
+  "cc": [],
+  "bcc": [],
+  "mailboxId": 3,
+  "messageId": "<user@example.com>",
+  "inReplyTo": null,
+  "references": [],
+  "threadRootId": "<user@example.com>",
+  "imipMessage": false,
+  "previewText": "Preview redacted",
+  "summary": null,
+  "encrypted": false,
+  "mentionsMe": 0,
+  "avatar": null,
+  "fetchAvatarFromClient": false,
+  "attachments": []
+}

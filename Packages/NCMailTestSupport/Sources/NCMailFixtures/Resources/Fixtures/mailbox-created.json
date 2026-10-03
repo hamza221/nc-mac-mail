@@ -1,0 +1,17 @@
+{
+  "databaseId": 19,
+  "id": "TRACKINGID==",
+  "name": "FixtureScratch 1791062118",
+  "accountId": 1,
+  "displayName": "FixtureScratch 1791062118",
+  "attributes": [],
+  "delimiter": "/",
+  "specialUse": [],
+  "specialRole": 0,
+  "mailboxes": [],
+  "syncInBackground": false,
+  "unread": 0,
+  "myAcls": "rliteswkxpa",
+  "shared": false,
+  "cacheBuster": "TRACKINGID"
+}

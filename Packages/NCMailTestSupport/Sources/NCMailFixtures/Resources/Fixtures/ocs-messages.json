@@ -1,0 +1,507 @@
+{
+  "ocs": {
+    "meta": {
+      "status": "ok",
+      "statuscode": 200,
+      "message": "OK"
+    },
+    "data": [
+      {
+        "databaseId": 66,
+        "uid": 44,
+        "remoteId": null,
+        "subject": "Subject redacted",
+        "dateInt": 1791062222,
+        "flags": {
+          "seen": false,
+          "flagged": false,
+          "answered": false,
+          "deleted": false,
+          "draft": false,
+          "forwarded": false,
+          "hasAttachments": false,
+          "important": false,
+          "$junk": false,
+          "$notjunk": false,
+          "$mdnsent": false
+        },
+        "tags": [],
+        "from": [
+          {
+            "label": "Name redacted",
+            "email": "user@example.com"
+          }
+        ],
+        "to": [
+          {
+            "label": "Name redacted",
+            "email": "user@example.com"
+          }
+        ],
+        "cc": [],
+        "bcc": [],
+        "mailboxId": 3,
+        "messageId": "<user@example.com>",
+        "inReplyTo": null,
+        "references": [],
+        "threadRootId": "<user@example.com>",
+        "imipMessage": false,
+        "previewText": "Preview redacted",
+        "summary": null,
+        "encrypted": false,
+        "mentionsMe": 0,
+        "avatar": null,
+        "fetchAvatarFromClient": true,
+        "attachments": []
+      },
+      {
+        "databaseId": 65,
+        "uid": 43,
+        "remoteId": null,
+        "subject": "Subject redacted",
+        "dateInt": 1791062201,
+        "flags": {
+          "seen": false,
+          "flagged": false,
+          "answered": false,
+          "deleted": false,
+          "draft": false,
+          "forwarded": false,
+          "hasAttachments": true,
+          "important": false,
+          "$junk": false,
+          "$notjunk": false,
+          "$mdnsent": false
+        },
+        "tags": [],
+        "from": [
+          {
+            "label": "Name redacted",
+            "email": "user@example.com"
+          }
+        ],
+        "to": [
+          {
+            "label": "Name redacted",
+            "email": "user@example.com"
+          }
+        ],
+        "cc": [],
+        "bcc": [],
+        "mailboxId": 3,
+        "messageId": "<user@example.com>",
+        "inReplyTo": null,
+        "references": [],
+        "threadRootId": "<user@example.com>",
+        "imipMessage": false,
+        "previewText": "Preview redacted",
+        "summary": null,
+        "encrypted": false,
+        "mentionsMe": 0,
+        "avatar": null,
+        "fetchAvatarFromClient": true,
+        "attachments": [
+          {
+            "id": "2",
+            "fileName": "attachment.txt",
+            "mime": "text/plain",
+            "downloadUrl": "http://cloud.example.com/index.php/apps/mail/api/messages/65/attachment/2",
+            "mimeUrl": "/index.php/apps/theming/img/core/filetypes/text.svg?v=30fdf852"
+          }
+        ]
+      },
+      {
+        "databaseId": 64,
+        "uid": 42,
+        "remoteId": null,
+        "subject": "Subject redacted",
+        "dateInt": 1791062189,
+        "flags": {
+          "seen": false,
+          "flagged": false,
+          "answered": false,
+          "deleted": false,
+          "draft": false,
+          "forwarded": false,
+          "hasAttachments": false,
+          "important": false,
+          "$junk": false,
+          "$notjunk": false,
+          "$mdnsent": false
+        },
+        "tags": [],
+        "from": [
+          {
+            "label": "Name redacted",
+            "email": "user@example.com"
+          }
+        ],
+        "to": [
+          {
+            "label": "Name redacted",
+            "email": "user@example.com"
+          }
+        ],
+        "cc": [],
+        "bcc": [],
+        "mailboxId": 3,
+        "messageId": "<user@example.com>",
+        "inReplyTo": null,
+        "references": [],
+        "threadRootId": "<user@example.com>",
+        "imipMessage": false,
+        "previewText": "Preview redacted",
+        "summary": null,
+        "encrypted": false,
+        "mentionsMe": 0,
+        "avatar": null,
+        "fetchAvatarFromClient": true,
+        "attachments": []
+      },
+      {
+        "databaseId": 62,
+        "uid": 40,
+        "remoteId": null,
+        "subject": "Subject redacted",
+        "dateInt": 1791062094,
+        "flags": {
+          "seen": false,
+          "flagged": false,
+          "answered": false,
+          "deleted": false,
+          "draft": false,
+          "forwarded": false,
+          "hasAttachments": false,
+          "important": false,
+          "$junk": false,
+          "$notjunk": false,
+          "$mdnsent": false
+        },
+        "tags": [],
+        "from": [
+          {
+            "label": "Name redacted",
+            "email": "user@example.com"
+          }
+        ],
+        "to": [
+          {
+            "label": "Name redacted",
+            "email": "user@example.com"
+          }
+        ],
+        "cc": [],
+        "bcc": [],
+        "mailboxId": 3,
+        "messageId": "<user@example.com>",
+        "inReplyTo": null,
+        "references": [],
+        "threadRootId": "<user@example.com>",
+        "imipMessage": false,
+        "previewText": "Preview redacted",
+        "summary": null,
+        "encrypted": false,
+        "mentionsMe": 0,
+        "avatar": null,
+        "fetchAvatarFromClient": true,
+        "attachments": []
+      },
+      {
+        "databaseId": 63,
+        "uid": 41,
+        "remoteId": null,
+        "subject": "Subject redacted",
+        "dateInt": 1791062056,
+        "flags": {
+          "seen": false,
+          "flagged": false,
+          "answered": false,
+          "deleted": false,
+          "draft": false,
+          "forwarded": false,
+          "hasAttachments": false,
+          "important": false,
+          "$junk": false,
+          "$notjunk": false,
+          "$mdnsent": false
+        },
+        "tags": [],
+        "from": [
+          {
+            "label": "Name redacted",
+            "email": "user@example.com"
+          }
+        ],
+        "to": [
+          {
+            "label": "Name redacted",
+            "email": "user@example.com"
+          }
+        ],
+        "cc": [],
+        "bcc": [],
+        "mailboxId": 3,
+        "messageId": "<user@example.com>",
+        "inReplyTo": null,
+        "references": [],
+        "threadRootId": "<user@example.com>",
+        "imipMessage": false,
+        "previewText": "Preview redacted",
+        "summary": null,
+        "encrypted": false,
+        "mentionsMe": 0,
+        "avatar": null,
+        "fetchAvatarFromClient": true,
+        "attachments": []
+      },
+      {
+        "databaseId": 56,
+        "uid": 37,
+        "remoteId": null,
+        "subject": "Subject redacted",
+        "dateInt": 1791062055,
+        "flags": {
+          "seen": false,
+          "flagged": false,
+          "answered": false,
+          "deleted": false,
+          "draft": false,
+          "forwarded": false,
+          "hasAttachments": false,
+          "important": false,
+          "$junk": false,
+          "$notjunk": false,
+          "$mdnsent": false
+        },
+        "tags": [],
+        "from": [
+          {
+            "label": "Name redacted",
+            "email": "user@example.com"
+          }
+        ],
+        "to": [
+          {
+            "label": "Name redacted",
+            "email": "user@example.com"
+          }
+        ],
+        "cc": [],
+        "bcc": [],
+        "mailboxId": 3,
+        "messageId": "<user@example.com>",
+        "inReplyTo": null,
+        "references": [],
+        "threadRootId": "<user@example.com>",
+        "imipMessage": false,
+        "previewText": "Preview redacted",
+        "summary": null,
+        "encrypted": false,
+        "mentionsMe": 0,
+        "avatar": null,
+        "fetchAvatarFromClient": true,
+        "attachments": []
+      },
+      {
+        "databaseId": 55,
+        "uid": 36,
+        "remoteId": null,
+        "subject": "Subject redacted",
+        "dateInt": 1791062051,
+        "flags": {
+          "seen": false,
+          "flagged": false,
+          "answered": false,
+          "deleted": false,
+          "draft": false,
+          "forwarded": false,
+          "hasAttachments": false,
+          "important": false,
+          "$junk": false,
+          "$notjunk": false,
+          "$mdnsent": false
+        },
+        "tags": [],
+        "from": [
+          {
+            "label": "Name redacted",
+            "email": "user@example.com"
+          }
+        ],
+        "to": [
+          {
+            "label": "Name redacted",
+            "email": "user@example.com"
+          }
+        ],
+        "cc": [],
+        "bcc": [],
+        "mailboxId": 3,
+        "messageId": "<user@example.com>",
+        "inReplyTo": null,
+        "references": [],
+        "threadRootId": "<user@example.com>",
+        "imipMessage": false,
+        "previewText": "Preview redacted",
+        "summary": null,
+        "encrypted": false,
+        "mentionsMe": 0,
+        "avatar": null,
+        "fetchAvatarFromClient": true,
+        "attachments": []
+      },
+      {
+        "databaseId": 54,
+        "uid": 35,
+        "remoteId": null,
+        "subject": "Subject redacted",
+        "dateInt": 1791062045,
+        "flags": {
+          "seen": false,
+          "flagged": false,
+          "answered": false,
+          "deleted": false,
+          "draft": false,
+          "forwarded": false,
+          "hasAttachments": false,
+          "important": false,
+          "$junk": false,
+          "$notjunk": false,
+          "$mdnsent": false
+        },
+        "tags": [],
+        "from": [
+          {
+            "label": "Name redacted",
+            "email": "user@example.com"
+          }
+        ],
+        "to": [
+          {
+            "label": "Name redacted",
+            "email": "user@example.com"
+          }
+        ],
+        "cc": [],
+        "bcc": [],
+        "mailboxId": 3,
+        "messageId": "<user@example.com>",
+        "inReplyTo": null,
+        "references": [],
+        "threadRootId": "<user@example.com>",
+        "imipMessage": false,
+        "previewText": "Preview redacted",
+        "summary": null,
+        "encrypted": false,
+        "mentionsMe": 0,
+        "avatar": null,
+        "fetchAvatarFromClient": true,
+        "attachments": []
+      },
+      {
+        "databaseId": 53,
+        "uid": 34,
+        "remoteId": null,
+        "subject": "Subject redacted",
+        "dateInt": 1791062033,
+        "flags": {
+          "seen": false,
+          "flagged": false,
+          "answered": false,
+          "deleted": false,
+          "draft": false,
+          "forwarded": false,
+          "hasAttachments": true,
+          "important": false,
+          "$junk": false,
+          "$notjunk": false,
+          "$mdnsent": false
+        },
+        "tags": [],
+        "from": [
+          {
+            "label": "Name redacted",
+            "email": "user@example.com"
+          }
+        ],
+        "to": [
+          {
+            "label": "Name redacted",
+            "email": "user@example.com"
+          }
+        ],
+        "cc": [],
+        "bcc": [],
+        "mailboxId": 3,
+        "messageId": "<user@example.com>",
+        "inReplyTo": null,
+        "references": [],
+        "threadRootId": "<user@example.com>",
+        "imipMessage": false,
+        "previewText": "Preview redacted",
+        "summary": null,
+        "encrypted": false,
+        "mentionsMe": 0,
+        "avatar": null,
+        "fetchAvatarFromClient": true,
+        "attachments": [
+          {
+            "id": "2",
+            "fileName": "attachment.txt",
+            "mime": "text/plain",
+            "downloadUrl": "http://cloud.example.com/index.php/apps/mail/api/messages/53/attachment/2",
+            "mimeUrl": "/index.php/apps/theming/img/core/filetypes/text.svg?v=30fdf852"
+          }
+        ]
+      },
+      {
+        "databaseId": 52,
+        "uid": 33,
+        "remoteId": null,
+        "subject": "Subject redacted",
+        "dateInt": 1791062022,
+        "flags": {
+          "seen": false,
+          "flagged": false,
+          "answered": false,
+          "deleted": false,
+          "draft": false,
+          "forwarded": false,
+          "hasAttachments": false,
+          "important": false,
+          "$junk": false,
+          "$notjunk": false,
+          "$mdnsent": false
+        },
+        "tags": [],
+        "from": [
+          {
+            "label": "Name redacted",
+            "email": "user@example.com"
+          }
+        ],
+        "to": [
+          {
+            "label": "Name redacted",
+            "email": "user@example.com"
+          }
+        ],
+        "cc": [],
+        "bcc": [],
+        "mailboxId": 3,
+        "messageId": "<user@example.com>",
+        "inReplyTo": null,
+        "references": [],
+        "threadRootId": "<user@example.com>",
+        "imipMessage": false,
+        "previewText": "Preview redacted",
+        "summary": null,
+        "encrypted": false,
+        "mentionsMe": 0,
+        "avatar": null,
+        "fetchAvatarFromClient": true,
+        "attachments": []
+      }
+    ]
+  }
+}

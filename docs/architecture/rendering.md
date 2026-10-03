@@ -52,10 +52,10 @@ Three consequences:
 
 **And one thing the transformation does not cover.** `TransformImageSrc` rewrites `<img>`.
 It does not touch CSS, and HTMLPurifier keeps `<style>`. The recorded body
-(`message-html-plain.html`) opens with
+(`message-html-remote-images.html`) opens with
 
 ```css
-@import url(https://static-forms.klaviyo.com/fonts/api/v1/U45QAK/custom_fonts.css);
+@import url(https://fonts.example.org/css/brand-fonts.css);
 ```
 
 which is a fourth remote host, unblocked, in a message whose images are all blocked. WS-09

@@ -1,0 +1,196 @@
+{
+  "ocs": {
+    "meta": {
+      "status": "ok",
+      "statuscode": 200,
+      "message": "OK"
+    },
+    "data": [
+      {
+        "id": "TRACKINGID",
+        "name": "Fixture Team",
+        "displayName": "Fixture Team",
+        "sanitizedName": "Fixture Team",
+        "source": 16,
+        "population": 1,
+        "populationInherited": 1,
+        "config": 0,
+        "description": "",
+        "url": "http://cloud.example.com/index.php/apps/circles/teams/team/TRACKINGID",
+        "creation": 1791058501,
+        "initiator": {
+          "id": "TRACKINGID",
+          "circleId": "TRACKINGID",
+          "singleId": "TRACKINGID",
+          "userId": "admin",
+          "userType": 1,
+          "instance": "cloud.example.com",
+          "local": true,
+          "level": 9,
+          "status": "Member",
+          "displayName": "admin",
+          "displayUpdate": 1791058501,
+          "notes": {
+            "invitedBy": {
+              "id": "TRACKINGID",
+              "userId": "admin",
+              "userType": 1,
+              "displayName": "admin",
+              "instance": "cloud.example.com",
+              "basedOn": {
+                "id": "TRACKINGID",
+                "name": "user:admin:TRACKINGID",
+                "displayName": "admin",
+                "sanitizedName": "",
+                "source": 1,
+                "population": 0,
+                "populationInherited": 0,
+                "config": 1,
+                "description": "",
+                "url": "http://cloud.example.com/index.php/apps/circles/teams/team/TRACKINGID",
+                "creation": 0,
+                "initiator": null
+              }
+            }
+          },
+          "contactId": "",
+          "contactMeta": "",
+          "joined": 1791058501,
+          "invitedBy": {
+            "id": "TRACKINGID",
+            "userId": "admin",
+            "userType": 1,
+            "displayName": "admin",
+            "instance": "cloud.example.com",
+            "basedOn": {
+              "id": "TRACKINGID",
+              "name": "user:admin:TRACKINGID",
+              "displayName": "admin",
+              "sanitizedName": "",
+              "source": 1,
+              "population": 0,
+              "populationInherited": 0,
+              "config": 1,
+              "description": "",
+              "url": "http://cloud.example.com/index.php/apps/circles/teams/team/TRACKINGID",
+              "creation": 0,
+              "initiator": null
+            }
+          },
+          "basedOn": {
+            "id": "TRACKINGID",
+            "name": "user:admin:TRACKINGID",
+            "displayName": "admin",
+            "sanitizedName": "",
+            "source": 1,
+            "population": 0,
+            "populationInherited": 0,
+            "config": 1,
+            "description": "",
+            "url": "http://cloud.example.com/index.php/apps/circles/teams/team/TRACKINGID",
+            "creation": 1790587977,
+            "initiator": null
+          },
+          "inheritedBy": {
+            "id": "TRACKINGID",
+            "userId": "admin",
+            "userType": 1,
+            "displayName": "admin",
+            "instance": "cloud.example.com",
+            "inheritance": {
+              "singleId": "TRACKINGID",
+              "circleId": "TRACKINGID",
+              "circleConfig": 0,
+              "level": 9,
+              "inheritanceFirst": "TRACKINGID",
+              "inheritanceLast": "TRACKINGID",
+              "inheritancePath": [
+                "TRACKINGID"
+              ],
+              "inheritanceDepth": 1
+            }
+          }
+        },
+        "owner": {
+          "id": "TRACKINGID",
+          "circleId": "TRACKINGID",
+          "singleId": "TRACKINGID",
+          "userId": "admin",
+          "userType": 1,
+          "instance": "cloud.example.com",
+          "local": true,
+          "level": 9,
+          "status": "Member",
+          "displayName": "admin",
+          "displayUpdate": 1791058501,
+          "notes": {
+            "invitedBy": {
+              "id": "TRACKINGID",
+              "userId": "admin",
+              "userType": 1,
+              "displayName": "admin",
+              "instance": "cloud.example.com",
+              "basedOn": {
+                "id": "TRACKINGID",
+                "name": "user:admin:TRACKINGID",
+                "displayName": "admin",
+                "sanitizedName": "",
+                "source": 1,
+                "population": 0,
+                "populationInherited": 0,
+                "config": 1,
+                "description": "",
+                "url": "http://cloud.example.com/index.php/apps/circles/teams/team/TRACKINGID",
+                "creation": 0,
+                "initiator": null
+              }
+            }
+          },
+          "contactId": "",
+          "contactMeta": "",
+          "joined": 1791058501,
+          "invitedBy": {
+            "id": "TRACKINGID",
+            "userId": "admin",
+            "userType": 1,
+            "displayName": "admin",
+            "instance": "cloud.example.com",
+            "basedOn": {
+              "id": "TRACKINGID",
+              "name": "user:admin:TRACKINGID",
+              "displayName": "admin",
+              "sanitizedName": "",
+              "source": 1,
+              "population": 0,
+              "populationInherited": 0,
+              "config": 1,
+              "description": "",
+              "url": "http://cloud.example.com/index.php/apps/circles/teams/team/TRACKINGID",
+              "creation": 0,
+              "initiator": null
+            }
+          },
+          "basedOn": {
+            "id": "TRACKINGID",
+            "name": "user:admin:TRACKINGID",
+            "displayName": "admin",
+            "sanitizedName": "",
+            "source": 1,
+            "population": 0,
+            "populationInherited": 0,
+            "config": 1,
+            "description": "",
+            "url": "http://cloud.example.com/index.php/apps/circles/teams/team/TRACKINGID",
+            "creation": 1790587977,
+            "initiator": null
+          }
+        },
+        "settings": {
+          "population": 1,
+          "populationInherited": 1
+        },
+        "invitationCode": null
+      }
+    ]
+  }
+}

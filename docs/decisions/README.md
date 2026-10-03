@@ -85,6 +85,14 @@ old one stays.*
 | [0070](0070-contacts-sidebar-section.md) | Contacts appear as a sidebar section, under the mail accounts | Accepted |
 | [0071](0071-widgets-read-snapshot.md) | Widgets read a snapshot file in the app group, never the database | Proposed |
 | [0072](0072-local-first-autocomplete.md) | Recipient autocomplete is local-first | Proposed |
+| [0073](0073-editor-canonical-html.md) | The editor serialises one canonical HTML form, and import makes any input canonical | Accepted |
+| [0074](0074-editor-triggers.md) | Editor triggers are one session API; `:` opens the system emoji palette | Accepted |
+| [0075](0075-lossless-raw-line-retention.md) | vCard and iCalendar properties keep their unfolded original line; untouched properties re-emit it | Accepted |
+| [0076](0076-sync-truncation-is-a-flag.md) | A truncated sync-collection is a flag on a successful result, not an error | Accepted |
+| [0077](0077-a-202-with-the-success-envelope-is-success.md) | A 202 carrying the success envelope is a success, not a sync in progress | Accepted |
+| [0078](0078-flags-come-from-apis-or-default-on.md) | Server flags come from user-readable APIs or default to on; the web page is never scraped | Accepted |
+| [0079](0079-a-login-table-roots-instance-state.md) | A `login` table is the local identity for instance-scoped state, and sign-out is two cascade roots | Accepted |
+| [0080](0080-recorder-scratch-lifecycles-and-send-to-self.md) | The fixture recorder mutates only scratch objects, and sends only to the account itself | Accepted |
 
 ## Which ones matter most
 

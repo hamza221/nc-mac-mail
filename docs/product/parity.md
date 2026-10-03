@@ -49,7 +49,7 @@ the end by WS-44; rows marked `Excluded (ADR-0064)` are out of scope by decision
 | 5.12 | Printing | v1 + WS-30 | Whole-thread print in WS-30 | v1 |
 | 6.1, 6.3, 6.4, 6.6–6.9 | Composer: entry points, window, recipients, signature, attachments, actions, sending | WS-27 | Sending in WS-23; Files attachments and share links in WS-33 | Planned |
 | 6.2 | mailto | WS-42 (handler), WS-27 (parser) | Default mail app via `NSWorkspace` | Planned |
-| 6.5 | Editor | WS-20 | — | Planned |
+| 6.5 | Editor | WS-20 | Native TextKit 2 editor serialising its own fixed tag set (ADR-0065, ADR-0073); triggers per ADR-0074; `EditorFixedPointTests` (every tag-set construct), `EditorDocumentTests`, `HTMLImporterTests`, `PlainTextSerializerTests`. Account writing-mode default, Files image picker and ~300 ms source sync are WS-27/WS-33 wiring (see ux-spec §Composer editor) | Done |
 | 6.8, 6.9 | Mailvelope rows | Excluded (ADR-0064) | — | Excluded (ADR-0064) |
 | 7, 7.1, 7.2 | App settings dialog, text blocks, S/MIME certificates | WS-38 | PKCS#12 converted locally | Planned |
 | 7 | Security Mailvelope card | Excluded (ADR-0064) | — | Excluded (ADR-0064) |
@@ -65,7 +65,7 @@ the end by WS-44; rows marked `Excluded (ADR-0064)` are out of scope by decision
 | 10 | Context Chat | WS-38 | Preference toggle | Planned |
 | 10 | Provisioning middleware | WS-28, WS-39 | Disabled provisioned accounts; locked sections | Planned |
 | — | "Not present in the code" list | WS-29, WS-41 | Native adds select-all and a dock badge; the right-click menu and offline indicator are v1 | Planned |
-| Appendix | Preferences and flags that gate UI | WS-16 | Records how each flag is discovered without the web page's initial state | Planned |
+| Appendix | Preferences and flags that gate UI | WS-16 | Discovery source or feature-on contingency per flag in `docs/reference/server-flags.md` (ADR-0078); evidence: `OCSDecodingTests.decodesTaskTypes`, `decodesAbsenceCapability`, `OCSEndpointReplayTests.taskTypes`/`translation`, `MessageEndpointReplayTests.llmWithoutProvider`, plus live curl 2026-10-03 | Done |
 
 ## Contacts
 

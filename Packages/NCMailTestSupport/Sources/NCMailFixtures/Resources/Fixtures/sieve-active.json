@@ -1,0 +1,7 @@
+{
+  "status": "fail",
+  "data": {
+    "message": "ManageSieve is disabled",
+    "type": "OCA\\Mail\\Exception\\ClientException"
+  }
+}

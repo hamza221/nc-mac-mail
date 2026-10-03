@@ -1,0 +1,12 @@
+{
+  "ocs": {
+    "meta": {
+      "status": "failure",
+      "statuscode": 412,
+      "message": ""
+    },
+    "data": {
+      "message": "No translation provider available"
+    }
+  }
+}

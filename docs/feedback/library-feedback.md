@@ -868,3 +868,182 @@ Fifteen workstreams plus three cross-cutting passes appended to this file. This 
 | WS-14 | **No entry of its own.** | Deliberate note rather than an omission: what WS-14 built closed WS-02's package-cycle entry, and the `FakeTransport.fail` gap its consumers recorded twice is the feedback on its API. A workstream whose deliverable is other workstreams' tooling is exactly the one whose feedback comes from its consumers. |
 | wave-2 fixes | `lastPrimedAt` DAO landed; GRDB's overload pair; nothing drawn | Part 2. |
 | store-DAO pass | `NCAvatar` and `NCUserBubble` take the right loader; the cache key includes the diameter; the queue DAO and four readers landed | Things that worked; question 6; Part 2 resolution markers. |
+
+---
+
+# v2 appendix (append-only, per workstream)
+
+## WS-18 — store v2
+
+Nothing new on `NextcloudUI` — WS-18 never touches a view. Two findings for Part 2's
+audience, both GRDB/SQLite:
+
+### `databaseQuestionMarks(count:)` already parenthesises
+**Workstream:** WS-18 · **Component:** GRDB · **Severity:** friction
+**Where:** Packages/NCMailStore/Sources/NCMailStore/Queries/MailStore+Contacts.swift:24
+Wrapping its result in `IN (…)` produces `IN ((?, ?))`, which SQLite parses as a row value
+and rejects at runtime with "row value misused" — not at prepare time with a syntax error,
+so only a test with two or more values catches it. `V2QueryTests.syncingAddressBooksPreservesTheMirrorsOwnColumns`
+did; use `IN \(databaseQuestionMarks(count:))` bare.
+
+### `ALTER TABLE ADD COLUMN` lands before the table constraints in `sqlite_master`
+**Workstream:** WS-18 · **Component:** SQLite · **Severity:** polish
+**Where:** docs/reference/schema.sql:57
+Useful for anyone extending the schema-diff test pattern: SQLite rewrites the stored
+`CREATE TABLE` text by inserting the added column after the last column definition and
+*before* any table constraint, so the reference file can stay valid SQL with the v2
+columns listed between `rawJSON` and the `UNIQUE` clause. Measured before committing to
+ALTER over a table rebuild; `schemaMatchesReference` passes with the columns in that
+position.
+
+## WS-20 — rich text editor
+
+### Proposal: upstream this editor as `NCRichContenteditable`
+**Workstream:** WS-20 · **Component:** NextcloudUI (missing component) · **Severity:** offer, not gap
+**Where:** NextcloudMail/Editor/**
+NextcloudUI's ROADMAP defers a rich editor to v1.1; ADR-0065 built one here that is
+deliberately upstreamable. What exists: a TextKit 2 `NSTextView` (`ComposerTextView`), an
+`@Observable` document (`EditorDocument`) with plain/rich modes, its own
+`HTMLSerializer`/`HTMLImporter` over a fixed, canonical tag set (ADR-0073, fixed-point
+tested construct by construct), a full toolbar (heading/family/size, B/I/U/S, colours,
+sub/sup, image embed, alignment, LTR/RTL, lists, quote, link, remove format,
+`NSTextFinder` find/replace, editable source view, undo/redo), a trigger-session API
+(`:`/`@`/`!`/`/`, ADR-0074) behind three provider protocols, and a restricted pasteboard
+whose HTML path never touches WebKit. No mail types anywhere; theming is `.ncTheme`
+tokens; every control is labelled. The one seam to cut for upstreaming: the tokenizer is
+the app's `HTMLScanner`/`HTMLEntities` (~270 lines, also mail-free) — it would move into
+the library with the editor. macOS-only today (`NSTextView`); the serialiser/importer
+halves are AppKit-string code an iOS `UITextView` host could share.
+
+### `NCEmojiPalette` is not reachable through `NextcloudUI`
+**Workstream:** WS-20 · **Component:** NextcloudPlatform / NextcloudUI exports · **Severity:** friction
+**Where:** NextcloudMail/Editor/ComposerTextView.swift:5
+The brief says "NextcloudUI `NCEmojiPalette`", but the type lives in `NextcloudPlatform`,
+which `NextcloudUI` neither re-exports (its `Exports.swift` re-exports only
+`NextcloudDesign` and `NextcloudIcons`) nor is declared as a library product in
+`Package.swift`. `import NextcloudPlatform` compiles in an Xcode build because every
+package target lands in the build directory, but that is an implementation detail, not an
+API. Ask: either add `NextcloudPlatform` to the `@_exported` list or promote it to a
+product.
+
+### Missing icons: the whole format-* family
+**Workstream:** WS-20 · **Component:** NextcloudIcons · **Severity:** polish
+**Where:** NextcloudMail/MailSymbol.swift:95
+Twenty-three editor glyphs (`format-bold`, `format-italic`, `format-underline`,
+`format-strikethrough-variant`, `format-subscript`, `format-superscript`, `image-plus`,
+`format-align-left/center/right/justify`, `format-pilcrow-arrow-left/right`,
+`format-list-bulleted`, `format-list-numbered`, `format-quote-close`, `link-variant`,
+`format-clear`, `find-replace`, `code-tags`, `undo`, `redo`, `format-text`) are all absent
+from the catalogue, so the toolbar runs entirely on SF fallbacks. The `MailSymbol`
+pattern absorbed that in one file, which is the pattern working as designed — but an
+editor component upstreamed as `NCRichContenteditable` will need the MDI set.
+
+### Where TextKit 2 fell short of §6.5
+**Workstream:** WS-20 · **Component:** AppKit (not a library gap) · **Severity:** recorded for the upstream design
+Four things the web client's CKEditor does that TextKit 2 does not hand over:
+
+- **Inline image resizing.** No selection handles on `NSTextAttachment`; building them
+  means custom hit-testing over `NSTextLayoutManager` fragments. v2 ships without
+  interactive resize — `width` survives the round trip and is the serialised unit.
+- **Ordered-list numbering is instance-based.** `NSTextList` ordinals count paragraphs
+  sharing one list *instance*; splitting a list mid-edit restarts numbering at the split.
+  Cosmetic only here, because block identity (and therefore the serialised HTML) lives in
+  a custom attribute, not in the text list.
+- **HTML on the pasteboard is WebKit's by default.** `NSTextView`'s built-in `.html`
+  reading goes through `NSAttributedString(html:)`, which can fetch. There is no reader
+  hook to replace; the only safe seam is overriding `readSelection(from:type:)` and never
+  calling super for `.html`. Anyone upstreaming an editor must know this one.
+- **`performTextFinderAction` wants a `tag`.** No typed API to open the find bar's
+  replace interface; the caller fabricates an `NSMenuItem` with
+  `NSTextFinder.Action.showReplaceInterface.rawValue`. Works, reads like a workaround.
+
+One stdlib note in the same spirit: `Unicode.Scalar.Properties` exposes `isEmoji` and
+`isEmojiPresentation` but not `isExtendedPictographic`, so the emoji-trigger heuristic
+(ADR-0074) approximates with presentation-default-or-above-U+238C.
+
+### Things that worked
+`NCButtonStyle.icon` carried a 25-control toolbar with no fighting; `theme.metrics`
+had every spacing the toolbar needed; `NCIcon`'s mandatory label meant the VoiceOver
+acceptance row was free; SwiftUI `ColorPicker` was the right colour control and needed no
+library replacement.
+
+## WS-17 — DAV client, vCard and iCalendar
+
+Nothing on `NextcloudUI` — WS-17 has no view. What it measured is for whoever builds a
+shared Nextcloud DAV package (ADR-0069's "revisit when"):
+
+### A shared Nextcloud DAV client would be worth depending on
+**Workstream:** WS-17 · **Component:** NextcloudKit-equivalent (missing component) · **Severity:** offer, not gap
+**Where:** Packages/NCMailNet/Sources/NCMailNet/DAV/**
+Every Nextcloud macOS/iOS client re-learns the same sabre facts, and `NCMailNet/DAV` is
+~850 lines with no mail types: `DAVClient` over a transport protocol, a namespace-aware
+`XMLParser` multistatus parser, sabre `d:error` mapping, request bodies for PROPFIND /
+sync-collection / multiget / extended MKCOL / PROPPATCH / `oc:share`. The facts it encodes,
+all recorded rather than read from docs: a truncated sync is a 207 with an in-band 507 for
+the collection (ADR-0076); a vCard 4.0 PUT is re-served as sabre-normalised 3.0 yet
+answers a strong ETag (the md5 of the bytes sent, against RFC 6352 §6.3.2.3's MUST NOT),
+so an ETag does not prove the server holds your bytes; the calendar home is
+`/calendars/<login>/` while the addressbook home is
+`/addressbooks/users/<login>/`, so neither can be derived from the other; the addressbook
+home lists synthetic `z-server-generated--system` and
+`z-app-generated--contactsinteraction--recent` books a client usually wants to hide. The
+content-line lexer in `NCMailCore/Contacts` (shared by vCard and iCalendar, lossless per
+ADR-0075) is equally mail-free.
+
+### `XMLParser` is fine for DAV once `shouldProcessNamespaces` is on
+**Workstream:** WS-17 · **Component:** Foundation · **Severity:** polish
+**Where:** Packages/NCMailNet/Sources/NCMailNet/DAV/DAVMultistatusParser.swift:44
+sabre declares five prefixes (`d`, `s`, `card`/`cal`, `oc`, `nc`) and other servers pick
+their own, so matching on prefixed element names is wrong by construction. With
+`shouldProcessNamespaces = true` the delegate gets `(namespaceURI, localName)` and a
+`DAVQualifiedName` pair is the whole model. sabre also encodes the CR of each CRLF in
+`address-data`/`calendar-data` as `&#13;`, which XML line-end normalisation would
+otherwise eat — so the embedded vCards come out of `XMLParser` with their CRLFs intact and
+round-trip byte-identically (`addressbookMultigetCarriesWholeVCards`).
+
+### Toolchain: NCMailNet tests did not link under the default SwiftPM build system
+**Workstream:** WS-17 · **Component:** SwiftPM (Xcode 26 toolchain) · **Severity:** friction
+**Where:** Packages/NCMailNet/Package.swift
+With several agents building concurrently, `swift test` in `NCMailNet` failed at link time
+with duplicate symbols, each listing the same `out/Products/Debug/NCMailNet.o` twice — the
+package graph has `NCMailNet` reached directly and through `NCMailTestSupport`, which
+depends on it. `--build-system native` with a private `--scratch-path` linked and ran every
+time; a sibling reported a clean default-system scratch path also linked. Recorded so the
+next person seeing `duplicate symbol … NCMailNet.o` tries a clean scratch path before
+suspecting the sources.
+
+### Things that worked
+`MailTransport`/`FakeTransport` carried a second protocol family with no change: DAV
+verbs, `Depth` headers and 207 bodies went through the same seam and the same
+`RequestMatcher` as the Mail API, so the DAV tests look like every other client test.
+
+## WS-16 — Mail API surface
+
+WS-16 adds no UI, so `NextcloudUI` was not exercised; the entries are about the shared
+networking shapes every Nextcloud client re-derives.
+
+### A typed OCS envelope belongs next to the other shared models
+**Workstream:** WS-16 · **Component:** proposed shared Nextcloud client kit · **Severity:** friction
+**Where:** Packages/NCMailCore/Sources/NCMailCore/Models/Capabilities.swift (`OCSResponse`),
+Models/TaskProcessing.swift, Models/Translation.swift, Models/ShareLink.swift, Models/Circle.swift
+Five of the v2 routes are core or other-app OCS routes (translation, TaskProcessing, Smart
+Picker references and unified search, files_sharing, Circles), and every Nextcloud client
+needs the same `{"ocs":{"meta","data"}}` wrapper and the same PHP quirks — an empty map
+serialised as `[]` (`taskprocessing/tasktypes` → `{"types":[]}`), a share `id` that is a
+string while everything else is an integer. `nextcloud-swiftui` has none of this; each app
+re-types it. Worth a small shared package of OCS models with lenient decoding, alongside
+`NextcloudUI`, which this app would depend on instead of its own copies.
+
+### Toolchain: the duplicate-symbol link failure is the default build system, not concurrency
+**Workstream:** WS-16 · **Component:** SwiftPM (Xcode 26 toolchain) · **Severity:** friction
+**Where:** Packages/NCMailNet/Package.swift
+Confirming WS-17's entry with one more data point: a brand-new `--scratch-path` under the
+default build system still failed to link `NCMailNetTests` (same `NCMailNet.o` listed
+twice), on a machine where no other build was using that path. `--build-system native`
+linked first time. So it is not two agents sharing `.build`; it is the swift-build backend
+with this package graph.
+
+### Things that worked
+`FakeTransport` with `.fixture(name, status:)` made "every endpoint replayed through the
+client with the status the live server answered" a one-line helper, which is what caught
+the 202 problem (ADR-0077) before any caller existed.

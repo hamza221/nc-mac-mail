@@ -1,0 +1,68 @@
+[
+  {
+    "id": "ws17-alice-4f2a",
+    "label": "Name redacted",
+    "email": "user@example.com",
+    "photo": "http://cloud.example.com/remote.php/dav/addressbooks/users/user/contacts/ws17-alice.vcf?photo",
+    "source": "contacts"
+  },
+  {
+    "id": "ws17-alice-4f2a",
+    "label": "Name redacted",
+    "email": "user@example.com",
+    "photo": "http://cloud.example.com/remote.php/dav/addressbooks/users/user/contacts/ws17-alice.vcf?photo",
+    "source": "contacts"
+  },
+  {
+    "id": "ws17-alice-4f2a",
+    "label": "Name redacted",
+    "email": "user@example.com",
+    "photo": "http://cloud.example.com/remote.php/dav/addressbooks/users/user/contacts/ws17-alice.vcf?photo",
+    "source": "contacts"
+  },
+  {
+    "id": "ws17-bob-9c1d",
+    "label": "Name redacted",
+    "email": "user@example.com",
+    "photo": null,
+    "source": "contacts"
+  },
+  {
+    "id": "ws17-bob-9c1d",
+    "label": "Name redacted",
+    "email": "user@example.com",
+    "photo": null,
+    "source": "contacts"
+  },
+  {
+    "id": "admin",
+    "label": "Name redacted",
+    "email": "user@example.com",
+    "photo": null,
+    "source": "contacts"
+  },
+  {
+    "id": 1,
+    "label": null,
+    "email": "user@example.com",
+    "source": "collector"
+  },
+  {
+    "id": 2,
+    "label": null,
+    "email": "user@example.com",
+    "source": "collector"
+  },
+  {
+    "id": "nextcloud:admin",
+    "label": "Name redacted",
+    "email": "nextcloud:admin",
+    "source": "groups"
+  },
+  {
+    "id": "nextcloud:kudosqa",
+    "label": "Name redacted",
+    "email": "nextcloud:kudosqa",
+    "source": "groups"
+  }
+]

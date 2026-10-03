@@ -1,0 +1,40 @@
+{
+  "status": "success",
+  "data": {
+    "id": 54,
+    "type": 0,
+    "accountId": 1,
+    "aliasId": null,
+    "sendAt": 1791148518,
+    "updatedAt": 1791062186,
+    "subject": "Subject redacted",
+    "bodyPlain": "Recorded by the fixture recorder.",
+    "bodyHtml": "",
+    "editorBody": "",
+    "isHtml": false,
+    "isPgpMime": false,
+    "inReplyToMessageId": null,
+    "attachments": [],
+    "from": [],
+    "to": [
+      {
+        "id": 173,
+        "messageId": null,
+        "localMessageId": 54,
+        "type": 1,
+        "label": "Name redacted",
+        "email": "user@example.com"
+      }
+    ],
+    "cc": [],
+    "bcc": [],
+    "failed": false,
+    "smimeCertificateId": null,
+    "smimeSign": false,
+    "smimeEncrypt": false,
+    "status": 0,
+    "raw": null,
+    "requestMdn": false,
+    "isAiGenerated": false
+  }
+}

@@ -170,20 +170,23 @@ struct EnumerationCursorTests {
     @Test("The live inbox really does have two messages sharing a dateInt")
     func theRecordedPairExists() throws {
         let rows = try Recorded.inbox()
-        let pair = rows.filter { Recorded.dateInt($0) == 1_778_515_439 }
-        #expect(Recorded.ids(pair).sorted() == [44, 45])
+        let pair = try Recorded.sharedDateIntPair(rows)
+        #expect(Recorded.id(pair.first) != Recorded.id(pair.second))
+        #expect(Recorded.dateInt(pair.first) == Recorded.dateInt(pair.second))
     }
 
     @Test("The plain oldest dateInt loses the second message of the pair; oldest + 1 keeps it")
     func offByOneLosesAMessage() throws {
         let rows = try Recorded.inbox()
+        let pair = try Recorded.sharedDateIntPair(rows)
+        let (first, second) = (Recorded.id(pair.first), Recorded.id(pair.second))
         // The page that ends on the first of the pair, which is where the boundary falls.
-        let boundary = try #require(rows.firstIndex { Recorded.id($0) == 44 })
+        let boundary = try #require(rows.firstIndex { Recorded.id($0) == first })
         let page = Array(rows.prefix(boundary + 1))
         let oldest = try #require(page.map(Recorded.dateInt).min())
 
         let naive = Recorded.page(rows, cursor: oldest, limit: 100)
-        #expect(!Recorded.ids(naive).contains(45), "this is the bug: the boundary message is unreachable")
+        #expect(!Recorded.ids(naive).contains(second), "this is the bug: the boundary message is unreachable")
 
         let corrected = try #require(
             SyncScheduler.nextCursor(
@@ -192,8 +195,8 @@ struct EnumerationCursorTests {
             ))
         #expect(corrected == oldest + 1)
         let fixed = Recorded.page(rows, cursor: corrected, limit: 100)
-        #expect(Recorded.ids(fixed).contains(45), "oldest + 1 re-reads the boundary and finds its twin")
-        #expect(Recorded.ids(fixed).contains(44), "and repeats the boundary message, whose upsert is a no-op")
+        #expect(Recorded.ids(fixed).contains(second), "oldest + 1 re-reads the boundary and finds its twin")
+        #expect(Recorded.ids(fixed).contains(first), "and repeats the boundary message, whose upsert is a no-op")
     }
 
     @Test("Under an oldest-first sort order the cursor is a lower bound, so the ±1 flips")

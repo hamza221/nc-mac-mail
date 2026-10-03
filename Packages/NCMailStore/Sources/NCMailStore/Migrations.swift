@@ -15,12 +15,15 @@ import GRDB
 /// once, by the identity fix in ADR-0033, and only because nothing had shipped: there was
 /// no installed mirror anywhere for a `v2` to migrate.
 enum MailStoreMigrations {
-    static let currentVersion = "v1"
+    static let currentVersion = "v2"
 
     static var migrator: DatabaseMigrator {
         var migrator = DatabaseMigrator()
         migrator.registerMigration("v1") { db in
             try db.execute(sql: v1)
+        }
+        migrator.registerMigration("v2") { db in
+            try db.execute(sql: v2)
         }
         return migrator
     }
@@ -240,5 +243,421 @@ enum MailStoreMigrations {
             key   TEXT PRIMARY KEY,
             value TEXT NOT NULL
         );
+        """
+
+    /// Everything v2 adds: drafts and outbox, account settings, the `login` identity and the
+    /// instance flags on it, server-state settings tables, cached server results (ADR-0067),
+    /// the contacts mirror with its FTS index, calendars, teams, and snooze.
+    ///
+    /// Column-level choices that a reader could question:
+    ///
+    /// - `login` is new in v2 and is backfilled from the accounts already mirrored, so a
+    ///   database migrated mid-life has a row for every signed-in identity (ADR-0079).
+    /// - The account PATCH settings become columns on `account` via ALTER TABLE, which SQLite
+    ///   renders into `sqlite_master` after the last column and before the UNIQUE constraint —
+    ///   `schema.sql` lists them in exactly that position. The server's `order` field already
+    ///   lives in v1's `sortOrder` and is not duplicated.
+    /// - The appendix flags (allow-new-accounts, disable-snooze, …) are instance-wide, not
+    ///   per-account — confirmed by WS-16 against the live server — so they live on `login`,
+    ///   nullable: NULL means "not discovered yet", and the UI treats the feature as on.
+    /// - Server-numbered rows follow ADR-0033: local `id`, server's in `remoteId`, unique per
+    ///   scope. Teams keep a TEXT `remoteId` because a circle's `singleId` is a string.
+    /// - Rows that only ever reference another server's object (quick action steps, aliases'
+    ///   certificates, outbox aliases) carry the *remote* id of the referenced object, because
+    ///   the referenced row may not be mirrored yet and the mapping is one join at read time.
+    /// - No table is WITHOUT ROWID: every one of these can be observed by a view (ADR-0025).
+    /// - `sieveState` deliberately has no password column. Credentials live in the Keychain;
+    ///   this table holds the connection settings, the script and the parsed JSON only.
+    /// - `contactSearch` is maintained like `messageSearch`: inserts and updates by the
+    ///   contact DAO in the same transaction, deletes by trigger (ADR-0024).
+    private static let v2 = """
+        CREATE TABLE login (
+            id                              INTEGER PRIMARY KEY AUTOINCREMENT,
+            serverURL                       TEXT    NOT NULL,
+            loginName                       TEXT    NOT NULL,
+            allowNewAccounts                INTEGER,
+            disableScheduledSend            INTEGER,
+            disableSnooze                   INTEGER,
+            llmSummariesAvailable           INTEGER,
+            llmTranslationEnabled           INTEGER,
+            llmFreepromptAvailable          INTEGER,
+            llmFollowupAvailable            INTEGER,
+            contextChatAvailable            INTEGER,
+            importanceClassificationDefault INTEGER,
+            enableSystemOutOfOffice         INTEGER,
+            attachmentSizeLimit             INTEGER,
+            googleOauthUrl                  TEXT,
+            microsoftOauthUrl               TEXT,
+            flagsFetchedAt                  INTEGER,
+            UNIQUE (serverURL, loginName)
+        );
+
+        INSERT INTO login (serverURL, loginName)
+            SELECT DISTINCT serverURL, loginName FROM account;
+
+        ALTER TABLE account ADD COLUMN editorMode TEXT;
+        ALTER TABLE account ADD COLUMN signatureAboveQuote INTEGER NOT NULL DEFAULT 0;
+        ALTER TABLE account ADD COLUMN trashRetentionDays INTEGER;
+        ALTER TABLE account ADD COLUMN searchBody INTEGER NOT NULL DEFAULT 0;
+        ALTER TABLE account ADD COLUMN classificationEnabled INTEGER NOT NULL DEFAULT 0;
+        ALTER TABLE account ADD COLUMN imipCreate INTEGER NOT NULL DEFAULT 0;
+        ALTER TABLE account ADD COLUMN sieveEnabled INTEGER NOT NULL DEFAULT 0;
+        ALTER TABLE account ADD COLUMN signatureMode INTEGER;
+        ALTER TABLE account ADD COLUMN smimeCertificateRemoteId INTEGER;
+        ALTER TABLE account ADD COLUMN outOfOfficeFollowsSystem INTEGER NOT NULL DEFAULT 0;
+        ALTER TABLE account ADD COLUMN provisioningId INTEGER;
+        ALTER TABLE account ADD COLUMN isDelegated INTEGER NOT NULL DEFAULT 0;
+
+        CREATE TABLE alias (
+            id                       INTEGER PRIMARY KEY AUTOINCREMENT,
+            accountId                INTEGER NOT NULL REFERENCES account(id) ON DELETE CASCADE,
+            remoteId                 INTEGER NOT NULL,
+            email                    TEXT    NOT NULL,
+            name                     TEXT,
+            signature                TEXT,
+            provisioned              INTEGER NOT NULL DEFAULT 0,
+            smimeCertificateRemoteId INTEGER,
+            rawJSON                  TEXT    NOT NULL,
+            UNIQUE (accountId, remoteId)
+        );
+
+        CREATE TABLE draft (
+            id                       INTEGER PRIMARY KEY AUTOINCREMENT,
+            accountId                INTEGER NOT NULL REFERENCES account(id) ON DELETE CASCADE,
+            remoteId                 INTEGER,
+            aliasId                  INTEGER REFERENCES alias(id) ON DELETE SET NULL,
+            subject                  TEXT,
+            bodyPlain                TEXT,
+            bodyHtml                 TEXT,
+            editorBody               TEXT,
+            isHtml                   INTEGER NOT NULL DEFAULT 1,
+            inReplyToMessageId       TEXT,
+            smimeSign                INTEGER NOT NULL DEFAULT 0,
+            smimeEncrypt             INTEGER NOT NULL DEFAULT 0,
+            smimeCertificateRemoteId INTEGER,
+            requestMdn               INTEGER NOT NULL DEFAULT 0,
+            isPgpMime                INTEGER NOT NULL DEFAULT 0,
+            isAiGenerated            INTEGER NOT NULL DEFAULT 0,
+            sendAt                   INTEGER,
+            createdAt                INTEGER NOT NULL,
+            updatedAt                INTEGER NOT NULL,
+            savedAt                  INTEGER,
+            syncError                TEXT
+        );
+
+        CREATE INDEX idxDraftAccount ON draft(accountId, updatedAt DESC);
+
+        CREATE TABLE draftRecipient (
+            id       INTEGER PRIMARY KEY AUTOINCREMENT,
+            draftId  INTEGER NOT NULL REFERENCES draft(id) ON DELETE CASCADE,
+            kind     TEXT    NOT NULL,
+            position INTEGER NOT NULL,
+            email    TEXT    NOT NULL,
+            label    TEXT,
+            UNIQUE (draftId, kind, position)
+        );
+
+        CREATE TABLE draftAttachment (
+            id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+            draftId            INTEGER NOT NULL REFERENCES draft(id) ON DELETE CASCADE,
+            kind               TEXT    NOT NULL DEFAULT 'local',
+            fileName           TEXT    NOT NULL,
+            mime               TEXT,
+            size               INTEGER,
+            localPath          TEXT,
+            remoteAttachmentId INTEGER,
+            payloadJSON        TEXT    NOT NULL DEFAULT '{}'
+        );
+
+        CREATE INDEX idxDraftAttachmentDraft ON draftAttachment(draftId);
+
+        CREATE TABLE outboxMessage (
+            id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+            accountId          INTEGER NOT NULL REFERENCES account(id) ON DELETE CASCADE,
+            remoteId           INTEGER NOT NULL,
+            aliasRemoteId      INTEGER,
+            subject            TEXT,
+            bodyPlain          TEXT,
+            bodyHtml           TEXT,
+            isHtml             INTEGER NOT NULL DEFAULT 1,
+            inReplyToMessageId TEXT,
+            smimeSign          INTEGER NOT NULL DEFAULT 0,
+            smimeEncrypt       INTEGER NOT NULL DEFAULT 0,
+            requestMdn         INTEGER NOT NULL DEFAULT 0,
+            sendAt             INTEGER,
+            failed             INTEGER NOT NULL DEFAULT 0,
+            recipientsJSON     TEXT    NOT NULL DEFAULT '[]',
+            attachmentsJSON    TEXT    NOT NULL DEFAULT '[]',
+            syncedAt           INTEGER NOT NULL,
+            rawJSON            TEXT    NOT NULL,
+            UNIQUE (accountId, remoteId)
+        );
+
+        CREATE TABLE preference (
+            id        INTEGER PRIMARY KEY AUTOINCREMENT,
+            loginId   INTEGER NOT NULL REFERENCES login(id) ON DELETE CASCADE,
+            key       TEXT    NOT NULL,
+            value     TEXT,
+            fetchedAt INTEGER NOT NULL,
+            UNIQUE (loginId, key)
+        );
+
+        CREATE TABLE textBlock (
+            id       INTEGER PRIMARY KEY AUTOINCREMENT,
+            loginId  INTEGER NOT NULL REFERENCES login(id) ON DELETE CASCADE,
+            remoteId INTEGER NOT NULL,
+            title    TEXT    NOT NULL,
+            content  TEXT    NOT NULL,
+            isShared INTEGER NOT NULL DEFAULT 0,
+            ownerId  TEXT,
+            rawJSON  TEXT    NOT NULL,
+            UNIQUE (loginId, remoteId)
+        );
+
+        CREATE TABLE textBlockShare (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            textBlockId INTEGER NOT NULL REFERENCES textBlock(id) ON DELETE CASCADE,
+            remoteId    INTEGER,
+            shareWith   TEXT    NOT NULL,
+            type        TEXT    NOT NULL,
+            displayName TEXT,
+            rawJSON     TEXT    NOT NULL,
+            UNIQUE (textBlockId, type, shareWith)
+        );
+
+        CREATE TABLE quickAction (
+            id        INTEGER PRIMARY KEY AUTOINCREMENT,
+            accountId INTEGER NOT NULL REFERENCES account(id) ON DELETE CASCADE,
+            remoteId  INTEGER NOT NULL,
+            name      TEXT    NOT NULL,
+            rawJSON   TEXT    NOT NULL,
+            UNIQUE (accountId, remoteId)
+        );
+
+        CREATE TABLE quickActionStep (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            quickActionId   INTEGER NOT NULL REFERENCES quickAction(id) ON DELETE CASCADE,
+            remoteId        INTEGER NOT NULL,
+            name            TEXT    NOT NULL,
+            position        INTEGER NOT NULL,
+            tagRemoteId     INTEGER,
+            mailboxRemoteId INTEGER,
+            rawJSON         TEXT    NOT NULL,
+            UNIQUE (quickActionId, remoteId)
+        );
+
+        CREATE TABLE trustedSender (
+            id       INTEGER PRIMARY KEY AUTOINCREMENT,
+            loginId  INTEGER NOT NULL REFERENCES login(id) ON DELETE CASCADE,
+            remoteId INTEGER,
+            email    TEXT    NOT NULL,
+            type     TEXT    NOT NULL,
+            UNIQUE (loginId, type, email)
+        );
+
+        CREATE TABLE internalAddress (
+            id       INTEGER PRIMARY KEY AUTOINCREMENT,
+            loginId  INTEGER NOT NULL REFERENCES login(id) ON DELETE CASCADE,
+            remoteId INTEGER,
+            address  TEXT    NOT NULL,
+            type     TEXT    NOT NULL,
+            UNIQUE (loginId, type, address)
+        );
+
+        CREATE TABLE delegation (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            accountId   INTEGER NOT NULL REFERENCES account(id) ON DELETE CASCADE,
+            userId      TEXT    NOT NULL,
+            displayName TEXT,
+            rawJSON     TEXT    NOT NULL,
+            UNIQUE (accountId, userId)
+        );
+
+        CREATE TABLE smimeCertificate (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            loginId       INTEGER NOT NULL REFERENCES login(id) ON DELETE CASCADE,
+            remoteId      INTEGER NOT NULL,
+            emailAddress  TEXT    NOT NULL,
+            hasPrivateKey INTEGER NOT NULL DEFAULT 0,
+            notAfter      INTEGER,
+            canSign       INTEGER NOT NULL DEFAULT 0,
+            canEncrypt    INTEGER NOT NULL DEFAULT 0,
+            infoJSON      TEXT    NOT NULL DEFAULT '{}',
+            rawJSON       TEXT    NOT NULL,
+            UNIQUE (loginId, remoteId)
+        );
+
+        CREATE TABLE sieveState (
+            accountId       INTEGER PRIMARY KEY REFERENCES account(id) ON DELETE CASCADE,
+            sieveEnabled    INTEGER NOT NULL DEFAULT 0,
+            sieveHost       TEXT,
+            sievePort       INTEGER,
+            sieveUser       TEXT,
+            sieveSslMode    TEXT,
+            script          TEXT,
+            scriptName      TEXT,
+            filtersJSON     TEXT,
+            outOfOfficeJSON TEXT,
+            fetchedAt       INTEGER NOT NULL
+        );
+
+        CREATE TABLE serverResult (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            loginId     INTEGER NOT NULL REFERENCES login(id) ON DELETE CASCADE,
+            kind        TEXT    NOT NULL,
+            key         TEXT    NOT NULL,
+            payloadJSON TEXT    NOT NULL,
+            fetchedAt   INTEGER NOT NULL,
+            UNIQUE (loginId, kind, key)
+        );
+
+        CREATE TABLE recipientSuggestion (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            loginId     INTEGER NOT NULL REFERENCES login(id) ON DELETE CASCADE,
+            term        TEXT    NOT NULL,
+            position    INTEGER NOT NULL,
+            email       TEXT,
+            label       TEXT,
+            source      TEXT,
+            payloadJSON TEXT    NOT NULL,
+            fetchedAt   INTEGER NOT NULL,
+            UNIQUE (loginId, term, position)
+        );
+
+        CREATE TABLE filesListing (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            loginId     INTEGER NOT NULL REFERENCES login(id) ON DELETE CASCADE,
+            path        TEXT    NOT NULL,
+            entriesJSON TEXT    NOT NULL,
+            fetchedAt   INTEGER NOT NULL,
+            UNIQUE (loginId, path)
+        );
+
+        CREATE TABLE smartPickerResult (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            loginId     INTEGER NOT NULL REFERENCES login(id) ON DELETE CASCADE,
+            providerId  TEXT    NOT NULL,
+            term        TEXT    NOT NULL,
+            payloadJSON TEXT    NOT NULL,
+            fetchedAt   INTEGER NOT NULL,
+            UNIQUE (loginId, providerId, term)
+        );
+
+        CREATE TABLE addressBook (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            loginId     INTEGER NOT NULL REFERENCES login(id) ON DELETE CASCADE,
+            url         TEXT    NOT NULL,
+            displayName TEXT,
+            isReadOnly  INTEGER NOT NULL DEFAULT 0,
+            isEnabled   INTEGER NOT NULL DEFAULT 1,
+            position    INTEGER NOT NULL DEFAULT 0,
+            syncToken   TEXT,
+            lastSyncAt  INTEGER,
+            UNIQUE (loginId, url)
+        );
+
+        CREATE TABLE contact (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            addressBookId INTEGER NOT NULL REFERENCES addressBook(id) ON DELETE CASCADE,
+            href          TEXT    NOT NULL,
+            etag          TEXT,
+            uid           TEXT,
+            vcard         TEXT    NOT NULL,
+            displayName   TEXT,
+            givenName     TEXT,
+            familyName    TEXT,
+            nickname      TEXT,
+            organization  TEXT,
+            isGroup       INTEGER NOT NULL DEFAULT 0,
+            isFavorite    INTEGER NOT NULL DEFAULT 0,
+            syncedAt      INTEGER NOT NULL,
+            UNIQUE (addressBookId, href)
+        );
+
+        CREATE INDEX idxContactUid ON contact(uid);
+        CREATE INDEX idxContactDisplayName ON contact(addressBookId, displayName COLLATE NOCASE);
+
+        CREATE TABLE contactEmail (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            contactId   INTEGER NOT NULL REFERENCES contact(id) ON DELETE CASCADE,
+            position    INTEGER NOT NULL,
+            email       TEXT    NOT NULL,
+            type        TEXT,
+            isPreferred INTEGER NOT NULL DEFAULT 0,
+            UNIQUE (contactId, position)
+        );
+
+        CREATE INDEX idxContactEmailAddress ON contactEmail(email COLLATE NOCASE);
+
+        CREATE TABLE contactPhone (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            contactId   INTEGER NOT NULL REFERENCES contact(id) ON DELETE CASCADE,
+            position    INTEGER NOT NULL,
+            number      TEXT    NOT NULL,
+            type        TEXT,
+            isPreferred INTEGER NOT NULL DEFAULT 0,
+            UNIQUE (contactId, position)
+        );
+
+        CREATE TABLE contactGroupMember (
+            id        INTEGER PRIMARY KEY AUTOINCREMENT,
+            groupId   INTEGER NOT NULL REFERENCES contact(id) ON DELETE CASCADE,
+            memberUid TEXT    NOT NULL,
+            UNIQUE (groupId, memberUid)
+        );
+
+        CREATE INDEX idxContactGroupMemberUid ON contactGroupMember(memberUid);
+
+        CREATE VIRTUAL TABLE contactSearch USING fts5(
+            name,
+            emails,
+            organization,
+            tokenize = 'unicode61 remove_diacritics 2'
+        );
+
+        CREATE TRIGGER contactSearchDelete AFTER DELETE ON contact BEGIN
+            DELETE FROM contactSearch WHERE rowid = old.id;
+        END;
+
+        CREATE TABLE calendar (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            loginId        INTEGER NOT NULL REFERENCES login(id) ON DELETE CASCADE,
+            url            TEXT    NOT NULL,
+            displayName    TEXT,
+            color          TEXT,
+            isWritable     INTEGER NOT NULL DEFAULT 1,
+            supportsEvents INTEGER NOT NULL DEFAULT 1,
+            supportsTasks  INTEGER NOT NULL DEFAULT 0,
+            position       INTEGER NOT NULL DEFAULT 0,
+            fetchedAt      INTEGER NOT NULL,
+            UNIQUE (loginId, url)
+        );
+
+        CREATE TABLE team (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            loginId     INTEGER NOT NULL REFERENCES login(id) ON DELETE CASCADE,
+            remoteId    TEXT    NOT NULL,
+            displayName TEXT    NOT NULL,
+            rawJSON     TEXT    NOT NULL,
+            fetchedAt   INTEGER NOT NULL,
+            UNIQUE (loginId, remoteId)
+        );
+
+        CREATE TABLE teamMember (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            teamId      INTEGER NOT NULL REFERENCES team(id) ON DELETE CASCADE,
+            userId      TEXT    NOT NULL,
+            displayName TEXT,
+            email       TEXT,
+            rawJSON     TEXT    NOT NULL,
+            UNIQUE (teamId, userId)
+        );
+
+        CREATE TABLE snooze (
+            messageId INTEGER PRIMARY KEY REFERENCES message(id) ON DELETE CASCADE,
+            until     INTEGER NOT NULL
+        );
+
+        CREATE INDEX idxSnoozeUntil ON snooze(until);
         """
 }

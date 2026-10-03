@@ -1,0 +1,10 @@
+{
+  "status": "success",
+  "data": {
+    "id": 10,
+    "name": "Fixture action renamed",
+    "accountId": 1,
+    "actionSteps": [],
+    "icon": ""
+  }
+}

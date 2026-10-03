@@ -39,12 +39,31 @@ public struct OCSResponse<Payload: Decodable & Sendable>: Decodable, Sendable {
 
 /// `GET {server}/ocs/v2.php/cloud/capabilities`, trimmed to what the app reads.
 ///
-/// Only theming matters in v1: the instance's primary colour drives `NCBrand`
+/// Theming matters since v1: the instance's primary colour drives `NCBrand`
 /// and has to be applied before the first frame, so it is cached in `meta` and
-/// re-read in the background.
+/// re-read in the background. v2 adds `dav`, the one appendix flag the
+/// capabilities carry (`docs/reference/server-flags.md`).
 public struct Capabilities: Decodable, Sendable, Hashable {
     public let version: Version?
     public let theming: Theming?
+    public let dav: DAV?
+
+    /// The `dav` capability. `absence-supported` is present only when
+    /// `AvailabilityCoordinator::isEnabled()` — the same call behind the web
+    /// client's `enable-system-out-of-office` flag (verified live, NC 36).
+    public struct DAV: Decodable, Sendable, Hashable {
+        public let absenceSupported: Bool
+
+        private enum CodingKeys: String, CodingKey {
+            case absenceSupported = "absence-supported"
+        }
+
+        public init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            // Absent, not false, when the coordinator is off.
+            absenceSupported = try container.decodeLenientBool(forKey: .absenceSupported)
+        }
+    }
 
     public struct Version: Decodable, Sendable, Hashable {
         public let major: Int?
@@ -95,6 +114,7 @@ public struct Capabilities: Decodable, Sendable, Hashable {
 
     private enum CapabilityKeys: String, CodingKey {
         case theming
+        case dav
     }
 
     public init(from decoder: any Decoder) throws {
@@ -102,5 +122,6 @@ public struct Capabilities: Decodable, Sendable, Hashable {
         version = try container.decodeIfPresent(Version.self, forKey: .version)
         let capabilities = try container.nestedContainer(keyedBy: CapabilityKeys.self, forKey: .capabilities)
         theming = try capabilities.decodeIfPresent(Theming.self, forKey: .theming)
+        dav = try capabilities.decodeIfPresent(DAV.self, forKey: .dav)
     }
 }

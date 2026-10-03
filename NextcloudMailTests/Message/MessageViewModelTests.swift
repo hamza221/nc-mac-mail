@@ -11,8 +11,9 @@ import Testing
 
 /// The message view against a real mirror.
 ///
-/// Every test here seeds an in-memory `MailStore` with the recorded envelope for message
-/// 166 and, where a body is wanted, the recorded HTML for the same message. Nothing is
+/// Every test here seeds an in-memory `MailStore` with the recorded envelope of the
+/// recorder's remote-images self-send and, where a body is wanted, the recorded HTML for the
+/// same message. Nothing is
 /// mocked below the store, so "the view updates because the database changed" is asserted
 /// rather than described.
 @Suite("Message view model")
@@ -39,14 +40,16 @@ struct MessageViewModelTests {
 
     private static let server = "http://cloud.example.com"
 
-    /// The recorded envelope for message 166, which is the same message
-    /// `message-html-plain.html` is the body of.
+    /// The recorded envelope of the message `message-html-remote-images.html` is the body of,
+    /// recorded beside it.
     private static func recordedEnvelope() throws -> (
         json: String, remoteId: Int64, threadRootId: String, addresses: [EnvelopeAddress]
     ) {
-        let page = try JSONSerialization.jsonObject(with: try FixtureBytes.data("messages-inbox-page1.json"))
-        let envelopes = try #require(page as? [[String: Any]])
-        let envelope = try #require(envelopes.first { ($0["databaseId"] as? Int) == 166 })
+        let object = try JSONSerialization.jsonObject(
+            with: try FixtureBytes.data("message-remote-images-envelope.json")
+        )
+        let envelope = try #require(object as? [String: Any])
+        let remoteId = Int64(try #require(envelope["databaseId"] as? Int))
         let json = String(decoding: try JSONSerialization.data(withJSONObject: envelope), as: UTF8.self)
 
         // The address rows the sync engine would have written, taken from the same recording
@@ -58,11 +61,11 @@ struct MessageViewModelTests {
                 addresses.append(EnvelopeAddress(kind: kind, email: email, label: entry["label"] as? String))
             }
         }
-        return (json, 166, try #require(envelope["threadRootId"] as? String), addresses)
+        return (json, remoteId, try #require(envelope["threadRootId"] as? String), addresses)
     }
 
     private static func recordedHTML() throws -> String {
-        String(decoding: try FixtureBytes.data("message-html-plain.html"), as: UTF8.self)
+        String(decoding: try FixtureBytes.data("message-html-remote-images.html"), as: UTF8.self)
     }
 
     private static func seed(bodyState: BodyState = .missing) async throws -> Mirror {
@@ -148,11 +151,15 @@ struct MessageViewModelTests {
 
     /// Spins the main actor until `condition` holds.
     ///
-    /// Not a sleep and not a clock read: the store delivers observation values on the main
-    /// actor, so yielding is exactly what lets a pending delivery run. The bound is a
-    /// failure, not a timeout.
-    private static func waitUntil(_ condition: @MainActor () async -> Bool, limit: Int = 20_000) async -> Bool {
-        for _ in 0..<limit {
+    /// Yielding is what lets a pending observation delivery run, but the database writes
+    /// those deliveries report happen off the main actor, so under load the yields can all
+    /// elapse before the write lands. The bound is therefore a clock, not a yield count.
+    private static func waitUntil(
+        _ condition: @MainActor () async -> Bool,
+        limit: Duration = .seconds(10)
+    ) async -> Bool {
+        let deadline = ContinuousClock.now + limit
+        while ContinuousClock.now < deadline {
             if await condition() { return true }
             await Task.yield()
         }
@@ -218,7 +225,7 @@ struct MessageViewModelTests {
         }
         #expect(rendered.hasBlockedRemoteContent)
         #expect(context.localMessageId == mirror.messageId)
-        #expect(context.remoteMessageId == 166)
+        #expect(context.remoteMessageId == (try Self.recordedEnvelope().remoteId))
     }
 
     @Test("the body write is what the observation the view is already on reports")

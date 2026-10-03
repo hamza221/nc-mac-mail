@@ -1,0 +1,14 @@
+HTTP/1.1 201 Created
+Server: nginx
+Date: Sat, 03 Oct 2026 21:17:34 GMT
+Content-Type: text/html; charset=UTF-8
+Content-Length: 0
+Connection: keep-alive
+X-Content-Type-Options: nosniff
+X-Frame-Options: SAMEORIGIN
+X-Permitted-Cross-Domain-Policies: none
+X-Robots-Tag: noindex, nofollow
+Referrer-Policy: no-referrer
+X-Powered-By: PHP/8.5.10
+Content-Security-Policy: default-src 'none';
+

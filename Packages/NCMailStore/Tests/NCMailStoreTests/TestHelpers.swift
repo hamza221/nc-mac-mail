@@ -60,7 +60,8 @@ enum SchemaDump {
     /// Everything SQLite generates for itself, and has no opinion about: the FTS5 shadow
     /// tables, GRDB's migration bookkeeping, and the sequence table AUTOINCREMENT creates.
     static func isGenerated(_ name: String) -> Bool {
-        name.hasPrefix("sqlite_") || name.hasPrefix("grdb_") || name.hasPrefix("messageSearch_")
+        name.hasPrefix("sqlite_") || name.hasPrefix("grdb_")
+            || name.hasPrefix("messageSearch_") || name.hasPrefix("contactSearch_")
     }
 
     /// The projection happens inside the read closure on purpose. GRDB marks `Row: Sendable`

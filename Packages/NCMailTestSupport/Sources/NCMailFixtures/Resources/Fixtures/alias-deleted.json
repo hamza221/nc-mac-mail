@@ -1,0 +1,9 @@
+{
+  "id": 11,
+  "name": "Fixture Alias Renamed",
+  "alias": "user@example.com",
+  "signature": "Alias signature",
+  "provisioned": false,
+  "signatureMode": 0,
+  "smimeCertificateId": null
+}

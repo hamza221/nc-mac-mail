@@ -1,0 +1,20 @@
+{
+  "status": "success",
+  "data": [
+    {
+      "id": 8,
+      "emailAddress": "user@example.com",
+      "hasKey": true,
+      "info": {
+        "commonName": "Fixture User",
+        "emailAddress": "user@example.com",
+        "notAfter": 1791235035,
+        "purposes": {
+          "sign": true,
+          "encrypt": true
+        },
+        "isChainVerified": false
+      }
+    }
+  ]
+}
