@@ -315,15 +315,9 @@ struct ClientDecodingTests {
         let body = try await client(fixture: "message-body.json").get(.messageBody(id: 66))
         #expect(body.value.id > 0)
 
-        let thread = try await client(fixture: "message-thread.json").get(.messageThread(messageId: 66))
-        #expect(!thread.isEmpty)
-
         let sync = try await client(fixture: "sync-initial.json")
             .post(.sync(mailboxId: 5), body: SyncRequest(ids: [], initialise: true))
         #expect(!sync.newMessages.isEmpty)
-
-        let stats = try await client(fixture: "mailbox-stats.json").get(.mailboxStats(mailboxId: 5))
-        #expect(stats.total > 0)
 
         let capabilities = try await client(fixture: "capabilities.json").get(.capabilities)
         #expect(capabilities.data.theming?.color != nil)

@@ -96,8 +96,9 @@ the price. [ADR-0016](docs/decisions/0016-warnings-as-errors-at-the-build-comman
 
 ### Sandbox, signing and the Keychain
 
-The App Sandbox is **on in every configuration**, with
-`com.apple.security.network.client` and nothing else. Nobody needs to turn it off: WS-00
+The App Sandbox is **on in every configuration**, with `com.apple.security.network.client`
+and `com.apple.security.files.user-selected.read-write` (attachment save panel) and nothing
+else. Nobody needs to turn it off: WS-00
 measured an ad-hoc signed, sandboxed bundle on macOS 26 and `SecItemAdd`,
 `SecItemCopyMatching` and `SecItemDelete` all returned `errSecSuccess`, running inside the
 container.

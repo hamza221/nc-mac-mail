@@ -49,3 +49,12 @@ path = "plan/**"
 precedence = "aggregate"
 SPDX-FileCopyrightText = "Hamza Mahjoubi"
 SPDX-License-Identifier = "AGPL-3.0-or-later"
+
+# The app icon: Nextcloud Mail's envelope glyph (img/mail.svg in nextcloud/mail, the
+# Material "mail" icon, Apache-2.0 per that repo's REUSE.toml) on Nextcloud blue, rendered
+# by Scripts/make-app-icon.swift. PNG and asset-catalog JSON carry no comment.
+[[annotations]]
+path = "NextcloudMail/Assets.xcassets/**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = ["2018-2026 Google LLC", "Hamza Mahjoubi"]
+SPDX-License-Identifier = "Apache-2.0"

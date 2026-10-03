@@ -253,6 +253,46 @@ final class MessageActions {
         }
     }
 
+    /// Opening a message reads it, after the delay the reader chose in Settings.
+    ///
+    /// Called from `.task(id:)` on the focused message, so moving to another message cancels
+    /// the sleep and "after 5 seconds" means five seconds *on this message*. Not undoable and
+    /// no selection advance: opening is not a triage decision, and `⌘Z` after clicking a
+    /// message should undo the last thing the reader did, not the click.
+    func messageOpened(_ messageId: Int64) async {
+        let raw = (try? await store.metaValue(forKey: MarkAsReadDelay.metaKey)) ?? nil
+        switch MarkAsReadDelay(metaValue: raw) {
+        case .manually:
+            return
+        case .immediately:
+            break
+        case .after(let seconds):
+            do { try await Task.sleep(for: .seconds(seconds)) } catch { return }
+        }
+        do {
+            guard let record = try await store.message(id: messageId), !record.isSeen else { return }
+            await apply([
+                QueuedOperation(
+                    accountId: record.accountId,
+                    operation: .setFlags(messageIds: [record.id], flags: ["seen": true])
+                )
+            ])
+        } catch {
+            Self.logger.error(
+                "mark-read on open failed for message \(messageId, privacy: .public): \(String(describing: error), privacy: .public)"
+            )
+        }
+    }
+
+    /// "Always show images from this sender", for every message from them in the account.
+    ///
+    /// Queued like any triage action so it survives being offline, and applied to every
+    /// stored body from the sender at once. Not undoable: it is a reading preference, not a
+    /// triage decision, and `⌘Z` should not reach past the reader's last action for it.
+    func trustSender(email: String, accountId: Int64) async {
+        await apply([QueuedOperation(accountId: accountId, operation: .trustSender(email: email, trusted: true))])
+    }
+
     // MARK: - Availability
 
     /// Works out which actions this selection can run, and the sentence to show when one

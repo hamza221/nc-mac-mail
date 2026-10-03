@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 # ADR-0058: The sidebar opens Settings through a `UserDefaults` key and an AppKit selector
 
-**Status:** Accepted
+**Status:** Superseded by [ADR-0062](0062-the-sidebar-opens-settings-with-opensettings.md)
 **Date:** 2026-09-23
 **Decided by:** WS-12, on the two hooks its brief names as its own in WS-07's file
 

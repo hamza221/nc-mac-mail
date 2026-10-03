@@ -31,27 +31,16 @@ extension MailStore {
         }
     }
 
-    /// The same query, live: a value now and another whenever a matching row changes.
-    ///
-    /// A message deleted locally leaves the results on the next value, because the trigger
-    /// that removes its index row
-    /// ([ADR-0024](../../../../docs/decisions/0024-fts-deletes-in-a-trigger.md)) is a write
-    /// GRDB's observation sees.
-    public func observeSearch(
-        _ query: SearchQuery,
-        range: Range<Int> = MailStore.defaultSearchWindow
-    ) -> StoreObservation<[SearchResult]> {
-        observation { db in
-            try Self.fetchResults(db, query: query, range: range)
-        }
-    }
-
-    /// The same rows, shaped as list rows.
+    /// Ranked hits for `query`, live, shaped as list rows: a value now and another whenever a
+    /// matching row changes.
     ///
     /// The message list windows over a `(Range<Int>) -> StoreObservation<[MessageRow]>`, and
     /// this is what gets installed there, so search results replace the list rather than
-    /// becoming a second one. It drops `mailboxName` and `accountId`, which the list row does
-    /// not draw; a caller that needs them wants ``observeSearch(_:range:)``.
+    /// becoming a second one. A message deleted locally leaves the results on the next value,
+    /// because the trigger that removes its index row
+    /// ([ADR-0024](../../../../docs/decisions/0024-fts-deletes-in-a-trigger.md)) is a write
+    /// GRDB's observation sees. Highlighting will want `SearchResult`'s mailbox name too,
+    /// and gets a live reader of its own when it ships (ADR-0057).
     public func observeSearchRows(_ query: SearchQuery, range: Range<Int>) -> StoreObservation<[MessageRow]> {
         observation { db in
             guard let arguments = Self.searchArguments(query: query, range: range) else { return [] }
@@ -61,13 +50,8 @@ extension MailStore {
 
     // MARK: - Coverage
 
-    /// How much of the scope has its body in the index, for the footer that says so.
-    public func searchCoverage(scope: SearchQuery.Scope) async throws -> SearchCoverage {
-        try await dbQueue.read { db in try Self.fetchCoverage(db, scope: scope) }
-    }
-
-    /// The same counts, live, so the footer counts up during the backfill and takes itself
-    /// off screen when the mirror completes.
+    /// How much of the scope has its body in the index, live, so the footer counts up during
+    /// the backfill and takes itself off screen when the mirror completes.
     public func observeSearchCoverage(scope: SearchQuery.Scope) -> StoreObservation<SearchCoverage> {
         observation { db in try Self.fetchCoverage(db, scope: scope) }
     }

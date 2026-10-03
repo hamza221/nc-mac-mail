@@ -326,7 +326,7 @@ struct SearchTests {
         let ids = try await Self.corpus(store)
         let first = try #require(ids.first)
 
-        var iterator = store.observeSearch(SearchQuery(text: "hedgehog")).makeAsyncIterator()
+        var iterator = store.observeSearchRows(SearchQuery(text: "hedgehog"), range: 0..<50).makeAsyncIterator()
         let initial = try #require(try await iterator.next())
         #expect(initial.map(\.id).contains(first))
 
@@ -337,17 +337,23 @@ struct SearchTests {
 
     // MARK: - Coverage
 
+    /// The footer's first value, through the same observation the footer uses.
+    static func coverage(_ store: MailStore, _ scope: SearchQuery.Scope) async throws -> SearchCoverage {
+        var iterator = store.observeSearchCoverage(scope: scope).makeAsyncIterator()
+        return try #require(try await iterator.next())
+    }
+
     @Test func coverageCountsBodiesAgainstEveryDownloadedMessage() async throws {
         let store = try MailStore.inMemory()
         let ids = try await Self.corpus(store)
-        let coverage = try await store.searchCoverage(scope: .all)
+        let coverage = try await Self.coverage(store, .all)
         #expect(coverage.totalMessages == 4)
         #expect(coverage.indexedMessages == 1)
         #expect(coverage.isComplete == false)
 
         // A body that will never arrive still counts as settled, or the footer never leaves.
         try await store.setBodyState(.failed, messageIds: Array(ids.dropLast()))
-        let settled = try await store.searchCoverage(scope: .all)
+        let settled = try await Self.coverage(store, .all)
         #expect(settled.failedMessages == 3)
         #expect(settled.isComplete)
     }
@@ -357,10 +363,10 @@ struct SearchTests {
         _ = try await Self.corpus(store)
         let mailboxes = try await store.upsert(mailboxes: [Seed.mailbox(id: 11, name: "Archive")], accountId: 1)
         let archive = try #require(mailboxes.first)
-        #expect(try await store.searchCoverage(scope: .mailbox(10)).totalMessages == 4)
-        #expect(try await store.searchCoverage(scope: .mailbox(archive.id)).totalMessages == 0)
+        #expect(try await Self.coverage(store, .mailbox(10)).totalMessages == 4)
+        #expect(try await Self.coverage(store, .mailbox(archive.id)).totalMessages == 0)
         // An empty scope is complete rather than 0 of 0 forever on screen.
-        #expect(try await store.searchCoverage(scope: .mailbox(archive.id)).isComplete)
+        #expect(try await Self.coverage(store, .mailbox(archive.id)).isComplete)
     }
 
     // MARK: - The list's window

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import Foundation
+import NCMailCore
 import NCMailNet
 import NCMailStore
 import NCMailSync
@@ -25,10 +26,8 @@ final class SettingsStore {
     private(set) var footprints: [Int64: StorageFootprint] = [:]
     private(set) var progresses: [Int64: MirrorProgress] = [:]
     private(set) var pausedAccountIDs: Set<Int64> = []
-    /// An account whose server-side sort order is `oldest`, read from `meta` if anything has
-    /// ever written it there. Nothing does yet, so this is correct and simply empty until
-    /// `NCMailSync` persists the reading it already makes once per coordinator. See
-    /// ADR-0053 and this workstream's report.
+    /// An account whose server-side sort order is `oldest`, as `MirrorCoordinator` stored it
+    /// the last time it read the preference. See ADR-0053.
     private(set) var slowMirrorAccountIDs: Set<Int64> = []
     /// An action is in flight for this account: the button row shows a spinner instead of
     /// its buttons.
@@ -157,24 +156,20 @@ final class SettingsStore {
         ((try? await store.metaValue(forKey: Self.pauseMetaKey(accountId))) ?? nil) == "1"
     }
 
-    /// See ``slowMirrorAccountIDs``: reads a key nothing writes yet.
-    private static func sortOrderMetaKey(_ accountId: Int64) -> String { "mirror.sortOrder.\(accountId)" }
-
     private func hasSlowSortOrder(accountId: Int64) async -> Bool {
-        (try? await store.metaValue(forKey: Self.sortOrderMetaKey(accountId))) == "oldest"
+        let key = MirrorCoordinator.sortOrderMetaKey(accountId: accountId)
+        return (try? await store.metaValue(forKey: key)) == NCMailCore.SortOrder.oldest.rawValue
     }
 
     // MARK: - General settings
 
-    private static let markAsReadMetaKey = "settings.markAsReadDelay"
-
     func markAsReadDelay() async -> MarkAsReadDelay {
-        let raw = (try? await store.metaValue(forKey: Self.markAsReadMetaKey)) ?? nil
+        let raw = (try? await store.metaValue(forKey: MarkAsReadDelay.metaKey)) ?? nil
         return MarkAsReadDelay(metaValue: raw)
     }
 
     func setMarkAsReadDelay(_ delay: MarkAsReadDelay) async {
-        try? await store.setMetaValue(delay.metaValue, forKey: Self.markAsReadMetaKey)
+        try? await store.setMetaValue(delay.metaValue, forKey: MarkAsReadDelay.metaKey)
     }
 
     // MARK: - Storage actions

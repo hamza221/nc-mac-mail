@@ -18,26 +18,37 @@ import SwiftUI
 ///
 /// A protocol rather than the coordinator itself so that the app target does not import
 /// `NCMailSync` for one call — see this workstream's report for the wiring WS-13 has to do.
-protocol BodyPrioritising: Sendable {
+nonisolated protocol BodyPrioritising: Sendable {
     func prioritise(messageId: Int64) async
 }
 
 /// Everything the message view needs from the outside world, in one value.
 ///
-/// Passed in rather than read from `@Environment(AppSession.self)`, because `AppSession`
-/// keeps its `MailStore` private and holds no coordinator yet. Both are WS-13's to change.
+/// Built by `AppSession.messageServices(accountId:)` for the account the selected mailbox
+/// belongs to, and passed in rather than read from the environment so a test can hand the
+/// view a store and a fake client without a session.
 struct MessageViewServices {
     var store: MailStore
     var client: MailClient
     /// The signed-in server, which is the only origin an image may come from.
     var server: URL
     var prioritiser: (any BodyPrioritising)?
+    /// Queues "always show images from this sender". A closure rather than `MessageActions`
+    /// so the reader stays out of triage's type; nil leaves the choice for this message only.
+    var trustSender: (@MainActor (_ email: String, _ accountId: Int64) async -> Void)?
 
-    init(store: MailStore, client: MailClient, server: URL, prioritiser: (any BodyPrioritising)? = nil) {
+    init(
+        store: MailStore,
+        client: MailClient,
+        server: URL,
+        prioritiser: (any BodyPrioritising)? = nil,
+        trustSender: (@MainActor (_ email: String, _ accountId: Int64) async -> Void)? = nil
+    ) {
         self.store = store
         self.client = client
         self.server = server
         self.prioritiser = prioritiser
+        self.trustSender = trustSender
     }
 }
 
@@ -272,22 +283,16 @@ final class MessageViewModel {
         Task { await rerender(messageId: messageId) }
     }
 
-    /// Show images, and tell the server, so the choice matches the web client.
+    /// Show images, and remember the sender, so the choice matches the web client.
     ///
-    /// A mutation straight to the client rather than through the offline queue, which does
-    /// not exist yet (WS-06). Noted in the report: this is the call that moves.
+    /// Through the offline queue rather than the client: the trust lands on every stored body
+    /// from this sender in the same transaction as the queue row, so it holds offline and the
+    /// body observation redraws with it. No request is awaited here.
     func alwaysShowFromThisSender() async {
         showImages()
-        guard let email = header?.sender?.email, !email.isEmpty else { return }
-        do {
-            _ = try await services.client.put(Endpoint.trustSender(email: email))
-            isSenderTrusted = true
-        } catch {
-            // Nothing the reader can do about it and nothing that needs a dialogue
-            // (ux-spec.md): the images are showing either way, and the next body refresh
-            // carries the server's own answer.
-            renderLog.error("trusting the sender failed: \(RenderFailure.label(error), privacy: .public)")
-        }
+        guard let email = header?.sender?.email, !email.isEmpty, let messageId else { return }
+        guard let record = try? await services.store.message(id: messageId) else { return }
+        await services.trustSender?(email, record.accountId)
     }
 
     /// The content rule list would not compile, so nothing was rendered.

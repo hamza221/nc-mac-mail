@@ -62,6 +62,10 @@ struct MessageThreadStrip: View {
                 }
             )
             .fontWeight(message.isSeen ? .regular : .semibold)
+            // The same inset as the caption above and the header, inside the highlight so the
+            // selected row's tint still runs edge to edge.
+            .padding(.horizontal, theme.metrics.spacing.loose)
+            .contentShape(Rectangle())
             .background(message.id == selectedId ? AnyShapeStyle(theme.colors.primarySurface) : AnyShapeStyle(.clear))
         }
         .buttonStyle(.plain)

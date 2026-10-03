@@ -71,6 +71,18 @@ public final class MailStore: Sendable {
         return folder.appending(path: "mirror.sqlite", directoryHint: .notDirectory)
     }
 
+    /// Removes the mirror at `url` and the WAL and shared-memory files SQLite keeps beside it,
+    /// which is the recovery ``MailStoreError/unreadable(resultCode:message:)`` promises: the
+    /// mail stays on the server and the next launch mirrors it again. A file that is already
+    /// gone is not an error.
+    public static func deleteDatabase(at url: URL, fileManager: FileManager = .default) throws {
+        for suffix in ["", "-wal", "-shm"] {
+            let file = URL(fileURLWithPath: url.path(percentEncoded: false) + suffix)
+            guard fileManager.fileExists(atPath: file.path(percentEncoded: false)) else { continue }
+            try fileManager.removeItem(at: file)
+        }
+    }
+
     /// Raw SQL, for the queries inside this module that are not worth a DAO of their own.
     ///
     /// Not `public`: `Database` is GRDB's, and handing it out is how the app target ended up

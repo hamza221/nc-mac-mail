@@ -36,17 +36,6 @@ extension Endpoint where Response == MailboxList {
     }
 }
 
-extension Endpoint where Response == MailboxStats {
-    public static func mailboxStats(mailboxId: Int) -> Endpoint<MailboxStats> {
-        Endpoint(
-            name: "mailboxStats",
-            method: .get,
-            encodedPath: "mailboxes/\(mailboxId)/stats",
-            isRetryable: true
-        )
-    }
-}
-
 extension Endpoint where Response == SyncResponse {
     /// A POST that reads, so it is the one non-GET the client may retry.
     public static func sync(mailboxId: Int) -> Endpoint<SyncResponse> {
@@ -82,15 +71,6 @@ extension Endpoint where Response == [RawBacked<Envelope>] {
         if let cursor { query.append(URLQueryItem(name: "cursor", value: String(cursor))) }
         if let filter { query.append(URLQueryItem(name: "filter", value: filter)) }
         return Endpoint(name: "messages", method: .get, encodedPath: "messages", query: query, isRetryable: true)
-    }
-
-    public static func messageThread(messageId: Int) -> Endpoint<[RawBacked<Envelope>]> {
-        Endpoint(
-            name: "messageThread",
-            method: .get,
-            encodedPath: "messages/\(messageId)/thread",
-            isRetryable: true
-        )
     }
 }
 

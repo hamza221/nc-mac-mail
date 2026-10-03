@@ -299,6 +299,39 @@ already computed.
 
 **Suggestion:** accept both on both, deprecate one.
 
+### 15. The image proxy labels every image `application/octet-stream`
+
+**Where:** `lib/Controller/ProxyController.php`, both `return new ProxyDownloadResponse(…,
+'application/octet-stream')` sites
+**Found by:** first manual QA pass of the macOS client, when no remote image ever loaded
+**Kind:** inconsistency · **Impact:** medium for any non-browser client
+
+A browser sniffs `<img>` responses and never notices. A client serving the bytes to a
+sandboxed WebView through a custom scheme has to name a type. Trusting the header would mean
+rendering nothing, and believing it means guessing. The macOS client now reads the magic
+number itself. The upstream response already has the bytes, and `getHeader('Content-Type')`
+from the fetched response or `finfo` would give the real type.
+
+**Suggestion:** pass the upstream image's content type through, restricted to `image/*`
+raster types, and send `X-Content-Type-Options: nosniff` with it.
+
+### 16. Contact photos never reach the avatar routes
+
+**Where:** `lib/Service/ContactsIntegration.php::getPhotoUri`
+**Found by:** manual QA of the macOS client, when Nextcloud Contacts photos showed initials
+**Kind:** omission (the code says `// TODO: fix`) · **Impact:** high; most contact photos
+
+Nextcloud Contacts stores a photo inside the vCard, as a data URI or `ENCODING=b`.
+`getPhotoUri` keeps a `PHOTO` only if it starts with `VALUE=uri:`, then cuts from the first
+`http`, so every embedded photo comes back null. Both `/api/avatars/url` and
+`/api/avatars/image` then answer "no avatar" for exactly the people a user knows best. A
+client can only get them through CardDAV directly: an `addressbook-query` on `EMAIL`,
+then `{card}.vcf?photo&size=…` from the DAV `ImageExportPlugin`.
+
+**Suggestion:** when `PHOTO` is embedded, return an internal avatar pointing at the card's
+`?photo` URL. The DAV app already decodes and caches the image there (`PhotoCache`). Serve it
+through `/api/avatars/image` too, so a client needs one route for every avatar.
+
 ---
 
 ## Deliberate behaviour that looks like a bug, and should be documented as deliberate

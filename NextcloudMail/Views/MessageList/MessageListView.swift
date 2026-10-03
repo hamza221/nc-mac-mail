@@ -17,6 +17,8 @@ struct MessageListView: View {
     let isOffline: Bool
     /// Set by WS-11's `.searchable`. Nil is the ordinary mailbox list.
     var filter: MessageListFilter?
+    /// The right-click menu's actions. Nil draws no menu.
+    var triage: TriageContext?
 
     /// Everything that decides which query is open. `.task(id:)` restarts on any change,
     /// which is what replaces the observation rather than adding one.
@@ -39,6 +41,11 @@ struct MessageListView: View {
                             .onAppear { extendWindowIfLast(row) }
                     }
                 }
+            }
+        }
+        .contextMenu(forSelectionType: Int64.self) { ids in
+            if let triage {
+                TriageContextMenu(context: triage, targetIds: ids)
             }
         }
         .overlay { emptyState }

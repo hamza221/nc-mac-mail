@@ -357,11 +357,17 @@ public actor MirrorCoordinator {
         throw error
     }
 
-    /// `GET /preferences/sort-order`, once per coordinator.
+    /// Where the account's server-side sort order is kept once read, for Settings › Storage
+    /// to warn that an oldest-first account mirrors without the tail scan (ADR-0036).
+    public static func sortOrderMetaKey(accountId: Int64) -> String { "mirror.sortOrder.\(accountId)" }
+
+    /// `GET /preferences/sort-order`, once per coordinator, and stored in `meta` so the
+    /// Storage panel can say so without asking the network itself.
     ///
     /// A failure is not one: null is the ordinary answer on an instance where nobody ever
     /// set it, and a server that cannot answer at all leaves the default, which is what the
-    /// server itself uses.
+    /// server itself uses. Neither writes the key, so a stale reading is not overwritten
+    /// by a guess.
     private func readSortOrder() async {
         guard !hasReadSortOrder else { return }
         hasReadSortOrder = true
@@ -372,6 +378,7 @@ public actor MirrorCoordinator {
             return
         }
         sortOrder = NCMailCore.SortOrder(preference: preference)
+        try? await store.setMetaValue(sortOrder.rawValue, forKey: Self.sortOrderMetaKey(accountId: accountId))
         guard sortOrder == .oldest else { return }
         MirrorLog.mirror.info(
             """

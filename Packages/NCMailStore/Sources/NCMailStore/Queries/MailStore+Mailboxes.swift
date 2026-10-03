@@ -64,12 +64,41 @@ extension MailStore {
         }
     }
 
+    /// The rows, with `unreadCount` taken from the mirror wherever the mirror is complete.
+    ///
+    /// The column holds the server's figure, written only by a folder refresh or a stats
+    /// call, so on its own it ignores every local change: opening a message, `U`, a move,
+    /// a delete, all of it offline. Once a mailbox's envelopes are complete the mirror *is*
+    /// the mailbox, so its own `isSeen` count is the right number and moves with every write.
+    /// Until then, and for a mailbox that is not mirrored, the local count would undercount,
+    /// so the server's figure stands. ADR-0060.
+    ///
+    /// One grouped count per fetch, served by `idxMessageMailboxSeen`. Reading `message`
+    /// also puts it in the observation's region, which is what makes the sidebar redraw when
+    /// a flag changes.
     private static func fetchMailboxes(_ db: Database, accountId: Int64) throws -> [MailboxRecord] {
-        try MailboxRecord.fetchAll(
+        let mailboxes = try MailboxRecord.fetchAll(
             db,
             sql: "SELECT * FROM mailbox WHERE accountId = ? ORDER BY name",
             arguments: [accountId]
         )
+        let localUnread = try Dictionary(
+            uniqueKeysWithValues: Row.fetchAll(
+                db,
+                sql: """
+                    SELECT mailboxId, count(*) AS unread FROM message
+                    WHERE accountId = ? AND isSeen = 0
+                    GROUP BY mailboxId
+                    """,
+                arguments: [accountId]
+            ).map { row -> (Int64, Int) in (row["mailboxId"], row["unread"]) }
+        )
+        return mailboxes.map { mailbox in
+            guard mailbox.isMirrored, mailbox.envelopesComplete else { return mailbox }
+            var counted = mailbox
+            counted.unreadCount = localUnread[mailbox.id] ?? 0
+            return counted
+        }
     }
 
     /// Advances stage 1's cursor. The caller writes this in the same transaction as the page of

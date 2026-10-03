@@ -32,8 +32,15 @@ final class TriageContext {
 
     /// `R`. WS-05's scheduler, through whatever wires it.
     var refresh: (@MainActor () -> Void)?
-    /// `⌘P`. The message pane's WebView owns the print operation; this only asks for it.
+    /// Whether a refresh is still running, for the Refresh button's spinner. Reads
+    /// `AppStatus`, which the engine writes, so observation redraws the button.
+    var isRefreshing: (@MainActor () -> Bool)?
+    /// `⌘P`. `MessagePrintController` owns the print operation; this only asks for it.
     var printMessage: (@MainActor () -> Void)?
+    /// Whether the message pane has a body on screen to print. Reads the controller, which
+    /// the pane writes, so observation re-enables the menu item when a body lands. The
+    /// focused row is not enough: a message whose body has not arrived prints nothing.
+    var canPrintMessage: (@MainActor () -> Bool)?
     /// `⌘F` and `⌘⇧F`. WS-11's, and absent from the menu bar until it is wired.
     var search: (@MainActor (MessageListFilter.Scope) -> Void)?
 
@@ -88,7 +95,7 @@ final class TriageContext {
     func isEnabled(_ action: TriageAction) -> Bool {
         switch action {
         case .refresh: refresh != nil
-        case .printMessage: printMessage != nil && listStore?.focusedMessageId != nil
+        case .printMessage: printMessage != nil && canPrintMessage?() == true
         case .search, .searchAllMail: search != nil
         case .markAllRead: navigation?.selectedMailboxID != nil
         case .previousMessage, .nextMessage: listStore.map { !$0.rows.isEmpty } ?? false
@@ -130,6 +137,14 @@ final class TriageContext {
     /// selection. Called from `.task(id:)`, because every answer is a database read.
     func refreshAvailability() async {
         await actions.refreshAvailability(for: selection)
+    }
+
+    /// The rows a right-click landed on. Inside the current selection, the selection stands
+    /// and the action covers all of it. Outside it, those rows become the selection, which is
+    /// what Mail does and what makes "Archive" archive the row under the pointer.
+    func adopt(_ ids: Set<Int64>) {
+        guard let listStore, !ids.isEmpty, !ids.isSubset(of: listStore.selection) else { return }
+        listStore.selection = ids
     }
 
     /// `←` and `→`: one row back, one row on, in the list's own order.

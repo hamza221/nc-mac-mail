@@ -97,12 +97,14 @@ enum SettingsFormatting {
 /// When to mark a message read after it is opened, persisted once for the whole app rather
 /// than per mailbox. ``ListView`` in `NavigationState` is the precedent this follows.
 ///
-/// WS-10 owns the actual triage behaviour and reads this value; this workstream only owns
-/// where it lives and what it says. See this workstream's report for the handoff.
+/// Settings writes it; `MessageActions.messageOpened(_:)` reads it.
 enum MarkAsReadDelay: Hashable, Sendable {
     case immediately
     case after(seconds: Int)
     case manually
+
+    /// The `meta` key, here so the writer and the reader cannot drift apart.
+    static let metaKey = "settings.markAsReadDelay"
 
     /// The delays offered in the picker. `ux-spec.md` names the three shapes (immediately,
     /// after n seconds, manually) without naming n, so these are a plain-language guess at

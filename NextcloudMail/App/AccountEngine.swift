@@ -22,8 +22,8 @@ extension NetworkConditions {
     }
 }
 
-/// Every account's sync machinery: one `MirrorCoordinator`, one `OperationDrainer` and one
-/// `SyncScheduler` per account row, started here and nowhere else.
+/// Every account's sync machinery: one `MirrorCoordinator`, one `OperationDrainer`, one
+/// `SyncScheduler` and one `AvatarFetcher` per account row, started here and nowhere else.
 ///
 /// This is the only place a coordinator, a drainer or a scheduler is *started*, which is
 /// deliberate: one started from a view is how "the network never renders"
@@ -47,13 +47,21 @@ final class AccountEngine {
         let mirror: MirrorCoordinator
         let drainer: OperationDrainer
         let scheduler: SyncScheduler
+        let avatars: AvatarFetcher
         var tasks: [Task<Void, Never>] = []
 
-        init(account: AccountSession, mirror: MirrorCoordinator, drainer: OperationDrainer, scheduler: SyncScheduler) {
+        init(
+            account: AccountSession,
+            mirror: MirrorCoordinator,
+            drainer: OperationDrainer,
+            scheduler: SyncScheduler,
+            avatars: AvatarFetcher
+        ) {
             self.account = account
             self.mirror = mirror
             self.drainer = drainer
             self.scheduler = scheduler
+            self.avatars = avatars
         }
     }
 
@@ -122,10 +130,12 @@ final class AccountEngine {
         for entry in running.values {
             let mirror = entry.mirror
             let scheduler = entry.scheduler
+            let avatars = entry.avatars
             entry.tasks.append(
                 Task {
                     await mirror.apply(conditions: mirrorConditions)
                     await scheduler.apply(conditions: mirrorConditions)
+                    await avatars.apply(conditions: mirrorConditions)
                 }
             )
         }
@@ -146,13 +156,34 @@ final class AccountEngine {
         }
     }
 
-    /// `R`, and the sidebar's Refresh. Every scheduler is asked; one that does not own
-    /// `mailboxId` resolves no targets and does nothing, which is cheaper than resolving the
-    /// owning account here with a database read.
-    func refresh(mailboxId: Int64?) {
+    /// `R`, the toolbar's Refresh and the sidebar's. Every scheduler is asked, or only
+    /// `accountId`'s; one that does not own `mailboxId` resolves no targets and does nothing,
+    /// which is cheaper than resolving the owning account here with a database read.
+    ///
+    /// ``AppStatus/refreshesInFlight`` counts until every pass returns, which is what the
+    /// Refresh button's spinner shows. That tracks the sync passes themselves, not a request
+    /// the view is waiting on, so the button can't claim more than the schedulers did.
+    func refresh(mailboxId: Int64?, accountId: Int64? = nil) {
+        let schedulers = running.filter { accountId == nil || $0.key == accountId }.map(\.value.scheduler)
+        guard !schedulers.isEmpty else { return }
+        status.refreshesInFlight += 1
+        Task { [weak self] in
+            await withTaskGroup(of: Void.self) { group in
+                for scheduler in schedulers {
+                    group.addTask { await scheduler.syncNow(mailboxId: mailboxId) }
+                }
+            }
+            self?.status.refreshesInFlight -= 1
+        }
+    }
+
+    /// The footer's Retry: every account's drainer clears its backoff and takes everything
+    /// at once. Failing rows keep their attempt counts, so the indicator only clears if the
+    /// server now accepts them.
+    func retryFailedActions() {
         for entry in running.values {
-            let scheduler = entry.scheduler
-            entry.tasks.append(Task { await scheduler.syncNow(mailboxId: mailboxId) })
+            let drainer = entry.drainer
+            entry.tasks.append(Task { await drainer.retryAll() })
         }
     }
 
@@ -220,7 +251,14 @@ final class AccountEngine {
             drainer: drainer,
             mirror: mirror
         )
-        let entry = Running(account: account, mirror: mirror, drainer: drainer, scheduler: scheduler)
+        let avatars = AvatarFetcher(store: store, client: account.client, accountId: row.id)
+        let entry = Running(
+            account: account,
+            mirror: mirror,
+            drainer: drainer,
+            scheduler: scheduler,
+            avatars: avatars
+        )
         running[row.id] = entry
 
         let mirrorConditions = conditions.mirrorConditions
@@ -236,6 +274,12 @@ final class AccountEngine {
                 await scheduler.apply(conditions: mirrorConditions)
                 await scheduler.setSelectedMailbox(selected)
                 await scheduler.start()
+            }
+        )
+        entry.tasks.append(
+            Task {
+                await avatars.apply(conditions: mirrorConditions)
+                await avatars.start()
             }
         )
         entry.tasks.append(
@@ -265,7 +309,11 @@ final class AccountEngine {
         for task in entry.tasks { task.cancel() }
         entry.tasks.removeAll()
         let scheduler = entry.scheduler
-        Task { await scheduler.stop() }
+        let avatars = entry.avatars
+        Task {
+            await scheduler.stop()
+            await avatars.stop()
+        }
     }
 
     /// Asks each signed-in server for its accounts, which is what writes the rows the

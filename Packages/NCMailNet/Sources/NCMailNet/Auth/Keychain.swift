@@ -69,9 +69,15 @@ public enum Keychain {
     /// and for offering re-authentication. Returns the server and login name
     /// only — the point of the Keychain is that the password never has to
     /// pass through here to enumerate accounts.
+    ///
+    /// Filtered on ``securityDomain``: the login keychain is shared, and an
+    /// unfiltered query returns every internet password on the Mac — git's
+    /// `github.com` credential among them — each of which would then be
+    /// mistaken for a signed-in account and decrypted behind a consent prompt.
     public static func allAccounts() throws -> [(server: URL, loginName: String)] {
         let query: [String: Any] = [
             kSecClass as String: kSecClassInternetPassword,
+            kSecAttrSecurityDomain as String: securityDomain,
             kSecMatchLimit as String: kSecMatchLimitAll,
             kSecReturnAttributes as String: true,
         ]
@@ -93,6 +99,13 @@ public enum Keychain {
 
     // MARK: - Query construction
 
+    /// Marks an item as this app's. `kSecAttrSecurityDomain` rather than a
+    /// label or comment because it is part of an internet password's
+    /// uniqueness key: a browser or git item for the same host and login name
+    /// is a different item, so `save` cannot collide with it and `delete`
+    /// cannot remove it (ADR-0059).
+    static let securityDomain = "com.nextcloud.mail.macos"
+
     /// The attributes that identify one item, shared by every operation
     /// above. `kSecAttrServer` carries only the host — `kSecAttrProtocol`,
     /// `kSecAttrPort` and `kSecAttrPath` are what let a path-prefixed
@@ -104,6 +117,7 @@ public enum Keychain {
             kSecAttrServer as String: (server.host ?? "").lowercased(),
             kSecAttrAccount as String: loginName,
             kSecAttrProtocol as String: protocolAttribute(for: server),
+            kSecAttrSecurityDomain as String: securityDomain,
         ]
         if let port = server.port {
             query[kSecAttrPort as String] = port

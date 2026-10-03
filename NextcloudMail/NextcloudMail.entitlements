@@ -5,9 +5,14 @@
 	<!-- ADR-0006: the sandbox container is the data-at-rest story. -->
 	<key>com.apple.security.app-sandbox</key>
 	<true/>
-	<!-- The only other entitlement. Nothing listens, nothing reads the user's
-	     files, nothing talks to another process. -->
+	<!-- Outbound HTTPS to the Nextcloud server. Nothing listens, nothing talks to
+	     another process. -->
 	<key>com.apple.security.network.client</key>
+	<true/>
+	<!-- Saving an attachment. Grants access only to the location the reader picks
+	     in NSSavePanel; without it the panel refuses to open and the click does
+	     nothing. Nothing reads the user's files unprompted. -->
+	<key>com.apple.security.files.user-selected.read-write</key>
 	<true/>
 </dict>
 </plist>

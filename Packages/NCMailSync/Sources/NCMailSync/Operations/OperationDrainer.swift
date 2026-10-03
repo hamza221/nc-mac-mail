@@ -341,6 +341,10 @@ public actor OperationDrainer: OperationDraining {
     // MARK: - Requests
 
     private func send(_ item: CollapsedOperation) async throws {
+        if item.kind == .trustSender {
+            try await sendTrust(item)
+            return
+        }
         guard let remoteId = item.payload.remoteId else {
             // A row with no server id cannot be sent and never will be. Dropping it is the
             // only outcome that does not wedge the queue behind it.
@@ -368,6 +372,23 @@ public actor OperationDrainer: OperationDraining {
             )
         case .deleteThread:
             _ = try await client.delete(Endpoint.deleteThread(messageId: Int(remoteId)))
+        case .trustSender:
+            // Sent by `sendTrust` above; it carries no message id to reach this switch with.
+            break
+        }
+    }
+
+    /// Trust is per address on the server, so the request names the sender, not a message.
+    private func sendTrust(_ item: CollapsedOperation) async throws {
+        guard let email = item.payload.senderEmail, let trusted = item.payload.trusted else {
+            // Unreadable intent: dropped like a row with no server id. `notFound` resolves it
+            // with no local effect, because the effect names no rows.
+            throw MailError.notFound
+        }
+        if trusted {
+            _ = try await client.put(Endpoint.trustSender(email: email))
+        } else {
+            _ = try await client.delete(Endpoint.untrustSender(email: email))
         }
     }
 
@@ -454,6 +475,14 @@ public actor OperationDrainer: OperationDraining {
         for (mailboxId, messageIds) in byMailbox {
             guard let mailboxId else { continue }
             effects.append(LocalEffect(messageIds: messageIds.sorted(), mailboxId: mailboxId))
+        }
+        // A sender trust puts each body back to what it held, which was not one value for all
+        // of them: some may have been trusted by the server already.
+        if let trust = item.payload.before.senderTrusted {
+            let byValue = Dictionary(grouping: trust.keys) { trust[$0] ?? false }
+            for (value, messageIds) in byValue {
+                effects.append(LocalEffect(messageIds: messageIds.sorted(), isSenderTrusted: value))
+            }
         }
         return effects
     }

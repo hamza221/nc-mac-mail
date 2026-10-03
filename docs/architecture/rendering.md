@@ -123,6 +123,10 @@ ncmail://asset/{base64url(original URL)}
 - **proxied remote image** → fetch through `MailClient` only if remote content is unblocked
   for this message. Never stored ([ADR-0010](../decisions/0010-webview-scheme-handler.md)):
   storing it would give a tracking pixel a permanent home on the user's disk for no gain.
+  The response's `Content-Type` is no help: `ProxyController::proxy` sends
+  `application/octet-stream` for every image. The handler takes the type from the bytes'
+  signature (`ImageSignature`, raster formats only) and refuses anything that does not
+  match. Until 2026-10-03 it trusted the header, so no remote image ever loaded.
 - **anything else** → fail the load. The handler is an allowlist, not a proxy.
 
 The allowlist is one function, `MailAssetPolicy.classify(_:server:messageRemoteId:)`, and
@@ -206,9 +210,11 @@ not loaded." with **Show images** and **Always show from this sender**.
 - **Show images** rewrites `data-original-src` → `src`, restores `data-original-style`,
   drops the injected `display:none!important`, and reloads from the stored HTML. No network
   request until the WebView asks for `ncmail://asset/…`.
-- **Always show from this sender** additionally calls
-  `PUT /api/trustedsenders/{email}?type=individual`, so the choice matches the web client
-  and is stored server-side, where it belongs.
+- **Always show from this sender** additionally queues a `trustSender` operation
+  ([offline-queue.md](offline-queue.md#operations)): every stored body from that address
+  is marked `isSenderTrusted` in the same transaction, so the sender's other messages show
+  images at once and offline, and the drainer sends
+  `PUT /api/trustedsenders/{email}?type=individual` so the choice matches the web client.
 - The bar is hidden when the message has no blocked content, when the sender is trusted
   (`messageBody.isSenderTrusted`), or after the user shows images for this message.
 
@@ -226,9 +232,31 @@ images** cannot deliver.
 
 ## Printing, selection, find
 
-`⌘P` prints the message. Selection spans the body but not the native header. Both are
-`WKWebView` defaults, and neither was verified with the content rule list installed, because
-verifying either needs a window.
+`⌘P` prints the message, header and body together, from its own offscreen `WKWebView`
+rather than the one on screen
+([ADR-0063](../decisions/0063-printing-uses-an-offscreen-web-view.md)). The message pane
+registers its header and the body it has drawn with `MessagePrintController`. The printed
+document has an escaped header block (subject, from, to, cc, date — every one
+attacker-controlled) and then:
+
+- **HTML:** the already-rewritten document, with the header right after the shell's
+  `<body>`.
+- **Plain text:** the text escaped inside `<pre style="white-space: pre-wrap">` in the same
+  shell, then the signature under an `<hr>`.
+
+The print web view gets `MessageBodyWebView.configuration(serving:)`, the same function the
+live view uses: JavaScript off, a non-persistent store, and the `ncmail` handler with the
+same `Context`, so inline images print and remote images print only if unblocked. The
+content rule list is installed before the load, and a rule-list failure prints nothing. It
+also forces the light appearance, cancels every navigation but the first, and is held until
+the print sheet's completion runs. `⌘P` is enabled only while a drawn body is registered: a
+body still downloading, failed, or blocked prints nothing.
+
+Not verified in a window: whether `didFinish` (after the load event) is late enough for every
+`ncmail:` image to appear in the printout, and how WebKit paginates very wide marketing mail.
+
+Selection spans the body but not the native header. That is the `WKWebView` default, not
+verified with the content rule list installed, because verifying it needs a window.
 
 `⌘F` is the one that has to change. This document gave it to find-in-body;
 [../product/ux-spec.md](../product/ux-spec.md#keyboard) gives it to search, and search is

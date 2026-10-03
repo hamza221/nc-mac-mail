@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Hamza Mahjoubi
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import AppKit
 import Foundation
 import NCMailNet
 import NCMailStore
@@ -53,14 +54,22 @@ final class AppSession {
     /// `⌘F` is a `Commands` body outside the window, and it has to move the caret in the
     /// field the column is drawing.
     let search: SearchModel
+    /// The mirror on disk could not be opened, so this session runs on an empty in-memory
+    /// one that is lost at quit. `RootSplitView` offers the recovery: delete the file and
+    /// download everything again.
+    let mirrorIsTemporary: Bool
+    /// `⌘P`. Here for the same reason as `triage`: the menu bar is outside the window, and
+    /// the message pane registers what it is showing with this one instance.
+    let printer = MessagePrintController()
     /// Whether the Keychain holds at least one account, from an attributes-only read.
     private var hasStoredAccounts: Bool
     private let networkMonitor = NetworkMonitor()
     private var themeObservation: Task<Void, Never>?
     nonisolated private static let logger = Logger(subsystem: "com.nextcloud.mail.macos", category: "session")
 
-    init(store: MailStore, initialTheme: NCTheme) {
+    init(store: MailStore, initialTheme: NCTheme, mirrorIsTemporary: Bool = false) {
         self.store = store
+        self.mirrorIsTemporary = mirrorIsTemporary
         theme = initialTheme
         navigation = NavigationState(store: store)
         accounts = []
@@ -68,6 +77,27 @@ final class AppSession {
         engine = AccountEngine(store: store, status: status)
         triage = TriageContext(store: store)
         search = SearchModel(store: store)
+    }
+
+    /// Deletes the unreadable mirror and starts the app again, so the next launch opens a new
+    /// one and mirrors every account from the server. Nothing is lost that the server does not
+    /// have: queued actions lived in the same unreadable file.
+    ///
+    /// A relaunch rather than swapping the store in place: every column was built with this
+    /// session's store at launch, and rebuilding them all is a second code path for a
+    /// once-in-a-lifetime event.
+    func deleteMirrorAndRelaunch() {
+        do {
+            try MailStore.deleteDatabase(at: try MailStore.defaultDatabaseURL())
+        } catch {
+            Self.logger.error("could not delete the unreadable mirror: \(String(describing: error), privacy: .public)")
+            return
+        }
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.createsNewApplicationInstance = true
+        NSWorkspace.shared.openApplication(at: Bundle.main.bundleURL, configuration: configuration) { _, _ in
+            Task { @MainActor in NSApp.terminate(nil) }
+        }
     }
 
     // No `deinit` cancelling `themeObservation`: exactly one `AppSession` exists, built once
@@ -93,24 +123,31 @@ final class AppSession {
         }
         observeTheme()
         accounts = await AppSession.accountsFromKeychain()
-        hasStoredAccounts = hasStoredAccounts || !accounts.isEmpty
+        // Now what was actually readable replaces the attributes-only guess from `init`: an
+        // item whose consent prompt was denied leaves no account, and that user has to see
+        // the sign-in screen rather than three empty columns with nothing behind them.
+        hasStoredAccounts = !accounts.isEmpty
         engine.start(accounts: accounts)
         await navigation.load()
         await refreshTheme()
     }
 
-    /// The three hooks `TriageContext` leaves for whoever owns the sync engine: `R` refreshes
-    /// the selected mailbox, a committed action wakes that account's drainer, and the
+    /// The hooks `TriageContext` leaves for whoever owns the sync engine: `R` refreshes the
+    /// selected mailbox and its button spins while it runs, `⌘P` prints what the message
+    /// pane registered, a committed action wakes that account's drainer, and the
     /// threaded-or-flat setting comes from the same `NavigationState` the columns read.
     ///
     /// `listStore` is set by `RootSplitView`, which is where the middle column's model is
-    /// built. Printing and search stay nil until WS-09 and WS-11 offer something to call.
+    /// built. `⌘F` is `SearchCommands`'s, not a triage hook.
     private func connectTriage() {
         triage.navigation = navigation
         triage.refresh = { [weak self] in
             guard let self else { return }
             engine.refresh(mailboxId: navigation.selectedMailboxID)
         }
+        triage.isRefreshing = { [weak self] in self?.status.isRefreshing ?? false }
+        triage.printMessage = { [weak self] in self?.printer.printCurrentMessage() }
+        triage.canPrintMessage = { [weak self] in self?.printer.canPrint ?? false }
         triage.actions.wakeDrainer = { [weak self] accountId in
             self?.engine.wakeDrainer(accountId: accountId)
         }
@@ -118,22 +155,32 @@ final class AppSession {
 
     /// What the detail column needs to draw one message: the mirror it reads from, the client
     /// its WebView's scheme handler fetches assets with, the server those assets must come
-    /// from, and the coordinator that can move a missing body up the backfill queue.
+    /// from, the coordinator that can move a missing body up the backfill queue, and the
+    /// queued "always show images from this sender".
     ///
     /// - Parameter accountId: the account the selected mailbox belongs to. Nil, or an account
     ///   whose coordinator has not started yet, falls back to the first signed-in account so
     ///   the column is never empty while a row is still arriving.
     func messageServices(accountId: Int64?) -> MessageViewServices? {
+        let trustSender: @MainActor (String, Int64) async -> Void = { [triage] email, accountId in
+            await triage.actions.trustSender(email: email, accountId: accountId)
+        }
         if let accountId, let running = engine.account(id: accountId) {
             return MessageViewServices(
                 store: store,
                 client: running.session.client,
                 server: running.session.server,
-                prioritiser: running.prioritiser
+                prioritiser: running.prioritiser,
+                trustSender: trustSender
             )
         }
         guard let fallback = accounts.first else { return nil }
-        return MessageViewServices(store: store, client: fallback.client, server: fallback.server)
+        return MessageViewServices(
+            store: store,
+            client: fallback.client,
+            server: fallback.server,
+            trustSender: trustSender
+        )
     }
 
     /// `theme` only ever changes here, in response to `meta` changing — never as a direct

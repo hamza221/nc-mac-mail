@@ -82,9 +82,9 @@ struct SearchPerformanceTests {
     @Test func theCoverageCounterIsCheap() async throws {
         let store = try MailStore.inMemory()
         _ = try await PerformanceTests.seed(store)
-        _ = try await store.searchCoverage(scope: .all)
+        _ = try await SearchTests.coverage(store, .all)
         let elapsed = try await PerformanceTests.best(of: 5) {
-            _ = try await store.searchCoverage(scope: .all)
+            _ = try await SearchTests.coverage(store, .all)
         }
         reportMeasurement("coverage counter over \(PerformanceTests.messageCount): \(ms(elapsed)) ms")
         #expect(elapsed < Self.budgetMilliseconds * 10)
@@ -111,7 +111,7 @@ struct SearchPerformanceTests {
     func searchesARealMirror() async throws {
         let path = try #require(ProcessInfo.processInfo.environment["NCMAIL_LIVE_MIRROR_FILE"])
         let store = try MailStore(url: URL(filePath: path))
-        let coverage = try await store.searchCoverage(scope: .all)
+        let coverage = try await SearchTests.coverage(store, .all)
         reportMeasurement(
             "live mirror: \(coverage.indexedMessages) of \(coverage.totalMessages) searchable, "
                 + "\(coverage.unmirroredMailboxes) mailboxes not downloaded"

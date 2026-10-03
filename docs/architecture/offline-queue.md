@@ -47,6 +47,13 @@ drainer having nowhere to send things yet.
 | `moveThread` | every message of the thread | `POST /api/thread/{id}` `{"destMailboxId":N}` |
 | `deleteThread` | every message of the thread | `DELETE /api/thread/{id}` |
 | `markThread` | flags across the thread | one `setFlags` per message |
+| `trustSender` | `messageBody.isSenderTrusted` on every stored body whose `message.fromEmail` matches, case-insensitively | `PUT /api/trustedsenders/{email}?type=individual` when trusted, `DELETE` on the same path when not |
+
+`trustSender` is the one kind that names no message: the row has `messageId` null and the
+payload carries `senderEmail` and `trusted`, plus each body's previous value so **Discard**
+can put it back. A body fetched while the row waits is masked by
+`MailStore.upsert(body:for:)` with the queued intent, the same "local wins for the fields the
+operation sets" rule the flags follow. A 404 drops the row with no local effect.
 
 Note the parameter names: `destFolderId` for a message, `destMailboxId` for a thread. That
 inconsistency is upstream's, it is real, and it has already cost someone an afternoon —
@@ -112,7 +119,9 @@ a laptop that has been shut since Friday.
 - a `move` followed by a `move` of the same message keeps the last destination;
 - anything followed by `delete` on the same message collapses to the `delete`;
 - operations for different messages never collapse, and order across messages is preserved;
-- a thread operation never collapses into a message operation for one of its members.
+- a thread operation never collapses into a message operation for one of its members;
+- `trustSender` rows for the same address (compared lowercased) collapse to the latest, so
+  trust then untrust is one `DELETE`.
 
 This document originally asked for the collapse before *each* request. Re-reading and
 re-collapsing the whole queue per request made a thousand queued operations take **52.4 s**

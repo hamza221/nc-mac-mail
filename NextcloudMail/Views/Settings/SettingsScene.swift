@@ -3,28 +3,17 @@
 
 import SwiftUI
 
-/// The real `Settings` scene, replacing `NextcloudMailApp.swift`'s `SettingsPlaceholder`.
-///
-/// `NextcloudMailApp.swift` is WS-13's file and another agent is editing it while this one
-/// runs, so this workstream stops at building the scene and leaves the one-line swap to the
-/// report rather than touching that file:
-///
-/// ```swift
-/// Settings {
-///     SettingsScene()
-///         .environment(session)
-/// }
-/// ```
+/// The `Settings` scene `NextcloudMailApp` installs, with the session in the environment.
 ///
 /// `SettingsScene` itself only reads `AppSession` out of the environment; the `@State` that
 /// needs `session.store` and `session.accounts` lives one level down, in
 /// ``SettingsRootView``, because a view's `init` runs before its `@Environment` properties
 /// are populated.
 ///
-/// `SidebarStore.showStorage(_:)` and `.signOut(_:)` (WS-07's file; this workstream owns
-/// only those two method bodies, per its brief) write ``SettingsTab/preferredTab`` before
-/// asking AppKit to show the Settings window, so a click on "Storage…" or "Sign Out…" in the
-/// sidebar opens on the right tab rather than whichever one was last visible.
+/// `SidebarStore.showStorage(_:)` and `.signOut(_:)` write ``SettingsTab/preferredTab``,
+/// and the sidebar then opens the window with `openSettings`. The tab is bound to that same
+/// key, so a click on "Storage…" or "Sign out" lands on the right tab, even when the window
+/// is already open on another one (ADR-0062).
 struct SettingsScene: View {
     @Environment(AppSession.self) private var session
 
@@ -39,7 +28,7 @@ struct SettingsScene: View {
 private struct SettingsRootView: View {
     let session: AppSession
     @State private var settingsStore: SettingsStore
-    @State private var selectedTab = SettingsTab.preferredTab
+    @AppStorage(SettingsTab.preferredTabKey) private var selectedTab = SettingsTab.general
 
     init(session: AppSession) {
         self.session = session
@@ -69,25 +58,22 @@ private struct SettingsRootView: View {
     }
 }
 
-/// Which tab the Settings window opens on.
+/// Which tab the Settings window shows.
 ///
-/// Read once, at this view's `init`, from the same `UserDefaults` key the sidebar's
-/// "Storage…" and "Sign Out…" actions write before asking AppKit to show the window
+/// One `UserDefaults` key, bound with `@AppStorage` in ``SettingsRootView`` and written by
+/// the sidebar's "Storage…" and "Sign out" actions, so the window follows a request even
+/// when it is already open, and reopens on the tab last used
 /// ([ThemeCache](../Theme/ThemeCache.swift) is the precedent for a small, non-sensitive
-/// value living in `UserDefaults` rather than the database). Switching tabs afterward is
-/// ordinary `TabView` selection and never touches this key again.
+/// value living in `UserDefaults` rather than the database).
 enum SettingsTab: String {
     case general
     case accounts
     case storage
 
-    /// The key `SidebarStore.openSettings(on:)` writes before asking AppKit to show the
-    /// window. `SidebarStore` names this type directly, since it is the same app target and
-    /// needs no import, and this constant is what keeps the string in one place rather than
-    /// two.
     static let preferredTabKey = "settings.preferredTab"
 
     static var preferredTab: SettingsTab {
-        SettingsTab(rawValue: UserDefaults.standard.string(forKey: preferredTabKey) ?? "") ?? .general
+        get { SettingsTab(rawValue: UserDefaults.standard.string(forKey: preferredTabKey) ?? "") ?? .general }
+        set { UserDefaults.standard.set(newValue.rawValue, forKey: preferredTabKey) }
     }
 }

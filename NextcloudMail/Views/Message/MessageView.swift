@@ -19,6 +19,9 @@ struct MessageView: View {
     /// differently with and without a network.
     let isOffline: Bool
     let select: (Int64) -> Void
+    /// Where `⌘P` finds what this pane is showing. Nil in previews and tests, which print
+    /// nothing.
+    let printer: MessagePrintController?
 
     @State private var model: MessageViewModel
     @Environment(\.ncTheme) private var theme
@@ -28,12 +31,20 @@ struct MessageView: View {
         services: MessageViewServices,
         messageId: Int64?,
         isOffline: Bool = false,
+        printer: MessagePrintController? = nil,
         select: @escaping (Int64) -> Void = { _ in }
     ) {
         self.messageId = messageId
         self.isOffline = isOffline
+        self.printer = printer
         self.select = select
         _model = State(initialValue: MessageViewModel(services: services))
+    }
+
+    /// The header and the body as drawn, or nil while there is no body to put on paper.
+    private var printable: PrintableMessage? {
+        guard let header = model.header, let body = PrintableMessage.Body(model.presentation) else { return nil }
+        return PrintableMessage(header: header, body: body)
     }
 
     var body: some View {
@@ -51,7 +62,13 @@ struct MessageView: View {
             }
         }
         .task(id: messageId) { model.present(messageId: messageId) }
-        .onDisappear { model.present(messageId: nil) }
+        .onChange(of: printable, initial: true) { _, printable in
+            printer?.show(printable, services: model.services, from: model)
+        }
+        .onDisappear {
+            model.present(messageId: nil)
+            printer?.withdraw(from: model)
+        }
         .quickLookPreview($model.previewURL)
         .alert(
             "This link does not go where it says",

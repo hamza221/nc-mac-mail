@@ -14,7 +14,6 @@ import SwiftUI
 @MainActor
 @Observable
 final class NavigationState {
-    private(set) var selectedAccountID: String?
     private(set) var selectedMailboxID: Int64?
     private(set) var listView: ListView = .threaded
 
@@ -26,7 +25,6 @@ final class NavigationState {
     private let store: MailStore
 
     private enum MetaKey {
-        static let account = "navigation.selectedAccountId"
         static let mailbox = "navigation.selectedMailboxId"
         static let listView = "navigation.listView"
     }
@@ -38,17 +36,11 @@ final class NavigationState {
     /// Reads what was persisted the last time any of the setters below ran. Safe to call more
     /// than once; each read is independent of the others.
     func load() async {
-        selectedAccountID = try? await store.metaValue(forKey: MetaKey.account)
         selectedMailboxID = (try? await store.metaValue(forKey: MetaKey.mailbox)).flatMap { Int64($0) }
         if let raw = try? await store.metaValue(forKey: MetaKey.listView), let value = ListView(rawValue: raw) {
             listView = value
         }
         mailboxDidChange?(selectedMailboxID)
-    }
-
-    func selectAccount(_ id: String?) {
-        selectedAccountID = id
-        Task { try? await store.setMetaValue(id, forKey: MetaKey.account) }
     }
 
     func selectMailbox(_ id: Int64?) {

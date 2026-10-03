@@ -62,7 +62,8 @@ POST /api/mailboxes/{id}/sync  {ids: [...250 ids...], init: false, sortOrder: "n
 newMessages      → upsert envelopes, enqueue bodies at the head of the backfill queue
 changedMessages  → upsert envelopes; flags, tags and preview text are the point
 vanishedMessages → delete locally (message, body, attachments, search rows)*
-stats            → mailbox.unreadCount, totalCount
+stats            → mailbox.unreadCount, totalCount (the sidebar shows unreadCount only until
+                   the mailbox's envelopes are complete; after that it counts the mirror, ADR-0060)
 ```
 
 Then, because of trap 4, **the tail scan**: fetch page 1 of
@@ -145,6 +146,15 @@ explicit user refresh; it makes the server re-read the folder list from IMAP.
 
 `GET /api/accounts` runs alongside it, because `archiveMailboxId` and friends can change
 and triage depends on them.
+
+### Alongside: avatars — continuous, low priority
+
+Not a sync loop, and it never touches messages, but it runs per account next to the three
+above. `AvatarFetcher` asks `GET /api/avatars/image/{email}` about each sender, newest
+correspondent first, 4 in flight. It writes the bytes or a `missing` row into `avatar`,
+re-asks after 30 days for a photo and 7 days for a 404, and idles 10 minutes between
+passes. It pauses offline and in Low Data Mode. Views wait on the row and never request.
+[ADR-0061](../decisions/0061-avatars-are-fetched-into-the-mirror-by-sync.md).
 
 ## Ordering and mutual exclusion
 

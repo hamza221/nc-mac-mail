@@ -44,16 +44,25 @@ struct TriageButton: View {
 
     var body: some View {
         let availability = context.availability(of: action)
+        let isRunning = action == .refresh && context.isRefreshing?() == true
         Button {
             Task { await context.perform(action) }
         } label: {
-            (action.symbol ?? .folder).view(label: .text(action.label))
+            if isRunning {
+                // The sync passes are still going. A spinner in the glyph's place, so a click
+                // visibly did something and a second click is not offered.
+                ProgressView()
+                    .controlSize(.small)
+                    .accessibilityLabel(Text("Refreshing"))
+            } else {
+                (action.symbol ?? .folder).view(label: .text(action.label))
+            }
         }
         .buttonStyle(.icon)
-        .help(action.help(reason: availability.reason))
+        .help(isRunning ? "Refreshing…" : action.help(reason: availability.reason))
         .accessibilityLabel(Text(action.label))
         .triageReason(availability.reason)
-        .disabled(!context.isEnabled(action))
+        .disabled(isRunning || !context.isEnabled(action))
     }
 }
 

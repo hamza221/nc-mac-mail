@@ -1,17 +1,17 @@
 // SPDX-FileCopyrightText: Hamza Mahjoubi
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import AppKit
 import NCMailNet
 import NextcloudUI
 import SwiftUI
 
-/// The sign-in screen: a server field, Continue, the waiting state with
+/// The sign-in screen: the app's icon, a server field, Continue, the waiting state with
 /// Cancel, and the three distinguishable failures
 /// [S-01](../../../docs/product/user-stories.md#s-01-sign-in-ws-01) asks for.
 ///
-/// Not yet reachable from the app: `RootSplitView` is WS-00's placeholder and
-/// WS-13 owns the shell that decides when to show this instead of it. This
-/// view and `LoginViewModel` are what WS-13 wires in.
+/// `RootSplitView` shows this until an account exists, and again as the sheet that answers
+/// the 401 modal.
 struct LoginView: View {
     @Environment(\.ncTheme) private var theme
     @State private var model = LoginViewModel()
@@ -23,6 +23,13 @@ struct LoginView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: theme.metrics.spacing.comfortable) {
+            // The compiled app icon rather than a second copy of the artwork, so the Dock
+            // and the first screen can never disagree.
+            Image(nsImage: NSApp.applicationIconImage)
+                .resizable()
+                .frame(width: theme.metrics.avatar.extraLarge, height: theme.metrics.avatar.extraLarge)
+                .accessibilityHidden(true)
+
             Text("Sign in to Nextcloud")
                 .font(.title2.weight(theme.typography.heading))
 

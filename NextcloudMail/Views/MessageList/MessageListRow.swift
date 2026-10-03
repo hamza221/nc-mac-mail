@@ -8,10 +8,9 @@ import SwiftUI
 
 /// One row of the message list.
 ///
-/// The shape is [ux-spec.md](../../../docs/product/ux-spec.md#message-list)'s: sender,
-/// subject, avatar, date and unread count, with a fixed-width column of state glyphs before
-/// the avatar. That column is the workaround for `NCListItem`'s single leading slot — see
-/// `docs/feedback/library-feedback.md`.
+/// The shape is [ux-spec.md](../../../docs/product/ux-spec.md#message-list)'s: avatar flush
+/// left, sender and subject, then one trailing cluster with the date on top and, beneath it on
+/// one line, the state glyphs that apply, the thread's size and its unread count.
 ///
 /// Unread is `threadUnreadCount > 0` rather than `!isSeen`
 /// ([ADR-0041](../../../docs/decisions/0041-unread-is-the-threads-unread-count.md)), and that
@@ -33,22 +32,31 @@ struct MessageListRow: View {
 
     var body: some View {
         NCListItem(senderName, subtitle: subject) {
-            HStack(spacing: theme.metrics.spacing.tight) {
-                accessories
-                NCAvatar(
-                    displayName: senderName,
-                    user: row.senderEmail,
-                    size: .medium,
-                    label: .decorative,
-                    load: avatar
-                )
-            }
+            NCAvatar(
+                displayName: senderName,
+                user: row.senderEmail,
+                size: .medium,
+                label: .decorative,
+                load: avatar
+            )
         } details: {
-            NCListItemDetails(date: sentAt, unreadCount: row.threadUnreadCount)
-        } trailing: {
-            // Quiet, not brand-filled: the unread bubble in the details cluster is the one
-            // that is meant to be seen, and two filled bubbles on one row compete.
-            NCCounterBubble(count: row.threadCount > 1 ? row.threadCount : 0, role: .neutral, label: .decorative)
+            // One cluster, not the library's details plus a separate trailing slot. Those
+            // put the unread bubble under the date and the thread-size bubble in its own
+            // column, vertically centred, so the two counts never lined up. The date-only
+            // `NCListItemDetails` keeps the library's date formatting and voice label. The
+            // second line holds every count, so they share a baseline.
+            VStack(alignment: .trailing, spacing: theme.metrics.spacing.hairline) {
+                NCListItemDetails(date: sentAt, unreadCount: 0)
+                HStack(spacing: theme.metrics.spacing.hairline) {
+                    accessories
+                    // Quiet, not brand-filled: the unread bubble beside it is the one that
+                    // is meant to be seen, and two filled bubbles on one row compete.
+                    NCCounterBubble(
+                        count: row.threadCount > 1 ? row.threadCount : 0, role: .neutral, label: .decorative)
+                    NCCounterBubble(count: row.threadUnreadCount, role: .highlighted, label: .decorative)
+                }
+            }
+            .fixedSize(horizontal: true, vertical: false)
         }
         .fontWeight(isUnread ? .semibold : nil)
         // `NCListItem` combines its children, so one label replaces the lot. The order is the
@@ -56,33 +64,26 @@ struct MessageListRow: View {
         .accessibilityLabel(Text(spokenDescription))
     }
 
-    /// Three fixed slots, so a row with no glyphs lines up with a row that has all three.
+    /// Only the glyphs that apply, on the trailing side.
     ///
-    /// Sized from `theme.metrics`, never from a literal: an instance shipping a denser icon
-    /// scale narrows this column with everything else.
+    /// They used to be three fixed-width slots ahead of the avatar, so that rows lined up, and
+    /// on the many rows with no state that was a column of blank space pushing every avatar
+    /// and subject right. On the trailing side, the date and count are already right-aligned
+    /// and the avatar column stays fixed whatever is drawn here.
+    @ViewBuilder
     private var accessories: some View {
-        HStack(spacing: theme.metrics.spacing.hairline) {
-            slot(row.isFlagged, .star, tint: theme.colors.favorite)
-            slot(row.hasAttachments, .attachment, tint: nil)
-            slot(row.isAnswered, .answered, tint: nil)
-        }
+        if row.isFlagged { glyph(.star, tint: theme.colors.favorite) }
+        if row.hasAttachments { glyph(.attachment, tint: nil) }
+        if row.isAnswered { glyph(.answered, tint: nil) }
     }
 
     /// `.decorative`, and not to silence the compiler: `NCListItem` combines its children
     /// into one element and ``spokenDescription`` already says "starred", "has an
     /// attachment" and "replied to" in words. A label here would be unreachable, and adding
     /// one would leave two places that have to agree about what a glyph means.
-    @ViewBuilder
-    private func slot(_ isOn: Bool, _ symbol: MailSymbol, tint: NCDynamicColor?) -> some View {
-        Group {
-            if isOn {
-                symbol.view(size: .small, label: .decorative)
-                    .foregroundStyle(tint.map { AnyShapeStyle($0) } ?? AnyShapeStyle(.secondary))
-            } else {
-                Color.clear
-            }
-        }
-        .frame(width: theme.metrics.icon.small, height: theme.metrics.icon.small)
+    private func glyph(_ symbol: MailSymbol, tint: NCDynamicColor?) -> some View {
+        symbol.view(size: .small, label: .decorative)
+            .foregroundStyle(tint.map { AnyShapeStyle($0) } ?? AnyShapeStyle(.secondary))
     }
 
     /// "Unread, from Sookie St. James, The Dragonfly opening menu, 3 minutes ago."

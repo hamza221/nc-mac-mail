@@ -45,15 +45,24 @@ struct MessageBodyWebView: NSViewRepresentable {
         )
     }
 
-    func makeNSView(context: Context) -> WKWebView {
+    /// The configuration every web view that draws a message gets: this one and the
+    /// offscreen one `MessagePrintJob` prints from. One function, so the printout cannot
+    /// drift into being the less protected copy of the same body.
+    static func configuration(serving handler: MailAssetSchemeHandler) -> WKWebViewConfiguration {
         let configuration = WKWebViewConfiguration()
         configuration.defaultWebpagePreferences.allowsContentJavaScript = false
         // Nothing a message does survives the view it was drawn in: no cookie, no local
         // storage, no cache shared with the next message.
         configuration.websiteDataStore = .nonPersistent()
-        configuration.setURLSchemeHandler(context.coordinator.handler, forURLScheme: MailAssetURL.scheme)
+        configuration.setURLSchemeHandler(handler, forURLScheme: MailAssetURL.scheme)
+        return configuration
+    }
 
-        let webView = WKWebView(frame: .zero, configuration: configuration)
+    func makeNSView(context: Context) -> WKWebView {
+        let webView = WKWebView(
+            frame: .zero,
+            configuration: Self.configuration(serving: context.coordinator.handler)
+        )
         webView.navigationDelegate = context.coordinator
         webView.uiDelegate = context.coordinator
         // The public property. Never the `drawsBackground` KVC trick: it is private API and

@@ -166,6 +166,43 @@ struct MessageActionsTests {
         #expect(try await mirror.message(id)?.isImportant == true)
     }
 
+    // MARK: - Opening
+
+    @Test("opening an unread message marks it read and tells the server, without an undo step")
+    func openingMarksRead() async throws {
+        let (mirror, account, actions) = try await Self.oneAccount()
+        let id = try #require(try await mirror.addMessages(count: 1, account: account).first)
+
+        await actions.messageOpened(id)
+
+        #expect(try await mirror.message(id)?.isSeen == true)
+        #expect(try await mirror.queueDepth(account) == 1)
+        #expect(!actions.undoManager.canUndo)
+    }
+
+    @Test("with mark-as-read set to Manually, opening leaves the message unread")
+    func openingRespectsManually() async throws {
+        let (mirror, account, actions) = try await Self.oneAccount()
+        let id = try #require(try await mirror.addMessages(count: 1, account: account).first)
+        try await mirror.store.setMetaValue(MarkAsReadDelay.manually.metaValue, forKey: MarkAsReadDelay.metaKey)
+
+        await actions.messageOpened(id)
+
+        #expect(try await mirror.message(id)?.isSeen == false)
+        #expect(try await mirror.queueDepth(account) == 0)
+    }
+
+    @Test("opening a message that is already read queues nothing")
+    func openingReadMessageIsANoOp() async throws {
+        let (mirror, account, actions) = try await Self.oneAccount()
+        let id = try #require(try await mirror.addMessages(count: 1, account: account).first)
+        await actions.messageOpened(id)
+
+        await actions.messageOpened(id)
+
+        #expect(try await mirror.queueDepth(account) == 1)
+    }
+
     // MARK: - Threads
 
     @Test("in the threaded view one row acts on every message of its thread")

@@ -39,6 +39,30 @@ extension MailStore {
                 rawJSON: body.rawJSON
             ).upsert(db)
 
+            // A queued "always show images from this sender" wins over the fetched value until
+            // it is sent: the body may have been fetched before the server heard, and letting
+            // it say "untrusted" would block the images the reader just allowed. The latest
+            // row for the sender is the intent (offline-queue.md, `trustSender`).
+            try db.execute(
+                sql: """
+                    UPDATE messageBody
+                       SET isSenderTrusted = (
+                            SELECT json_extract(p.payloadJSON, '$.trusted')
+                              FROM pendingOperation p JOIN message m ON m.id = messageBody.messageId
+                             WHERE p.kind = 'trustSender' AND p.accountId = m.accountId
+                               AND lower(json_extract(p.payloadJSON, '$.senderEmail')) = lower(m.fromEmail)
+                             ORDER BY p.id DESC LIMIT 1
+                       )
+                     WHERE messageId = ? AND EXISTS (
+                            SELECT 1
+                              FROM pendingOperation p JOIN message m ON m.id = messageBody.messageId
+                             WHERE p.kind = 'trustSender' AND p.accountId = m.accountId
+                               AND lower(json_extract(p.payloadJSON, '$.senderEmail')) = lower(m.fromEmail)
+                       )
+                    """,
+                arguments: [messageId]
+            )
+
             for attachment in body.attachments {
                 try AttachmentRecord(
                     messageId: messageId,

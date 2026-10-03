@@ -29,9 +29,10 @@ and has no mailbox name to draw because a row in a mailbox does not need one. Bo
 Install the seam. `SearchModel.rowSource()` goes into `filteredSource` and the existing list
 draws the results.
 
-The store still returns `SearchResult`, which carries `mailboxName` and `accountId` next to
-the row, and `MailStore.observeSearch(_:range:)` is the reader for it. The list uses the
-narrower `observeSearchRows(_:range:)` because the seam takes `MessageRow`.
+The store also has `search(_:limit:offset:)`, which returns `SearchResult` with
+`mailboxName` and `accountId` next to the row. The list uses `observeSearchRows(_:range:)`
+because the seam takes `MessageRow`. A live `SearchResult` reader (`observeSearch`) was
+removed as dead code on 2026-10-03, and comes back with highlighting, which needs it.
 
 Highlighting and the mailbox name are **not** shipped. They are a change to `MessageListRow`
 and that is a request to WS-08, not an edit from here.

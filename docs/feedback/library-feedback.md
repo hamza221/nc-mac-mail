@@ -250,6 +250,14 @@ Worth reading beside this: `NCNavigationItem`'s two optional slots are exactly r
 sidebar row, and WS-07 built a three-level mailbox tree with no accessory `HStack` and no
 manual width at all. The gap is specific to rows that carry per-item state, not general.
 
+**Update, first manual QA (2026-10-03): the leading column was the wrong place.** Seen in use,
+three fixed slots ahead of the avatar were a blank column on nearly every row, pushing avatar
+and subject right. The glyphs now go in the `trailing:` slot, drawn only when they apply,
+and `leading:` holds just the avatar. That suggests the library request should change: the
+missing piece is a *trailing* accessory cluster beside `details:`, not an `accessories:` slot
+ahead of `leading:`. The trailing slot works today because the date and count are already
+right-aligned, so a variable-width cluster there doesn't break vertical scanning.
+
 ### `NCListItem` has no initialiser with `details:` and no `leading:`
 **Workstream:** WS-09 · **Component:** `NCListItem` · **Severity:** friction
 **Where:** `NextcloudMail/Views/Message/MessageThreadStrip.swift:46-62`

@@ -21,6 +21,7 @@ struct SearchableMessageList: View {
     let list: MessageListStore
     let navigation: NavigationState
     let isOffline: Bool
+    var triage: TriageContext?
 
     @FocusState private var isFieldFocused: Bool
 
@@ -29,7 +30,8 @@ struct SearchableMessageList: View {
             model: list,
             navigation: navigation,
             isOffline: isOffline,
-            filter: model.filter
+            filter: model.filter,
+            triage: triage
         )
         .searchable(
             text: $model.text,

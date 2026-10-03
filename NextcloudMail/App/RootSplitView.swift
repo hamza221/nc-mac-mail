@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Hamza Mahjoubi
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import AppKit
 import NCMailNet
 import NextcloudUI
 import SwiftUI
@@ -26,14 +27,46 @@ struct RootSplitView: View {
 
     @State private var isShowingExpiredAlert = false
     @State private var isPresentingReauth = false
+    @State private var isShowingMirrorAlert = false
 
     init(session: AppSession) {
         self.session = session
-        _sidebar = State(initialValue: SidebarStore(store: session.store))
+        let sidebar = SidebarStore(store: session.store)
+        // The sidebar's own Refresh and Mark all as read, which were log-only until the
+        // engine and the triage queue existed to call.
+        sidebar.refresh = { [weak session] accountId, mailboxId in
+            session?.engine.refresh(mailboxId: mailboxId, accountId: accountId)
+        }
+        sidebar.markAllRead = { [weak session] mailboxId in
+            guard let session else { return }
+            Task { await session.triage.actions.markAllRead(mailboxId: mailboxId) }
+        }
+        _sidebar = State(initialValue: sidebar)
         _messageList = State(initialValue: MessageListStore(store: session.store))
     }
 
     var body: some View {
+        shell
+            // On the sign-in screen as well as the columns: the mirror is shared by every
+            // account, and an unreadable one affects whichever screen comes up first.
+            .onAppear { isShowingMirrorAlert = session.mirrorIsTemporary }
+            .alert("Your mail on this Mac could not be opened", isPresented: $isShowingMirrorAlert) {
+                Button("Delete and Download Again", role: .destructive) { session.deleteMirrorAndRelaunch() }
+                Button("Continue Without Saving", role: .cancel) {}
+                Button("Quit") { NSApp.terminate(nil) }
+            } message: {
+                Text(
+                    """
+                    Nextcloud Mail keeps a copy of your mail on this Mac, and that copy is damaged. \
+                    Your mail is safe on the server. Delete the copy and the app downloads it again. \
+                    If you continue without saving, nothing you read is kept after you quit.
+                    """
+                )
+            }
+    }
+
+    @ViewBuilder
+    private var shell: some View {
         if session.needsSignIn {
             LoginView(onSignedIn: session.signedIn)
         } else {
@@ -43,13 +76,16 @@ struct RootSplitView: View {
                         min: ColumnWidth.sidebar.min, ideal: sidebarWidth, max: ColumnWidth.sidebar.max
                     )
                     .trackingWidth($sidebarWidth)
-                    .safeAreaInset(edge: .bottom) { StatusFooter(status: session.status) }
+                    .safeAreaInset(edge: .bottom) {
+                        StatusFooter(status: session.status, retry: { session.engine.retryFailedActions() })
+                    }
             } content: {
                 SearchableMessageList(
                     model: session.search,
                     list: messageList,
                     navigation: session.navigation,
-                    isOffline: session.status.isOffline
+                    isOffline: session.status.isOffline,
+                    triage: session.triage
                 )
                 .navigationSplitViewColumnWidth(
                     min: ColumnWidth.content.min, ideal: contentWidth, max: ColumnWidth.content.max
@@ -59,6 +95,12 @@ struct RootSplitView: View {
             } detail: {
                 detailColumn
                     .navigationSplitViewColumnWidth(min: ColumnWidth.detail.min, ideal: ColumnWidth.detail.ideal)
+                    // Archive, Delete, Junk, Move, Star, Mark unread, Refresh: the message
+                    // pane's toolbar (ux-spec.md#message-view). Built since WS-10 and never
+                    // installed, which is why there was no Refresh button.
+                    .toolbar { TriageToolbar(context: session.triage) }
+                    // Which actions the selection can take is a database read per account.
+                    .task(id: messageList.selection) { await session.triage.refreshAvailability() }
             }
             .onChange(of: session.expiredAccount) { _, newValue in
                 isShowingExpiredAlert = newValue != nil
@@ -91,9 +133,14 @@ struct RootSplitView: View {
                 services: services,
                 messageId: messageList.focusedMessageId,
                 isOffline: session.status.isOffline,
+                printer: session.printer,
                 select: { messageList.selection = [$0] }
             )
             .id(accountId)
+            .task(id: messageList.focusedMessageId) {
+                guard let opened = messageList.focusedMessageId else { return }
+                await session.triage.actions.messageOpened(opened)
+            }
         }
     }
 }
@@ -135,6 +182,8 @@ extension View {
 /// is explicit that idle chrome is noise.
 private struct StatusFooter: View {
     let status: AppStatus
+    /// "Retry now" for actions the server keeps refusing: clears every backoff and drains.
+    let retry: () -> Void
 
     @Environment(\.ncTheme) private var theme
 
@@ -153,9 +202,16 @@ private struct StatusFooter: View {
                 .font(.caption)
                 .padding(theme.metrics.spacing.tight)
         case .pendingFailures(let count):
-            Text("\(count) action\(count == 1 ? "" : "s") waiting")
-                .font(.caption)
-                .padding(theme.metrics.spacing.tight)
+            HStack(spacing: theme.metrics.spacing.tight) {
+                Text("\(count) action\(count == 1 ? "" : "s") waiting")
+                    .font(.caption)
+                // The one recovery the spec allows for a queue that keeps failing: an
+                // aggregate indicator with a way to try again, never a dialogue.
+                Button("Retry", action: retry)
+                    .buttonStyle(.tertiary)
+                    .controlSize(.small)
+            }
+            .padding(theme.metrics.spacing.tight)
         case .none:
             EmptyView()
         }

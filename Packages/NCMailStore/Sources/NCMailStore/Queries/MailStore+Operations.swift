@@ -5,10 +5,10 @@ internal import GRDB
 
 /// What one queued operation does to the mirror when it is applied, reverted or dropped.
 ///
-/// One shape for all five kinds, because the local effect of every one of them is some
-/// combination of three things: set flags, change mailbox, remove the row. A move is a
-/// ``mailboxId`` with no flags, a flag change is the reverse, and a delete is either a move
-/// to trash or ``removesRows``.
+/// One shape for every kind, because the local effect of each is some combination of four
+/// things: set flags, change mailbox, remove the row, set a sender's image trust. A move is a
+/// ``mailboxId`` with no flags, a flag change is the reverse, a delete is either a move to
+/// trash or ``removesRows``, and a sender trust is ``senderTrust`` with no rows at all.
 ///
 /// It lives here rather than in `NCMailSync` because ``MailStore/enqueue(_:applying:)`` and
 /// ``MailStore/finish(ids:applying:)`` take it, and a store method cannot name a type from a
@@ -24,17 +24,43 @@ public struct LocalEffect: Sendable, Equatable {
     /// Deletes the rows outright. The erase branch of `delete`, and the 404 branch of the
     /// drain.
     public var removesRows: Bool
+    /// Trust (or distrust) every stored body from one sender in one account, matched by
+    /// address rather than by row so the local effect reaches every message the mirror holds
+    /// from them at commit time, not only the ones the caller happened to read first.
+    public var senderTrust: SenderTrust?
+    /// `messageBody.isSenderTrusted` for exactly ``messageIds``. Discard's half of a sender
+    /// trust: putting each body back to what it held, which is not one value for all of them.
+    public var isSenderTrusted: Bool?
 
     public init(
         messageIds: [Int64],
         flags: [String: Bool] = [:],
         mailboxId: Int64? = nil,
-        removesRows: Bool = false
+        removesRows: Bool = false,
+        senderTrust: SenderTrust? = nil,
+        isSenderTrusted: Bool? = nil
     ) {
         self.messageIds = messageIds
         self.flags = flags
         self.mailboxId = mailboxId
         self.removesRows = removesRows
+        self.senderTrust = senderTrust
+        self.isSenderTrusted = isSenderTrusted
+    }
+}
+
+/// One sender's image trust, as ``LocalEffect/senderTrust`` applies it.
+public struct SenderTrust: Sendable, Equatable {
+    public var accountId: Int64
+    /// Compared case-insensitively against `message.fromEmail`: the server treats addresses
+    /// that way, and a sender who capitalises differently is still the same sender.
+    public var email: String
+    public var trusted: Bool
+
+    public init(accountId: Int64, email: String, trusted: Bool) {
+        self.accountId = accountId
+        self.email = email
+        self.trusted = trusted
     }
 }
 
@@ -206,11 +232,51 @@ extension MailStore {
         }
     }
 
+    /// `messageBody.isSenderTrusted` for every stored body from `email` in `accountId`, keyed
+    /// by local message id. What a sender-trust operation records as its "before", so Discard
+    /// can put each body back.
+    public func senderTrustStates(accountId: Int64, email: String) async throws -> [Int64: Bool] {
+        try await dbQueue.read { db in
+            let rows = try Row.fetchAll(
+                db,
+                sql: """
+                    SELECT b.messageId AS messageId, b.isSenderTrusted AS trusted
+                      FROM messageBody b JOIN message m ON m.id = b.messageId
+                     WHERE m.accountId = ? AND lower(m.fromEmail) = lower(?)
+                    """,
+                arguments: [accountId, email]
+            )
+            return rows.reduce(into: [:]) { result, row in
+                result[row["messageId"] as Int64] = row["trusted"] as Bool
+            }
+        }
+    }
+
     /// One local effect, as SQL. Column names are looked up rather than interpolated from the
     /// payload, so a key nobody modelled cannot reach the statement.
     private static func apply(_ effect: LocalEffect, in db: Database) throws {
+        if let trust = effect.senderTrust {
+            try db.execute(
+                sql: """
+                    UPDATE messageBody SET isSenderTrusted = ?
+                     WHERE messageId IN (
+                        SELECT id FROM message WHERE accountId = ? AND lower(fromEmail) = lower(?)
+                     )
+                    """,
+                arguments: [trust.trusted, trust.accountId, trust.email]
+            )
+        }
         guard !effect.messageIds.isEmpty else { return }
         let placeholders = databaseQuestionMarks(count: effect.messageIds.count)
+
+        if let trusted = effect.isSenderTrusted {
+            let values: [(any DatabaseValueConvertible)?] =
+                [trusted] + effect.messageIds.map { $0 as (any DatabaseValueConvertible)? }
+            try db.execute(
+                sql: "UPDATE messageBody SET isSenderTrusted = ? WHERE messageId IN \(placeholders)",
+                arguments: StatementArguments(values)
+            )
+        }
 
         if effect.removesRows {
             try db.execute(

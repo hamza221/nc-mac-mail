@@ -11,19 +11,22 @@ import SwiftUI
 /// and says idle chrome is noise, so ``display`` is exactly one thing or nothing, never a
 /// stack of banners.
 ///
-/// `mirror` and `pendingFailures` are written from outside: `NCMailSync/Mirror/**` (WS-04)
-/// and `NCMailSync/Operations/**` (WS-06) cannot import this app-target type themselves —
-/// dependencies point downward only
-/// ([overview.md](../../docs/architecture/overview.md#modules)) — so the app-side glue that
-/// wires each account's coordinator and drainer assigns into these properties on their
-/// behalf, always on the main actor. Neither exists yet, so both start at their quiet
-/// default and nothing currently changes them.
+/// `mirror`, `pendingFailures` and `refreshesInFlight` are written from outside, by
+/// `AccountEngine`, always on the main actor. `NCMailSync` cannot import this app-target type
+/// itself — dependencies point downward only
+/// ([overview.md](../../docs/architecture/overview.md#modules)) — so the engine assigns
+/// each account's coordinator progress and drainer failures here on their behalf.
 @MainActor
 @Observable
 final class AppStatus {
     var mirror: MirrorProgress?
     var isOffline = false
     var pendingFailures = 0
+    /// Explicit refreshes whose sync passes have not all returned. Written by
+    /// `AccountEngine.refresh`; the Refresh button spins while it is above zero.
+    var refreshesInFlight = 0
+
+    var isRefreshing: Bool { refreshesInFlight > 0 }
 
     /// What the footer draws. Never more than one case at a time.
     enum Display: Equatable {

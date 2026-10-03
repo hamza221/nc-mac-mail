@@ -15,7 +15,6 @@ import Testing
 /// fail here.
 @Suite("NavigationState persistence")
 struct NavigationStateTests {
-    private static let accountKey = "navigation.selectedAccountId"
     private static let mailboxKey = "navigation.selectedMailboxId"
     private static let listViewKey = "navigation.listView"
 
@@ -24,7 +23,6 @@ struct NavigationStateTests {
         let store = try MailStore.inMemory()
         let navigation = NavigationState(store: store)
         await navigation.load()
-        #expect(navigation.selectedAccountID == nil)
         #expect(navigation.selectedMailboxID == nil)
         #expect(navigation.listView == .threaded)
     }
@@ -34,21 +32,17 @@ struct NavigationStateTests {
         let store = try MailStore.inMemory()
         let navigation = NavigationState(store: store)
 
-        navigation.selectAccount("alice@cloud.example.com")
         navigation.selectMailbox(42)
         navigation.setListView(.flat)
 
-        #expect(navigation.selectedAccountID == "alice@cloud.example.com")
         #expect(navigation.selectedMailboxID == 42)
         #expect(navigation.listView == .flat)
 
-        #expect(try await settled(store, Self.accountKey, is: "alice@cloud.example.com"))
         #expect(try await settled(store, Self.mailboxKey, is: "42"))
         #expect(try await settled(store, Self.listViewKey, is: "flat"))
 
         let relaunched = NavigationState(store: store)
         await relaunched.load()
-        #expect(relaunched.selectedAccountID == "alice@cloud.example.com")
         #expect(relaunched.selectedMailboxID == 42)
         #expect(relaunched.listView == .flat)
     }
@@ -93,7 +87,6 @@ struct NavigationStateTests {
 
         let navigation = NavigationState(store: store)
         await navigation.load()
-        #expect(navigation.selectedAccountID == nil)
         #expect(navigation.selectedMailboxID == nil)
         #expect(navigation.listView == .flat)
     }

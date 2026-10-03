@@ -1,7 +1,6 @@
 // SPDX-FileCopyrightText: Hamza Mahjoubi
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import AppKit
 import Foundation
 import NCMailCore
 import NCMailStore
@@ -25,6 +24,9 @@ final class SidebarStore {
     /// Node ids the user collapsed, per account. Absence means expanded, which is the
     /// sidebar's default shape ([ux-spec.md](../../../docs/product/ux-spec.md#sidebar)).
     private(set) var collapsedNodeIDs: [Int64: Set<String>] = [:]
+    /// The mailbox whose Get info panel is open, if any. Settable so the sheet's binding can
+    /// clear it when the panel closes.
+    var infoTarget: MailboxInfoTarget?
 
     private let store: MailStore
     private var accountsObservation: Task<Void, Never>?
@@ -144,55 +146,51 @@ final class SidebarStore {
 
     // MARK: - Actions
 
-    // Every method below is a hook, not an implementation: the sidebar's context menus
-    // (ux-spec.md#sidebar) name these five actions, and nothing in the app yet has anything
-    // for them to do. No `MirrorCoordinator` or `SyncScheduler` is wired into `AppSession` --
-    // account rows exist only once something calls
-    // `MirrorCoordinator.discoverAccounts(store:client:identity:)` per Keychain entry, which
-    // is not this workstream's file to add (see the report). "Mark all as read" is a triage
-    // action and belongs to WS-10's `Actions/**`. Logging rather than silently doing nothing
-    // means a click is visible in the console during manual testing instead of looking like
-    // a dead button.
+    // `refresh` and `markAllRead` are set by `RootSplitView`, which can reach the engine and
+    // the triage actions. A plain `@Observable` store has no other route to either, and
+    // closures keep `NCMailSync` out of this file, the same way `TriageContext` does it.
     //
-    // `showStorage(_:)` and `signOut(_:)` are the two WS-12's brief names as its own, even
-    // though this file is WS-07's. They open the real Settings window WS-12 built, on the
-    // tab that has something to do about the account: Storage's panel, or the Accounts
-    // tab's confirmed Sign Out button. Neither performs the destructive action itself. The
-    // sidebar is not where a sign-out gets confirmed.
+    // `showStorage(_:)` and `signOut(_:)` only choose the Settings tab. The *view* opens
+    // the window with `@Environment(\.openSettings)`, because AppKit's `showSettingsWindow:`
+    // selector no longer opens a SwiftUI `Settings` scene: it logs "Please use SettingsLink
+    // for opening the Settings scene" and does nothing (ADR-0062). Neither performs the
+    // destructive action itself. The sidebar is not where a sign-out gets confirmed.
+
+    /// Syncs one mailbox, or every mailbox of the account when `mailboxId` is nil.
+    var refresh: (@MainActor (_ accountId: Int64, _ mailboxId: Int64?) -> Void)?
+    /// Marks every message in one mailbox read, through the triage queue.
+    var markAllRead: (@MainActor (_ mailboxId: Int64) -> Void)?
 
     func refreshAccount(_ account: AccountRecord) {
-        Self.logger.info("refresh requested for account \(account.id, privacy: .public); no SyncScheduler wired yet")
+        refresh?(account.id, nil)
     }
 
     func showStorage(_ account: AccountRecord) {
         Self.logger.info("storage panel requested for account \(account.id, privacy: .public)")
-        openSettings(on: .storage)
+        SettingsTab.preferredTab = .storage
     }
 
     func signOut(_ account: AccountRecord) {
         Self.logger.info("sign-out requested for account \(account.id, privacy: .public)")
-        openSettings(on: .accounts)
-    }
-
-    /// `SettingsTab` is `NextcloudMail/Views/Settings/SettingsScene.swift`'s type, in the same
-    /// app target, so no import is needed to name it here, only the courtesy of saying so.
-    /// There is no `@Environment(\.openSettings)` to reach for: `SidebarStore` is a plain
-    /// `@Observable`, not a `View`. This goes straight to the AppKit selector the
-    /// "Settings…" menu item itself sends.
-    private func openSettings(on tab: SettingsTab) {
-        UserDefaults.standard.set(tab.rawValue, forKey: SettingsTab.preferredTabKey)
-        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+        SettingsTab.preferredTab = .accounts
     }
 
     func refreshMailbox(accountId: Int64, mailboxId: Int64) {
-        Self.logger.info("refresh requested for mailbox \(mailboxId, privacy: .public); no SyncScheduler wired yet")
+        refresh?(accountId, mailboxId)
     }
 
     func markAllRead(accountId: Int64, mailboxId: Int64) {
-        Self.logger.info("mark-all-read requested for mailbox \(mailboxId, privacy: .public); WS-10 owns it")
+        markAllRead?(mailboxId)
     }
 
+    /// Opens the Get info panel. The view presents on `infoTarget` and clears it on dismiss.
     func getInfo(accountId: Int64, mailboxId: Int64) {
-        Self.logger.info("get-info requested for mailbox \(mailboxId, privacy: .public); no view owns it yet")
+        infoTarget = MailboxInfoTarget(accountId: accountId, mailboxId: mailboxId)
+    }
+
+    /// The panel's model, built here because this store is what holds the `MailStore`; the
+    /// panel reads the mirror and nothing else.
+    func infoModel(for target: MailboxInfoTarget) -> MailboxInfoModel {
+        MailboxInfoModel(target: target, store: store)
     }
 }

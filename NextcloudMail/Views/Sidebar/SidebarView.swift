@@ -8,9 +8,8 @@ import SwiftUI
 
 /// The first column: every account, every mailbox, in the right order, with unread counts.
 ///
-/// `RootSplitView` (WS-13) still shows a `PlaceholderColumn` here -- wiring this view in, and
-/// the `MailStore` this workstream's `SidebarStore` needs to be constructed with, is this
-/// workstream's report, not an edit to a file it does not own.
+/// `RootSplitView` owns the `SidebarStore` and passes it in with the shared `NavigationState`;
+/// selection lives there, so the list and the message list agree on one mailbox.
 struct SidebarView: View {
     @Bindable var model: SidebarStore
     let navigation: NavigationState
@@ -31,6 +30,9 @@ struct SidebarView: View {
         }
         .task { model.start() }
         .onDisappear { model.stop() }
+        .sheet(item: $model.infoTarget) { target in
+            MailboxInfoView(model: model.infoModel(for: target))
+        }
     }
 
     /// `List(selection:)` binds one value across every account's section: a real
@@ -81,6 +83,15 @@ private struct MailboxTreeRowView: View {
             // name and the count as two separate stops instead of the one the brief asks for.
             .accessibilityElement(children: .combine)
             .contextMenu { contextMenuItems }
+            // A failed sync is retried on its own, so it gets no badge or dialogue -- only a
+            // tooltip pointing at Get info, which says why (ux-spec.md, "Errors"). An empty
+            // help string shows no tooltip at all.
+            .help(syncFailureHelp)
+    }
+
+    private var syncFailureHelp: String {
+        guard node.row?.hasSyncFailure == true else { return "" }
+        return String(localized: "The last sync of this folder failed. Choose Get info for details.")
     }
 
     @ViewBuilder
@@ -121,12 +132,20 @@ private struct AccountActionsMenu: View {
     let account: AccountRecord
     let model: SidebarStore
 
+    @Environment(\.openSettings) private var openSettings
+
     var body: some View {
         Menu {
             Button("Refresh") { model.refreshAccount(account) }
-            Button("Storage…") { model.showStorage(account) }
+            Button("Storage…") {
+                model.showStorage(account)
+                openSettings()
+            }
             Divider()
-            Button("Sign out", role: .destructive) { model.signOut(account) }
+            Button("Sign out", role: .destructive) {
+                model.signOut(account)
+                openSettings()
+            }
         } label: {
             NCIcon(.dotsHorizontal, label: .decorative)
         }

@@ -21,8 +21,11 @@ struct NextcloudMailApp: App {
     @State private var session: AppSession
 
     init() {
-        let store = NextcloudMailApp.openStore()
-        _session = State(initialValue: AppSession(store: store, initialTheme: ThemeCache.cachedTheme()))
+        let (store, isTemporary) = NextcloudMailApp.openStore()
+        _session = State(
+            initialValue: AppSession(
+                store: store, initialTheme: ThemeCache.cachedTheme(), mirrorIsTemporary: isTemporary)
+        )
     }
 
     var body: some Scene {
@@ -43,20 +46,20 @@ struct NextcloudMailApp: App {
         }
     }
 
-    /// Falls back to an in-memory mirror rather than refusing to launch.
-    /// `MailStoreError.unreadable` is meant to be recoverable through a "delete and
-    /// re-mirror" flow, which belongs to WS-04's backfill or WS-12's storage panel, not the
-    /// app's entry point — this is a stand-in until one of them adds it.
-    private static func openStore() -> MailStore {
+    /// Falls back to an in-memory mirror rather than refusing to launch, and says so:
+    /// `RootSplitView` then offers to delete the unreadable file and download everything
+    /// again (`AppSession.mirrorIsTemporary`), which is the recovery
+    /// `MailStoreError.unreadable` exists to make possible.
+    private static func openStore() -> (MailStore, isTemporary: Bool) {
         do {
-            return try MailStore(url: try MailStore.defaultDatabaseURL())
+            return (try MailStore(url: try MailStore.defaultDatabaseURL()), false)
         } catch {
             Logger(subsystem: "com.nextcloud.mail.macos", category: "session")
                 .fault("could not open the mirror; starting in-memory: \(String(describing: error), privacy: .public)")
             guard let inMemory = try? MailStore.inMemory() else {
                 fatalError("could not open even an in-memory mirror")
             }
-            return inMemory
+            return (inMemory, true)
         }
     }
 }

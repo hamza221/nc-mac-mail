@@ -33,7 +33,8 @@ against routes that otherwise demand a CSRF token.
     rather than leaving it for the mirror coordinator to discover later. See
     [ADR-0019](../decisions/0019-login-flow-verifies-the-mail-app.md).
 
-4.  Keychain: kSecClassInternetPassword, keyed by host + loginName. `LoginFlow` never
+4.  Keychain: kSecClassInternetPassword, keyed by host + loginName, scoped by
+    kSecAttrSecurityDomain = com.nextcloud.mail.macos (ADR-0059). `LoginFlow` never
     writes this itself — it hands back `Credentials`, and the caller decides whether the
     sign-in counts as complete before storing it.
 ```

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import Foundation
+import Security
 import Testing
 
 @testable import NCMailNet
@@ -98,5 +99,37 @@ struct KeychainTests {
 
         let accounts = try Keychain.allAccounts()
         #expect(accounts.contains { $0.server == Self.server && $0.loginName == Self.loginName })
+    }
+
+    /// What git's credential helper or a browser leaves behind: an internet password for the
+    /// same host and login name, with no security domain. It must stay invisible — listing it
+    /// made the app skip sign-in and decrypt it behind a consent prompt — and `save`/`delete`
+    /// must not touch it.
+    @Test("another app's internet password for the same server and login is never ours")
+    func foreignItemIsIgnored() throws {
+        let host = try #require(Self.server.host)
+        let foreign: [String: Any] = [
+            kSecClass as String: kSecClassInternetPassword,
+            kSecAttrServer as String: host,
+            kSecAttrAccount as String: Self.loginName,
+            kSecAttrProtocol as String: kSecAttrProtocolHTTPS,
+            kSecAttrPath as String: Self.server.path,
+        ]
+        SecItemDelete(foreign as CFDictionary)
+        var adding = foreign
+        adding[kSecValueData as String] = Data("someone-elses-password".utf8)
+        #expect(SecItemAdd(adding as CFDictionary, nil) == errSecSuccess)
+        defer { SecItemDelete(foreign as CFDictionary) }
+
+        #expect(try !Keychain.allAccounts().contains { $0.server == Self.server && $0.loginName == Self.loginName })
+        #expect(try Keychain.load(server: Self.server, loginName: Self.loginName) == nil)
+
+        try Keychain.save(
+            Credentials(server: Self.server, loginName: Self.loginName, appPassword: "a-test-app-password"))
+        try Keychain.delete(server: Self.server, loginName: Self.loginName)
+
+        var stillThere = foreign
+        stillThere[kSecReturnAttributes as String] = true
+        #expect(SecItemCopyMatching(stillThere as CFDictionary, nil) == errSecSuccess)
     }
 }

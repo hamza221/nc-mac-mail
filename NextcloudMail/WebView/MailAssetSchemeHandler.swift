@@ -159,9 +159,11 @@ final class MailAssetSchemeHandler: NSObject, WKURLSchemeHandler {
             return refuse(task, key: key, because: .notAnAllowedPath)
         }
         do {
-            let (data, response) = try await client.bytes(endpoint)
-            guard let mime = response.mimeType, isRenderableImage(mime) else {
-                return refuse(task, key: key, because: .notAnAllowedPath)
+            // The response's Content-Type is always `application/octet-stream` on this
+            // endpoint, so the bytes decide (`ImageSignature`).
+            let (data, _) = try await client.bytes(endpoint)
+            guard let mime = ImageSignature.mimeType(of: data) else {
+                return refuse(task, key: key, because: .notAnImage)
             }
             respond(task, key: key, url: url, data: data, mime: mime)
         } catch {

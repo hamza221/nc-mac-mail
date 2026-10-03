@@ -31,6 +31,9 @@ public struct MailboxTreeRow: Sendable, Hashable, Identifiable {
     public let isSelectable: Bool
     public let isSubscribed: Bool
     public let unreadCount: Int
+    /// The last sync of this mailbox failed. The row only says so on hover; Get info explains
+    /// ([ux-spec.md](../../../../docs/product/ux-spec.md#errors-and-the-rule-about-them)).
+    public let hasSyncFailure: Bool
 
     public init(
         id: Int64,
@@ -39,7 +42,8 @@ public struct MailboxTreeRow: Sendable, Hashable, Identifiable {
         specialRole: String?,
         isSelectable: Bool,
         isSubscribed: Bool,
-        unreadCount: Int
+        unreadCount: Int,
+        hasSyncFailure: Bool = false
     ) {
         self.id = id
         self.name = name
@@ -48,6 +52,7 @@ public struct MailboxTreeRow: Sendable, Hashable, Identifiable {
         self.isSelectable = isSelectable
         self.isSubscribed = isSubscribed
         self.unreadCount = unreadCount
+        self.hasSyncFailure = hasSyncFailure
     }
 }
 

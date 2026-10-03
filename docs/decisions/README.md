@@ -70,7 +70,12 @@ old one stays.*
 | [0055](0055-the-search-field-cannot-reach-the-fts5-grammar.md) | The search field cannot reach the FTS5 grammar | Accepted |
 | [0056](0056-search-results-are-flat-and-ranked.md) | Search results are a flat ranked list, whatever the list is set to | Accepted |
 | [0057](0057-search-borrows-the-message-list.md) | Search borrows the message list instead of drawing its own | Accepted, with one thing still owed |
-| [0058](0058-the-sidebar-opens-settings-through-userdefaults-and-a-selector.md) | The sidebar opens Settings through a `UserDefaults` key and an AppKit selector | Accepted |
+| [0058](0058-the-sidebar-opens-settings-through-userdefaults-and-a-selector.md) | The sidebar opens Settings through a `UserDefaults` key and an AppKit selector | Superseded by 0062 |
+| [0059](0059-keychain-items-carry-a-security-domain.md) | Keychain items carry a security domain, and every query filters on it | Accepted |
+| [0060](0060-unread-counts-come-from-the-mirror-once-complete.md) | A mailbox's unread count comes from the mirror once the mirror is complete | Accepted |
+| [0061](0061-avatars-are-fetched-into-the-mirror-by-sync.md) | Avatars are fetched into the mirror by a sync worker, through the server's image route only | Accepted |
+| [0062](0062-the-sidebar-opens-settings-with-opensettings.md) | The sidebar opens Settings with `openSettings`, and the tab is bound to its key | Accepted |
+| [0063](0063-printing-uses-an-offscreen-web-view.md) | Printing builds its own offscreen web view, with the live view's configuration | Accepted |
 
 ## Which ones matter most
 

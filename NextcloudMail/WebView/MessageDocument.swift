@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import AppKit
+import NextcloudUI
 
 /// The document shell the server's `?plain=true` deliberately does not send.
 ///
@@ -15,6 +16,10 @@ nonisolated enum MessageDocument {
     /// uses rather than at a number chosen here.
     static var preferredBaseFontSize: Double { Double(NSFont.systemFontSize) }
 
+    /// The shell's opening `<body>`, named so the printout can put its header block right
+    /// after it without re-parsing a document this file wrote.
+    static let bodyOpenTag = "<body class=\"nc-mail-body\">"
+
     static func wrap(body: String, baseFontSize: Double, allowsOwnColorScheme: Bool) -> String {
         """
         <!DOCTYPE html>
@@ -27,17 +32,22 @@ nonisolated enum MessageDocument {
         \(baseStyle(baseFontSize: baseFontSize, allowsOwnColorScheme: allowsOwnColorScheme))
         </style>
         </head>
-        <body class="nc-mail-body">
+        \(bodyOpenTag)
         \(body)
         </body>
         </html>
         """
     }
 
-    /// A reset, not a theme. Four things: the canvas, a readable default for mail that sets
-    /// no font, images that cannot push the layout wider than the pane, and long unbroken
-    /// strings — tracking ids, German compounds — that wrap instead of forcing a sideways
-    /// scroll.
+    /// A reset, not a theme. Five things: the canvas, a readable default for mail that sets
+    /// no font, the same inset `PlainTextBodyView` gives a plain body, images that cannot push
+    /// the layout wider than the pane, and long unbroken strings — tracking ids, German
+    /// compounds — that wrap instead of forcing a sideways scroll.
+    ///
+    /// The inset is the library's `loose` token read statically, not `theme.metrics`: this
+    /// builder runs off the main actor with no environment. Without it, the text-only HTML
+    /// most personal mail arrives as (`<p>` and `<br>`, nothing else) ran into the pane's
+    /// edges.
     private static func baseStyle(baseFontSize: Double, allowsOwnColorScheme: Bool) -> String {
         let canvas =
             allowsOwnColorScheme
@@ -46,6 +56,7 @@ nonisolated enum MessageDocument {
         return """
             \(canvas)
             html, body { margin: 0; padding: 0; }
+            body { padding: \(NCSpacingScale.macOS.loose)px; }
             body {
               font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
               font-size: \(baseFontSize)px;

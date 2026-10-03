@@ -144,6 +144,9 @@ public actor MutationQueue {
                 destination: trashId,
                 removesRows: trashId == nil
             )
+
+        case .trustSender(let email, let trusted):
+            return [try await trustUnit(email: email, trusted: trusted, accountId: accountId)]
         }
     }
 
@@ -250,6 +253,30 @@ public actor MutationQueue {
                 )
             )
         ]
+    }
+
+    /// One row for the sender, however many messages they sent: the server keeps trust per
+    /// address, so there is one request. The local effect names the address rather than rows,
+    /// so every stored body from the sender — read or not — changes in the same transaction.
+    private func trustUnit(email: String, trusted: Bool, accountId: Int64) async throws -> Unit {
+        var payload = OperationPayload(senderEmail: email, trusted: trusted)
+        payload.before.senderTrusted = try await store.senderTrustStates(accountId: accountId, email: email)
+        let now = configuration.now()
+        return Unit(
+            record: PendingOperationRecord(
+                kind: OperationKind.trustSender.rawValue,
+                accountId: accountId,
+                payloadJSON: (try? payload.encoded()) ?? "{}",
+                createdAt: now,
+                // No message row stands behind this, so there is no sync time to record. A
+                // body fetched while it waits is masked by `upsert(body:for:)` instead.
+                baseSyncedAt: now
+            ),
+            effect: LocalEffect(
+                messageIds: [],
+                senderTrust: SenderTrust(accountId: accountId, email: email, trusted: trusted)
+            )
+        )
     }
 
     private func record(

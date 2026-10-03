@@ -44,6 +44,8 @@ enum OperationCollapse {
     private enum Subject: Hashable {
         case message(Int64)
         case thread(String)
+        /// Lowercased, so `Ann@x` and `ann@x` are one sender and the later choice wins.
+        case sender(String)
     }
 
     /// - Parameter rows: the account's queue, any order.
@@ -105,6 +107,10 @@ enum OperationCollapse {
         case .move, .moveThread:
             // "A move followed by a move keeps the last destination."
             last.payload.destinationMailboxId = item.payload.destinationMailboxId
+        case .trustSender:
+            // Latest wins for the same sender: trust then untrust is one DELETE.
+            last.payload.trusted = item.payload.trusted
+            last.payload.senderEmail = item.payload.senderEmail
         case .delete, .deleteThread:
             return false
         }
@@ -123,6 +129,8 @@ enum OperationCollapse {
             return row.threadRootId.map(Subject.thread)
         case .setFlags, .move, .delete:
             return row.messageId.map(Subject.message)
+        case .trustSender:
+            return OperationPayload.decode(row.payloadJSON).senderEmail.map { Subject.sender($0.lowercased()) }
         }
     }
 }
@@ -137,6 +145,9 @@ extension OperationSnapshot {
         merged.messageIds = earlier.messageIds.isEmpty ? messageIds : earlier.messageIds
         merged.flags.merge(earlier.flags) { _, older in older }
         merged.mailboxIds.merge(earlier.mailboxIds) { _, older in older }
+        if let earlierTrust = earlier.senderTrusted {
+            merged.senderTrusted = (senderTrusted ?? [:]).merging(earlierTrust) { _, older in older }
+        }
         return merged
     }
 }

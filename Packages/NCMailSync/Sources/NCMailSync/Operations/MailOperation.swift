@@ -27,6 +27,9 @@ public enum MailOperation: Sendable, Equatable {
     case junk(messageIds: [Int64], junkMailboxId: Int64)
     case moveThread(rootId: String, destinationMailboxId: Int64)
     case deleteThread(rootId: String)
+    /// Image trust for one sender, account-wide. Absolute, like the flags: `trusted: false`
+    /// is the untrust route, not a toggle.
+    case trustSender(email: String, trusted: Bool)
 }
 
 /// What one queue row does, which is not quite the same list as ``MailOperation``.
@@ -39,6 +42,7 @@ public enum OperationKind: String, Sendable, Codable, CaseIterable {
     case delete
     case moveThread
     case deleteThread
+    case trustSender
 
     /// Whether this kind ends the message's life locally, which is what makes it absorb
     /// everything queued before it for the same message.
@@ -78,6 +82,11 @@ struct OperationPayload: Codable, Sendable, Equatable {
     /// True when the local effect removed the rows rather than moving them, which is the
     /// delete of a message already in trash. Such a discard cannot restore anything.
     var erases = false
+    /// The sender a `trustSender` row names, as the user's message spelled it. Optional, like
+    /// ``trusted``, so a row written before the kind existed still decodes.
+    var senderEmail: String?
+    /// `trustSender`'s intent: PUT when true, DELETE when false.
+    var trusted: Bool?
     var before = OperationSnapshot()
 }
 
@@ -90,6 +99,9 @@ struct OperationSnapshot: Codable, Sendable, Equatable {
     /// Previous `message.mailboxId`, keyed by local message id. A move of ten messages out
     /// of three folders has to put each one back where it came from.
     var mailboxIds: [Int64: Int64] = [:]
+    /// Previous `messageBody.isSenderTrusted`, keyed by local message id, for a
+    /// `trustSender`. Nil for every other kind.
+    var senderTrusted: [Int64: Bool]?
 }
 
 extension OperationPayload {

@@ -206,7 +206,9 @@ percentage of a total the app does not know yet.
 ## The state machine
 
 Per mailbox, in `mailbox.isMirrored / envelopesComplete / bodiesComplete`, with the
-account-level rollup in `account.mirrorState`:
+account-level rollup in `account.mirrorState`. Nothing sets `bodiesComplete` today (only
+Re-download clears it), so a reader that needs a mailbox's body progress counts
+`message.bodyState` instead, as the sidebar's Get info does:
 
 ```
         ┌──────────┐  subscribed

@@ -18,7 +18,8 @@ extension MailboxRecord {
             specialRole: specialRole,
             isSelectable: isSelectable,
             isSubscribed: isSubscribed,
-            unreadCount: unreadCount
+            unreadCount: unreadCount,
+            hasSyncFailure: syncFailureCount > 0
         )
     }
 }

@@ -28,6 +28,8 @@ nonisolated enum MailAssetRefusal: Equatable, Sendable {
     case otherMessage
     case remoteImagesBlocked
     case unknownAttachment
+    /// The proxy answered with bytes that are not a raster image we render.
+    case notAnImage
 }
 
 nonisolated enum MailAssetPolicy {
