@@ -5,12 +5,12 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 # Product overview
 
-*What this app is, who it is for, and where v1 stops.*
+*What this app is, who it is for, and what v2 adds.*
 
 ## The one-sentence version
 
-A native macOS mail client for Nextcloud that keeps a complete local copy of your mail, so
-reading and triage are instant and work with the network off.
+A native macOS mail and contacts client for Nextcloud that keeps a complete local copy of
+your mail and address books, so everything is instant and works with the network off.
 
 ## Why it exists
 
@@ -34,10 +34,10 @@ mailboxes, and a habit of processing the inbox down to nothing. That person care
 in order: how fast the list responds, how few keystrokes a triage pass takes, and whether
 their mail is readable when the connection is not.
 
-They are not, in v1, a person who composes long HTML mail with inline images from Files.
-That person is well served by the web client, and by v1.1.
+In v2 they are also the person who writes mail: replies, forwards, rich text, attachments
+from Files, scheduled sends. The composer is no longer the web client's job.
 
-## What v1 does
+## What v1 shipped
 
 **Sign in.** Login Flow v2 in the browser, an app password in the Keychain, no Nextcloud
 password ever stored. Multiple accounts.
@@ -66,23 +66,45 @@ offline. See [ADR-0005](../decisions/0005-offline-mutation-queue.md).
 "remove local copies" and "re-download". No automatic eviction: a mirror that quietly
 drops your mail is not a mirror.
 
-## What v1 does not do
+## What v2 adds
 
-Deliberately, and with the reasoning in [ADR-0012](../decisions/0012-read-and-triage-scope.md):
+**Compose.** A full composer: reply, forward, rich text in an editor this app owns,
+attachments from disk and from Files, drafts synced to the server, a send undo window, and
+scheduled sends through the server outbox. Row by row in [parity.md](parity.md).
 
-**No composer.** No reply, forward, drafts or outbox. The library's rich-text components
-are deferred to v1.1, so a composer today means either plain text or an `NSTextView`
-bridge this client would have to write and own. The read path proves the library first.
+**Mail parity.** Everything else the web client's mail surface does: account setup, aliases
+and signatures, tags, snooze, filters and Sieve, out-of-office, unified and priority
+inboxes, drag and drop, S/MIME. The complete mapping is [parity.md](parity.md).
 
-**No account setup.** Accounts are added in the web client. The setup wizard is a large
-surface (autoconfig, OAuth for Google and Microsoft, manual IMAP/SMTP) that teaches us
-nothing about the component library.
+**Contacts.** Nextcloud Contacts parity: address books mirrored over CardDAV into the same
+local database, browsed from a Contacts section in the sidebar, edited offline through the
+same queue. Scope per row in [parity.md](parity.md).
 
-**No Sieve, filters, out-of-office, quick actions, tags management, snooze, S/MIME,
-OpenPGP, itinerary cards, AI features, priority inbox, unified inbox, drag and drop.**
-Each is either a compose-path feature, an admin surface, or a second-order convenience.
-Tags and priority inbox are the two most likely to be missed; both are read-mostly and
-both are cheap to add once the mirror exists.
+**Calendar from mail.** The mail-side calendar surfaces: iMIP invitation replies, itinerary
+cards, "add to calendar" from event data in messages. Listed in [parity.md](parity.md).
+
+**Configuration.** App settings and account settings — text blocks, trusted senders,
+internal addresses, autoresponder, provisioning — validated online where the server must
+have the last word. Each setting has a row in [parity.md](parity.md).
+
+**On the Mac.** The native integrations a browser tab cannot offer: Spotlight, widgets, a
+share extension, Services, `mailto:` handling, notifications. Mapped in
+[parity.md](parity.md).
+
+## What v2 does not do
+
+Deliberately, with the reasoning in [ADR-0064](../decisions/0064-v2-parity-scope.md):
+
+- **Admin settings (§9):** a server-administration surface the web admin panel already
+  serves.
+- **PGP/Mailvelope:** a browser extension with no native equivalent chosen. The app shows
+  an honest notice on PGP mail instead.
+- **Debug-only items:** "Clear cache", "Report this bug", "Download thread data for
+  debugging".
+- **Browser mechanics with native replacements**, mapped in [parity.md](parity.md):
+  history back/forward, Ctrl+click new tab, responsive breakpoints, beforeunload.
+- **Server-only behaviour with no client surface:** OCP Mail Provider, junk/ham reports,
+  user migration, AI listeners.
 
 ## What the mirror unlocks later, nearly for free
 
@@ -93,6 +115,7 @@ Worth knowing while making v1 decisions, because it changes what "cheap" means i
 - **Search across accounts** is already how the FTS table is built.
 - **Offline compose** is the same mutation queue with a different operation kind.
 - **Spotlight and Quick Look integration** is a `CSSearchableIndex` fed from the same rows.
+- **Contacts** are the same mirror, the same queue.
 - **Thread summaries, itineraries, tags** are all columns the mirror already carries in
   `rawJSON`, waiting for a UI.
 

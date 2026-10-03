@@ -24,7 +24,7 @@ old one stays.*
 | [0009](0009-sanitised-html-not-raw-mime.md) | Store the server's sanitised HTML, not raw MIME | Accepted |
 | [0010](0010-webview-scheme-handler.md) | Serve body images through a custom URL scheme | Accepted |
 | [0011](0011-fts5-standalone-index.md) | FTS5 table holding its own copy of the text | Accepted |
-| [0012](0012-read-and-triage-scope.md) | v1 is read and triage; no composer | Accepted |
+| [0012](0012-read-and-triage-scope.md) | v1 is read and triage; no composer | Superseded by 0064 |
 | [0013](0013-module-layout.md) | Four local packages plus one app target | Accepted |
 | [0014](0014-singleton-enumeration.md) | Enumerate with `view=singleton`; thread locally | Accepted |
 | [0015](0015-bounded-sync-window.md) | Bounded sync window plus periodic deep reconcile | Accepted |
@@ -76,6 +76,15 @@ old one stays.*
 | [0061](0061-avatars-are-fetched-into-the-mirror-by-sync.md) | Avatars are fetched into the mirror by a sync worker, through the server's image route only | Accepted |
 | [0062](0062-the-sidebar-opens-settings-with-opensettings.md) | The sidebar opens Settings with `openSettings`, and the tab is bound to its key | Accepted |
 | [0063](0063-printing-uses-an-offscreen-web-view.md) | Printing builds its own offscreen web view, with the live view's configuration | Accepted |
+| [0064](0064-v2-parity-scope.md) | v2 is parity with the Nextcloud Mail web client's user surfaces, plus Contacts | Accepted — supersedes 0012 |
+| [0065](0065-native-rich-text-editor.md) | The composer is a TextKit 2 `NSTextView` this app owns, serialising to HTML itself | Accepted |
+| [0066](0066-drafts-and-outbox.md) | Drafts are local rows synced to the server's draft API; sending goes through the server outbox | Proposed |
+| [0067](0067-server-results-are-rows.md) | Server-computed results are cached rows | Proposed |
+| [0068](0068-settings-commands.md) | Settings the server must validate are online-only commands | Proposed |
+| [0069](0069-contacts-same-database.md) | Contacts use the same database and the same five modules, keyed by Nextcloud login | Proposed |
+| [0070](0070-contacts-sidebar-section.md) | Contacts appear as a sidebar section, under the mail accounts | Accepted |
+| [0071](0071-widgets-read-snapshot.md) | Widgets read a snapshot file in the app group, never the database | Proposed |
+| [0072](0072-local-first-autocomplete.md) | Recipient autocomplete is local-first | Proposed |
 
 ## Which ones matter most
 
