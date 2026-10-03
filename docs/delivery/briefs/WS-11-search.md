@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: Hamza Mahjoubi
+SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+
 # WS-11 — Local full-text search
 
 **Wave 4, after WS-03 and WS-08. Size: M.**
@@ -28,7 +33,7 @@ public struct SearchQuery: Sendable {
 }
 
 public func search(_ query: SearchQuery, limit: Int, offset: Int) async throws -> [SearchResult]
-public func observeSearch(_ query: SearchQuery) -> AsyncValueObservation<[SearchResult]>
+public func observeSearch(_ query: SearchQuery) -> StoreObservation<[SearchResult]>
 ```
 
 **Query translation.** User text becomes an FTS5 MATCH expression, and this is where the

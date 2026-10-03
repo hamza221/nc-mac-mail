@@ -1,0 +1,156 @@
+# SPDX-FileCopyrightText: Hamza Mahjoubi
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  packages:
+    name: Packages (build and test)
+    runs-on: macos-26
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [NCMailCore, NCMailNet, NCMailStore, NCMailSync, NCMailTestSupport]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read the pinned Xcode version
+        id: xcode
+        # Unpinned Xcode is the top cause of "CI broke and nobody changed anything".
+        run: echo "version=$(cat .xcode-version)" >> "$GITHUB_OUTPUT"
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: ${{ steps.xcode.outputs.version }}
+
+      - name: Cache SwiftPM
+        uses: actions/cache@v4
+        with:
+          path: |
+            Packages/${{ matrix.package }}/.build
+            ~/Library/Caches/org.swift.swiftpm
+          key: spm-${{ matrix.package }}-${{ steps.xcode.outputs.version }}-${{ hashFiles(format('Packages/{0}/Package.swift', matrix.package), format('Packages/{0}/Package.resolved', matrix.package)) }}
+          restore-keys: spm-${{ matrix.package }}-${{ steps.xcode.outputs.version }}-
+
+      - name: Build
+        # -Xswiftc reaches the root package's own targets and not its
+        # dependencies, so GRDB's warnings are not our build failures. ADR-0016.
+        working-directory: Packages/${{ matrix.package }}
+        run: swift build --build-tests -Xswiftc -warnings-as-errors
+
+      - name: Test
+        working-directory: Packages/${{ matrix.package }}
+        run: swift test -Xswiftc -warnings-as-errors
+
+  thread-sanitizer:
+    name: Packages (Thread Sanitizer)
+    runs-on: macos-26
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [NCMailCore, NCMailNet, NCMailStore, NCMailSync, NCMailTestSupport]
+    steps:
+      - uses: actions/checkout@v4
+      - id: xcode
+        run: echo "version=$(cat .xcode-version)" >> "$GITHUB_OUTPUT"
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: ${{ steps.xcode.outputs.version }}
+      - name: Test under TSan
+        # Its own job, and no warnings-as-errors: a TSan build is a different
+        # set of objects, and a data race must not be hidden behind a warning.
+        working-directory: Packages/${{ matrix.package }}
+        run: swift test --sanitize=thread
+
+  app:
+    name: App target
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - id: xcode
+        run: echo "version=$(cat .xcode-version)" >> "$GITHUB_OUTPUT"
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: ${{ steps.xcode.outputs.version }}
+
+      - name: Cache resolved packages
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Developer/Xcode/DerivedData/**/SourcePackages
+          key: xcode-spm-${{ steps.xcode.outputs.version }}-${{ hashFiles('NextcloudMail.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+          restore-keys: xcode-spm-${{ steps.xcode.outputs.version }}-
+
+      - name: Build
+        # SUPPRESS_WARNINGS=NO is no longer required to build: NextcloudUI
+        # dropped .treatAllWarnings(as: .error) in 1e753cb. It stays because
+        # Xcode hands package targets -suppress-warnings, and without it our
+        # own packages' warnings are invisible here. ADR-0016.
+        run: make build-app
+
+  app-tests:
+    name: App target (tests)
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - id: xcode
+        run: echo "version=$(cat .xcode-version)" >> "$GITHUB_OUTPUT"
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: ${{ steps.xcode.outputs.version }}
+
+      - name: Cache resolved packages
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Developer/Xcode/DerivedData/**/SourcePackages
+          key: xcode-spm-${{ steps.xcode.outputs.version }}-${{ hashFiles('NextcloudMail.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+          restore-keys: xcode-spm-${{ steps.xcode.outputs.version }}-
+
+      - name: Test
+        # A separate job from the Release build above: NextcloudMailTests is
+        # hosted by the app, runs in Debug, and a test failure should not read
+        # as "the app does not compile". ADR-0029.
+        run: make test-app
+
+  lint:
+    name: Formatting
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - id: xcode
+        run: echo "version=$(cat .xcode-version)" >> "$GITHUB_OUTPUT"
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: ${{ steps.xcode.outputs.version }}
+      - name: Check formatting
+        # `swift format`, a subcommand of the toolchain. There is no standalone
+        # swift-format binary to install, and it must match the Xcode in use.
+        run: make lint-format
+
+  swiftlint:
+    name: SwiftLint
+    # Ubuntu: the invariant rules are regexes and need no Xcode, and macOS
+    # runners bill at a multiplier.
+    runs-on: ubuntu-latest
+    container: ghcr.io/realm/swiftlint:latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: swiftlint lint --strict --reporter github-actions-logging
+
+  reuse:
+    name: REUSE compliance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: fsfe/reuse-action@v5

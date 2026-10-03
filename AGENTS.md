@@ -9,8 +9,10 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 ## What this repository is
 
-A native macOS client for Nextcloud Mail, specified but not yet implemented. The
-specification is in `docs/`; the original briefs are in `plan/`; there is no Swift yet.
+A native macOS client for Nextcloud Mail. The specification is in `docs/` and the original
+briefs are in `plan/`. WS-00 landed the skeleton — an Xcode project, five packages, the
+Makefile, lint and CI — so there is Swift here, but no product code yet. Build commands and
+the two toolchain traps are in the README's development section.
 
 Work is divided into sixteen workstreams. Yours has a brief in
 `docs/delivery/briefs/WS-NN-*.md`. That brief is your instructions; this file is the house

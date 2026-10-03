@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: Hamza Mahjoubi
+SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+
 # WS-02 — HTTP client, endpoints, models, decoding
 
 **Wave 1, after WS-00. Size: L. Parallel with WS-01 and WS-03.**

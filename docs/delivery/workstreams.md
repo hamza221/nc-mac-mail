@@ -46,7 +46,7 @@ shape.
 | ID | Title | Depends on | Owns | Size |
 | --- | --- | --- | --- | --- |
 | [WS-00](briefs/WS-00-project-skeleton.md) | Project skeleton, packages, CI, lint | — | `NextcloudMail.xcodeproj`, all `Package.swift`, `.github/`, `Makefile`, `.swiftlint.yml`, `.swift-format` | M |
-| [WS-01](briefs/WS-01-auth.md) | Login Flow v2, Keychain, session | WS-00 | `NCMailNet/Auth/**` | M |
+| [WS-01](briefs/WS-01-auth.md) | Login Flow v2, Keychain, session | WS-00 | `NCMailNet/Auth/**`, `NextcloudMail/Views/Login/**` | M |
 | [WS-02](briefs/WS-02-http-client.md) | HTTP client, endpoints, models, decoding | WS-00 | `NCMailNet/Client/**`, `NCMailNet/Endpoints/**`, `NCMailCore/Models/**` | L |
 | [WS-03](briefs/WS-03-store.md) | GRDB stack, schema, migrations, DAOs, FTS | WS-00 | `NCMailStore/**` | L |
 | [WS-04](briefs/WS-04-mirror.md) | Mirror coordinator and two-stage backfill | 01,02,03 | `NCMailSync/Mirror/**` | L |
@@ -58,7 +58,7 @@ shape.
 | [WS-10](briefs/WS-10-triage.md) | Triage actions, toolbar, shortcuts | 06,08,09 | `NextcloudMail/Actions/**`, `NextcloudMail/Commands/**` | M |
 | [WS-11](briefs/WS-11-search.md) | Local full-text search | 03,08 | `NCMailStore/Search/**`, `NextcloudMail/Views/Search/**` | M |
 | [WS-12](briefs/WS-12-settings.md) | Settings, storage panel, sign-out | 04,06 | `NextcloudMail/Views/Settings/**` | M |
-| [WS-13](briefs/WS-13-app-shell.md) | App shell, theme, brand, restoration, status | 01,02 | `NextcloudMail/App/**`, `NextcloudMail/Theme/**` | M |
+| [WS-13](briefs/WS-13-app-shell.md) | App shell, theme, brand, restoration, status | 01,02 | `NextcloudMail/App/**`, `NextcloudMail/Theme/**`, `NextcloudMail/Status/**`, `NextcloudMail/MailSymbol.swift` | M |
 | [WS-14](briefs/WS-14-test-harness.md) | Fake transport, fixtures, recorder, CI gates | WS-02 | `Packages/NCMailTestSupport/**`, `Scripts/record-fixtures.sh` | M |
 | [WS-15](briefs/WS-15-feedback.md) | Library and server feedback, upstream reports | all | `docs/feedback/**` | S |
 
@@ -82,7 +82,7 @@ the owner, or a note in the brief's report.
 | `Packages/NCMailSync/Sources/Sync/**` | WS-05 |
 | `Packages/NCMailSync/Sources/Operations/**` | WS-06 |
 | `Packages/NCMailTestSupport/**` | WS-14 |
-| `NextcloudMail/App/**`, `Theme/**` | WS-13 |
+| `NextcloudMail/App/**`, `Theme/**`, `Status/**`, `MailSymbol.swift` | WS-13 |
 | `NextcloudMail/Views/<Area>/**` | the workstream for that area |
 | `docs/decisions/**` | anyone adding a record; never editing someone else's |
 | `docs/feedback/**` | **append-only, by everyone.** WS-15 curates |
@@ -91,6 +91,11 @@ the owner, or a note in the brief's report.
 A workstream that needs a change in someone else's file writes it in its report and, if it
 blocks, raises it. It does not reach across the boundary — that is how two agents produce
 one conflict and two half-fixes.
+
+Two standing exceptions, both from WS-00. `NextcloudMail/App/NextcloudMailApp.swift` and
+`RootSplitView.swift` exist so that the skeleton launches; they are WS-13's to replace, not
+to work around. And `Packages/*/Tests/*/PlaceholderTests.swift` is an empty test target per
+package, so the workstream that writes the first test writes a test rather than a target.
 
 ## What "owned" means for documents
 

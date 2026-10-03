@@ -166,5 +166,11 @@ what this app is keeping.
 - Each account is a section in the sidebar with its own mailbox tree, in the server's
   `order`.
 - Each account mirrors and syncs independently; one broken account does not block another.
+- "Account" here is one Mail account, and several of them may come from one Nextcloud
+  login or from more than one. Two instances number their accounts, mailboxes and messages
+  from 1 independently, so the mirror gives every such row an id of its own and keeps the
+  server's as `remoteId`
+  ([ADR-0033](../decisions/0033-accounts-have-a-local-identity.md)). WS-07 reads `remoteId`
+  wherever it builds a request and `id` wherever it touches a row.
 - Actions always resolve special mailboxes against the account that owns the message, not
   the selected account.

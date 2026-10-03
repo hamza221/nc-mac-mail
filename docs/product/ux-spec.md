@@ -31,8 +31,13 @@ One `NavigationSplitView`, three columns, the macOS shape every mail client uses
 └───────────────┴──────────────────────┴──────────────────────────────────┘
 ```
 
-Column widths persist. Collapsing the sidebar is the system's behaviour, not ours. Window
-size and the selected mailbox restore on launch — state restoration, not a preference.
+Column widths persist, approximately: SwiftUI's `navigationSplitViewColumnWidth(min:ideal:max:)`
+has no binding that reports back what a drag resized a column to, so WS-13 tracks each
+column's rendered width with a `GeometryReader` and feeds it back in as the next launch's
+`ideal`. It is a measurement, not a restoration the framework promises, and it was not
+verified against a live drag in this environment (no GUI). Collapsing the sidebar is the
+system's behaviour, not ours. Window size and the selected mailbox restore on launch — state
+restoration, not a preference.
 
 ## Sidebar
 
@@ -55,7 +60,23 @@ size and the selected mailbox restore on launch — state restoration, not a pre
   3. "2 actions waiting" when the queue has visible failures, tappable to a popover;
   4. nothing at all when everything is fine. Idle chrome is noise.
 
-**Context menu per mailbox:** Mark all as read, Refresh, Get info (counts, mirror state).
+**Context menu per mailbox:** Mark all as read, Refresh, Get info.
+
+**Get info** opens a sheet (`MailboxInfoView`) that reads the mirror and nothing else, live,
+so it moves while the backfill runs or the user triages:
+
+- **On the server** — total and unread messages as of the last folder refresh
+  (`mailbox.totalCount`, `mailbox.unreadCount`; the raw column, not the sidebar's local
+  figure from [ADR-0060](../decisions/0060-unread-counts-come-from-the-mirror-once-complete.md)).
+- **On this Mac** — mirror status (not mirrored; downloading the message list; downloading
+  messages, *n* to go; complete), then messages mirrored, unread, bodies downloaded and,
+  when any, bodies that could not be downloaded — counted from `message` rows by
+  `MailStore.observeMailboxCounts(mailboxId:)` — and the last sync, relative.
+- **When the last sync failed** — an `NCNoteCard(.warning)` with `lastSyncError` in plain
+  words, how many times in a row it failed, and that the next sync retries. The stored error
+  is never shown verbatim; an unrecognised one gets a generic sentence.
+
+A mailbox whose last sync failed also carries a tooltip on its row pointing at Get info.
 
 ## Message list
 
@@ -65,23 +86,40 @@ Row is `NCListItem` with the Mail shape:
 
 ```swift
 NCListItem(senderDisplayName, subtitle: subject) {
-    NCAvatar(displayName: senderDisplayName, user: senderEmail, load: avatarLoader(senderEmail))
+    NCAvatar(displayName: senderDisplayName, user: senderEmail, load: avatarLoader)
 } details: {
-    NCListItemDetails(date: sentAt, unreadCount: isSeen ? 0 : 1)
+    VStack(alignment: .trailing) {
+        NCListItemDetails(date: sentAt, unreadCount: 0)
+        HStack { presentStateGlyphs; threadCountBubble(.neutral); unreadBubble(.highlighted) }
+    }
 }
-.fontWeight(isSeen ? nil : .semibold)
+.fontWeight(row.threadUnreadCount > 0 ? .semibold : nil)
 ```
 
-- **Unread** is the semibold weight plus the counter bubble, matching the showcase.
-- **Starred** shows `star` in the leading accessory column; **attachments** show a clip;
-  **answered** a reply arrow. Three optional glyphs in a fixed-width column so rows stay
-  aligned — and the reason the library's leading slot is noted as a gap.
+The counts share one line under the date. The first build put the unread bubble inside
+`NCListItemDetails` and the thread count in `trailing:`, two columns at two heights.
+
+- **Unread** is the semibold weight plus the counter bubble, matching the showcase. It is the
+  *thread's* unread count, not the drawn message's `isSeen`, which is one rule for both views
+  rather than two ([../decisions/0041-unread-is-the-threads-unread-count.md](../decisions/0041-unread-is-the-threads-unread-count.md)).
+- **Avatar photo** from the mirror's `avatar` table, which the per-account `AvatarFetcher`
+  fills from the server's avatar endpoint. Until a row exists `NCAvatar` draws coloured
+  initials, and the photo replaces them when the row lands, with no request from the view.
+- **Starred** shows `star`, **attachments** a clip, **answered** a reply arrow, on the
+  trailing side and only when they apply. The first design put three fixed-width slots
+  ahead of the avatar to keep rows aligned. In use, that was a blank column on nearly every
+  row that pushed avatar and subject right, so QA moved the glyphs (2026-10-03).
 - **Threaded view** shows the newest message of each thread with a count badge; flat shows
-  every message. Toolbar `Picker`, remembered per account.
+  every message. Toolbar `Picker`, remembered once for the app rather than per account
+  ([../decisions/0040-list-view-is-remembered-per-app.md](../decisions/0040-list-view-is-remembered-per-app.md)).
 - **Date grouping** — Today / Yesterday / This week / Earlier as section headers. Cheap,
   and it is how people navigate a long list.
-- **Sort** follows the account's server-side `sort-order` preference, so the two clients
-  agree.
+- **Sort** is newest first, and does **not** yet follow the account's server-side
+  `sort-order` preference. Nothing persists that preference — `SyncScheduler` reads it and
+  keeps it in memory ([../decisions/0036-sort-order-decides-the-cursor.md](../decisions/0036-sort-order-decides-the-cursor.md))
+  — and the store's list queries are `ORDER BY m.sentAt DESC` with the index that makes them
+  fast. Making the two clients agree needs a column on `account` and an ordering parameter on
+  `observeMessages`; WS-08's report carries the request.
 - **Selection** — click selects, ⇧-click extends, ⌘-click toggles. Toolbar and context menu
   act on the whole selection.
 
@@ -91,7 +129,7 @@ NCListItem(senderDisplayName, subtitle: subject) {
 | --- | --- |
 | Mirrored, has messages | The list |
 | Mirroring, first page in | The list, growing. No spinner |
-| Mirrored, empty mailbox | `ContentUnavailableView("No messages", systemImage:)` |
+| Mirrored, empty mailbox | `ContentUnavailableView("No messages", …)`, with the icon through `MailSymbol` |
 | Search, no hits | `ContentUnavailableView.search` with the query |
 | Mailbox unselectable | Never reachable: the row does not select |
 | Never mirrored, offline | "Not downloaded yet" plus what will happen on reconnect |
@@ -204,8 +242,12 @@ One rule, and it is the difference between a calm app and a nervous one:
 
 - Offline → one sidebar indicator. Not a banner, not a sheet.
 - Sync failure on one mailbox → that mailbox's row shows it on hover, and Get info explains.
-- Queued actions failing → one aggregate indicator after five attempts
+- Queued actions failing → one aggregate indicator after five attempts, "N actions waiting",
+  with a **Retry** button that clears every backoff and drains at once
   ([../architecture/offline-queue.md](../architecture/offline-queue.md)).
+- Local mirror unreadable at launch → one alert, because the session would otherwise
+  silently run on an empty copy: **Delete and Download Again** (deletes the file and
+  relaunches), **Continue Without Saving**, or **Quit**.
 - Authentication lost (401) → this one **is** modal, because nothing works until it is
   fixed: "Your session has expired. Sign in again."
 - Disk full → surfaced once in the storage panel with the number of bytes needed.

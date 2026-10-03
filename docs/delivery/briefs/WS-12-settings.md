@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: Hamza Mahjoubi
+SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+
 # WS-12 — Settings, storage panel, sign-out
 
 **Wave 4, after WS-04 and WS-06. Size: M.**

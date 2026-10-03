@@ -1,0 +1,87 @@
+{
+  "uid": 103,
+  "messageId": "<IbBSj4zaReK1GOa5wHvukA@geopod-ismtpd-72>",
+  "from": [
+    {
+      "label": "Name redacted",
+      "email": "user@example.com"
+    }
+  ],
+  "to": [
+    {
+      "label": "Name redacted",
+      "email": "user@example.com"
+    }
+  ],
+  "replyTo": [
+    {
+      "label": "Name redacted",
+      "email": "user@example.com"
+    }
+  ],
+  "cc": [],
+  "bcc": [],
+  "subject": "Subject redacted",
+  "dateInt": 1789920932,
+  "flags": {
+    "seen": false,
+    "flagged": false,
+    "answered": false,
+    "deleted": false,
+    "draft": false,
+    "forwarded": false,
+    "hasAttachments": false,
+    "$mdnsent": false,
+    "important": false
+  },
+  "hasHtmlBody": true,
+  "dispositionNotificationTo": "",
+  "hasDkimSignature": true,
+  "phishingDetails": {
+    "checks": [
+      {
+        "type": "Contacts",
+        "isPhishing": false,
+        "message": "",
+        "additionalData": []
+      },
+      {
+        "type": "Date",
+        "isPhishing": false,
+        "message": "",
+        "additionalData": []
+      },
+      {
+        "type": "IMAP Flag",
+        "isPhishing": false,
+        "message": "",
+        "additionalData": []
+      },
+      {
+        "type": "Link",
+        "isPhishing": false,
+        "message": "",
+        "additionalData": []
+      }
+    ],
+    "warning": false
+  },
+  "unsubscribeUrl": "https://manage.kmail-lists.com/subscriptions/unsubscribe?a=U45QAK&c=TRACKINGID&k=TRACKINGID&se=user%40example.com&m=TRACKINGID&r=TRACKINGID",
+  "isOneClickUnsubscribe": true,
+  "unsubscribeMailto": null,
+  "scheduling": [],
+  "isPgpMimeEncrypted": false,
+  "hasAiGeneratedHeader": false,
+  "body": "Body redacted",
+  "attachments": [],
+  "inlineAttachments": [],
+  "accountId": 1,
+  "mailboxId": 5,
+  "databaseId": 166,
+  "isSenderTrusted": false,
+  "smime": {
+    "isSigned": false,
+    "signatureIsValid": null,
+    "isEncrypted": false
+  }
+}

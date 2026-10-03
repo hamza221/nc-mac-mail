@@ -21,8 +21,11 @@ Nextcloud reviewer can disagree with it on the facts.*
 - The Nextcloud password is never entered into the app and never stored. Login Flow v2
   happens in the system browser ([ADR-0002](../decisions/0002-app-password-login-flow-v2.md)).
 - The app password lives in the Keychain as `kSecClassInternetPassword`, keyed by host and
-  login name, with `kSecAttrAccessibleAfterFirstUnlock`. It is never written to the
-  database, to a log, or to a crash report.
+  login name, with `kSecAttrAccessibleAfterFirstUnlock`. Every item carries
+  `kSecAttrSecurityDomain = com.nextcloud.mail.macos`, and every query filters on it: the
+  login keychain is shared, and without that the app enumerated and tried to decrypt
+  other apps' passwords ([ADR-0059](../decisions/0059-keychain-items-carry-a-security-domain.md)).
+  It is never written to the database, to a log, or to a crash report.
 - It is revocable server-side, per device, from the user's security settings, where it
   appears as **Nextcloud Mail (macOS)**.
 - Sign-out deletes the Keychain item.
@@ -64,8 +67,11 @@ message never reaches our disk at all.
 
 ### Other applications on the Mac
 
-- App Sandbox with `com.apple.security.network.client` and nothing else. No file access
-  outside the container except through explicit save panels.
+- App Sandbox with `com.apple.security.network.client` and
+  `com.apple.security.files.user-selected.read-write`, nothing else. The second is what lets
+  an explicit save panel open at all. Without it `NSSavePanel` logs "missing the User
+  Selected File Read/Write app sandbox entitlement" and attachment saving silently did
+  nothing. No file access outside the container except where the reader chose in that panel.
 - Hardened runtime, Developer ID signature, notarization before any distribution.
 - The database lives inside the container, so another sandboxed app cannot read it.
 

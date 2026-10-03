@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- ADR-0006: the sandbox container is the data-at-rest story. -->
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+	<!-- Outbound HTTPS to the Nextcloud server. Nothing listens, nothing talks to
+	     another process. -->
+	<key>com.apple.security.network.client</key>
+	<true/>
+	<!-- Saving an attachment. Grants access only to the location the reader picks
+	     in NSSavePanel; without it the panel refuses to open and the click does
+	     nothing. Nothing reads the user's files unprompted. -->
+	<key>com.apple.security.files.user-selected.read-write</key>
+	<true/>
+</dict>
+</plist>

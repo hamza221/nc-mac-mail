@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: Hamza Mahjoubi
+SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+
 # WS-07 — Sidebar: accounts and mailbox tree
 
 **Wave 3, after WS-04. Size: M. Parallel with WS-08, WS-09, WS-13.**

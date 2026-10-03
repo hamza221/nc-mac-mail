@@ -10,9 +10,15 @@ that keep it that way.*
 
 ## Settings
 
-Swift 6.2, language mode 6, warnings as errors, matching `NextcloudUI` — which builds with
-`treatAllWarnings(as: .error)`, so a warning in the app target is a build failure anyway
-the moment the library's headers are involved.
+Swift 6 language mode, warnings as errors. Toolchain: Xcode 26.6, Swift 6.3.3.
+
+Where warnings-as-errors is asked for is not where you would expect. The packages' manifests
+do not carry `.treatAllWarnings(as: .error)`, because Xcode hands every package target
+`-suppress-warnings` and swiftc refuses the two flags together. The Makefile and CI pass
+`swift build -Xswiftc -warnings-as-errors` instead, which reaches the root package's own
+targets and not its dependencies. The app target carries
+`SWIFT_TREAT_WARNINGS_AS_ERRORS = YES`, where nothing suppresses anything.
+[ADR-0016](../decisions/0016-warnings-as-errors-at-the-build-command.md) has the detail.
 
 Isolation differs by module, deliberately:
 
@@ -39,8 +45,11 @@ WKWebView + scheme handler        OperationDrainer (per acct) ValueObservation
                                   BackfillWorker pool
 ```
 
-- **Reads for the UI** arrive as `ValueObservation`, scheduled on the main actor by GRDB.
-  A store receives fresh values and assigns them; SwiftUI does the rest.
+- **Reads for the UI** arrive as `StoreObservation`, an `AsyncSequence` `NCMailStore`
+  publishes over a GRDB `ValueObservation` scheduled on the main actor. A store receives
+  fresh values and assigns them; SwiftUI does the rest. The sequence is the store's own
+  type, not GRDB's, so nothing above `NCMailStore` links GRDB
+  ([ADR-0034](../decisions/0034-the-store-returns-its-own-sequence.md)).
 - **Writes** always go through `DatabaseQueue.write`, off the main actor, one at a time.
   WAL means readers never block on them.
 - **Requests** run inside whichever actor asked; `URLSession` is already concurrent.
@@ -89,7 +98,7 @@ final class MessageListStore {
     func show(mailbox: Mailbox.ID, view: ListView, filter: Filter?) {
         observation?.cancel()
         observation = Task { [store] in
-            for await rows in store.observeMessages(mailbox, view, filter).values {
+            for try await rows in store.observeMessages(mailbox, view, filter) {
                 self.rows = rows
             }
         }
@@ -100,7 +109,9 @@ final class MessageListStore {
 Three things to notice, because each is a bug elsewhere:
 
 - The observation is **replaced**, not added to, when the selection changes. Leaking one
-  observation per mailbox click is the classic version of this bug.
+  observation per mailbox click is the classic version of this bug. Cancelling the `Task`
+  is enough: the iterator goes with it, and `StoreObservation` cancels the database
+  observation when its iterator is dropped.
 - The store holds **rows**, a projection, not database records. A list row needs eight
   fields; the record has thirty.
 - Nothing here is `async` from the view's perspective. The view reads `rows`.

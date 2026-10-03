@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: Hamza Mahjoubi
+SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+
 # WS-14 — Fake transport, fixtures, recorder, CI gates
 
 **Starts in wave 1 after WS-02, lands continuously. Size: M.**

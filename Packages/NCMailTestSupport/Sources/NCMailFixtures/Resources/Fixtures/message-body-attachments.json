@@ -1,0 +1,101 @@
+{
+  "uid": 48,
+  "messageId": "<CAOFMF9HH7hRsepLY8BA2Yb+ZZY8gYQcnz3gmkdxov=user@example.com>",
+  "from": [
+    {
+      "label": "Name redacted",
+      "email": "user@example.com"
+    }
+  ],
+  "to": [
+    {
+      "label": "Name redacted",
+      "email": "user@example.com"
+    }
+  ],
+  "replyTo": [
+    {
+      "label": "Name redacted",
+      "email": "user@example.com"
+    }
+  ],
+  "cc": [],
+  "bcc": [],
+  "subject": "Subject redacted",
+  "dateInt": 1782480125,
+  "flags": {
+    "seen": true,
+    "flagged": false,
+    "answered": false,
+    "deleted": false,
+    "draft": false,
+    "forwarded": false,
+    "hasAttachments": true,
+    "$mdnsent": false,
+    "important": true
+  },
+  "hasHtmlBody": true,
+  "dispositionNotificationTo": "",
+  "hasDkimSignature": true,
+  "phishingDetails": {
+    "checks": [
+      {
+        "type": "Contacts",
+        "isPhishing": false,
+        "message": "",
+        "additionalData": []
+      },
+      {
+        "type": "Date",
+        "isPhishing": false,
+        "message": "",
+        "additionalData": []
+      },
+      {
+        "type": "IMAP Flag",
+        "isPhishing": false,
+        "message": "",
+        "additionalData": []
+      },
+      {
+        "type": "Link",
+        "isPhishing": false,
+        "message": "",
+        "additionalData": []
+      }
+    ],
+    "warning": false
+  },
+  "unsubscribeUrl": null,
+  "isOneClickUnsubscribe": false,
+  "unsubscribeMailto": null,
+  "scheduling": [],
+  "isPgpMimeEncrypted": false,
+  "hasAiGeneratedHeader": false,
+  "body": "Body redacted",
+  "attachments": [
+    {
+      "id": "2",
+      "messageId": 48,
+      "fileName": "attachment.docx",
+      "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "size": 27607,
+      "cid": "f_mquymsb20",
+      "disposition": "attachment",
+      "downloadUrl": "http://cloud.example.com/index.php/apps/mail/api/messages/66/attachment/2",
+      "mimeUrl": "/index.php/apps/theming/img/core/filetypes/x-office-document.svg?v=dcc46f9a",
+      "isImage": false,
+      "isCalendarEvent": false
+    }
+  ],
+  "inlineAttachments": [],
+  "accountId": 1,
+  "mailboxId": 5,
+  "databaseId": 66,
+  "isSenderTrusted": false,
+  "smime": {
+    "isSigned": false,
+    "signatureIsValid": null,
+    "isEncrypted": false
+  }
+}

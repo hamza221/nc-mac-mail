@@ -28,6 +28,54 @@ old one stays.*
 | [0013](0013-module-layout.md) | Four local packages plus one app target | Accepted |
 | [0014](0014-singleton-enumeration.md) | Enumerate with `view=singleton`; thread locally | Accepted |
 | [0015](0015-bounded-sync-window.md) | Bounded sync window plus periodic deep reconcile | Accepted |
+| [0016](0016-warnings-as-errors-at-the-build-command.md) | Ask for warnings-as-errors at the build command, not in the manifests | Accepted |
+| [0017](0017-file-system-synchronized-group.md) | The app target reads its sources from a synchronised folder | Accepted |
+| [0018](0018-ad-hoc-signature-in-the-checked-in-project.md) | The checked-in project signs ad hoc | Accepted |
+| [0019](0019-login-flow-verifies-the-mail-app.md) | `LoginFlow` proves the Mail app exists before reporting success | Accepted |
+| [0020](0020-raw-json-in-a-wrapper.md) | Carry the server's JSON in a `RawBacked` wrapper, not in every model | Accepted |
+| [0021](0021-one-message-flags-type.md) | One `MessageFlags` type for the envelope and the body | Accepted |
+| [0022](0022-fixtures-by-path-not-bundle.md) | Tests read fixtures by path, not through `Bundle.module` | Superseded by ADR-0026 for `NCMailCoreTests`/`NCMailStoreTests`; still Accepted for `NCMailNetTests` |
+| [0023](0023-store-records-are-not-wire-models.md) | Store records are their own types, and a write is narrower than a row | Accepted |
+| [0024](0024-fts-deletes-in-a-trigger.md) | Delete the search index row from a trigger, not from Swift | Accepted |
+| [0025](0025-rowid-tables-for-anything-observed.md) | Only unobserved tables may be `WITHOUT ROWID` | Accepted |
+| [0026](0026-fixtures-through-a-dependency-free-target.md) | Fixtures through a dependency-free `NCMailFixtures` target | Accepted |
+| [0027](0027-userdefaults-cache-for-the-launch-theme.md) | Cache the launch theme colour in `UserDefaults` for boot, `meta` for everything else | Accepted |
+| [0028](0028-no-force-unwrap-even-in-tests.md) | No force unwrap anywhere, including tests — `#require` instead | Accepted |
+| [0029](0029-app-test-target-borrows-its-modules-from-the-host.md) | The app's test target borrows its modules from the host app | Accepted; its workaround removed by ADR-0034 |
+| [0030](0030-stage-one-owns-its-cursor.md) | Stage 1 owns its cursor — envelopes commit first, and priming never moves it | Accepted |
+| [0031](0031-conditions-pushed-power-read.md) | The app pushes the network path into the mirror; the mirror reads the power state itself | Accepted |
+| [0032](0032-body-text-is-not-kept-twice.md) | `messageBody.rawJSON` drops the `body` field | Accepted — narrows ADR-0020 |
+| [0033](0033-accounts-have-a-local-identity.md) | Rows the server numbers get a local id and keep the server's as `remoteId` | Accepted |
+| [0034](0034-the-store-returns-its-own-sequence.md) | `NCMailStore` returns its own `AsyncSequence`; no GRDB type crosses its boundary | Accepted |
+| [0035](0035-sync-has-its-own-concurrency-limit.md) | The sync engine has its own concurrency limit and does not draw on the body budget | Accepted |
+| [0036](0036-sort-order-decides-the-cursor.md) | The server-side sort order decides what a cursor means, and the tail scan needs newest-first | Accepted |
+| [0037](0037-the-queue-is-read-twice-around-the-sync-write.md) | The operation queue is read twice around a sync write, until the store can read it inside one | Accepted, with a named replacement |
+| [0038](0038-the-message-view-observes-the-thread.md) | The message view observes its thread, because the store cannot observe one body | Superseded by ADR-0045 |
+| [0039](0039-a-rendered-message-holds-only-urls-we-would-fetch.md) | A rendered message holds only URLs we would fetch | Accepted |
+| [0040](0040-list-view-is-remembered-per-app.md) | Threaded or flat is remembered once for the app, not once per account | Accepted |
+| [0041](0041-unread-is-the-threads-unread-count.md) | A row is unread when its thread has unread messages, in both views | Accepted |
+| [0042](0042-the-list-watches-one-mailbox-through-its-account.md) | The message list watches one mailbox through its account's mailbox observation | Superseded by ADR-0045 |
+| [0043](0043-the-queue-names-the-storage-it-needs.md) | The mutation queue talks to a protocol, because `NCMailStore` has no queue DAO | Superseded by ADR-0045 |
+| [0044](0044-the-queue-type-is-not-called-operationqueue.md) | The queue type is `MutationQueue`, not `OperationQueue` | Accepted |
+| [0045](0045-the-store-grows-the-queue-dao-and-the-readers.md) | `NCMailStore` grows the queue DAO and the four readers the views worked around | Accepted — supersedes 0038, 0042, 0043 |
+| [0046](0046-mailboxtree-takes-its-own-row-type.md) | `MailboxTree` takes its own row type, not `NCMailCore.Mailbox` | Accepted |
+| [0047](0047-the-account-row-starts-the-engine.md) | The account row starts the engine, not the Keychain entry | Accepted |
+| [0048](0048-one-footer-for-every-account.md) | The status footer adds every account's progress into one line | Accepted |
+| [0049](0049-the-arrow-keys-stay-with-the-list.md) | `↑` and `↓` stay with the list; every other shortcut is a menu item | Accepted |
+| [0050](0050-an-unavailable-action-says-why-in-the-menu.md) | An unavailable action says why in the menu, because a disabled button cannot | Accepted |
+| [0051](0051-triage-owns-its-undo-manager.md) | Triage owns its `UndoManager`, and undo is the inverse operation | Accepted |
+| [0052](0052-move-is-a-popover-because-a-menu-cannot-hold-a-field.md) | Move ▾ is a popover, because a menu cannot hold a filter field | Accepted |
+| [0053](0053-settings-builds-its-own-short-lived-coordinators.md) | Settings builds its own short-lived sync objects rather than reaching into `AccountEngine` | Accepted |
+| [0054](0054-the-passwords-are-read-off-the-main-thread.md) | Keychain attributes at launch, passwords off the main thread | Accepted |
+| [0055](0055-the-search-field-cannot-reach-the-fts5-grammar.md) | The search field cannot reach the FTS5 grammar | Accepted |
+| [0056](0056-search-results-are-flat-and-ranked.md) | Search results are a flat ranked list, whatever the list is set to | Accepted |
+| [0057](0057-search-borrows-the-message-list.md) | Search borrows the message list instead of drawing its own | Accepted, with one thing still owed |
+| [0058](0058-the-sidebar-opens-settings-through-userdefaults-and-a-selector.md) | The sidebar opens Settings through a `UserDefaults` key and an AppKit selector | Superseded by 0062 |
+| [0059](0059-keychain-items-carry-a-security-domain.md) | Keychain items carry a security domain, and every query filters on it | Accepted |
+| [0060](0060-unread-counts-come-from-the-mirror-once-complete.md) | A mailbox's unread count comes from the mirror once the mirror is complete | Accepted |
+| [0061](0061-avatars-are-fetched-into-the-mirror-by-sync.md) | Avatars are fetched into the mirror by a sync worker, through the server's image route only | Accepted |
+| [0062](0062-the-sidebar-opens-settings-with-opensettings.md) | The sidebar opens Settings with `openSettings`, and the tab is bound to its key | Accepted |
+| [0063](0063-printing-uses-an-offscreen-web-view.md) | Printing builds its own offscreen web view, with the live view's configuration | Accepted |
 
 ## Which ones matter most
 

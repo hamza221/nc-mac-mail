@@ -55,18 +55,26 @@ Scripts/record-fixtures.sh https://cloud.example.com user 'app-password'
 ```
 
 Writes, with addresses and tokens scrubbed, to
-`Packages/NCMailTestSupport/Sources/NCMailTestSupport/Fixtures/` — a fifth, test-only
+`Packages/NCMailTestSupport/Sources/NCMailFixtures/Resources/Fixtures/` — a test-only
 package, because a SwiftPM test target cannot reference files outside its own package.
-Every package's tests depend on it and load fixtures through `Bundle.module`:
+`NCMailFixtures` is a dependency-free target inside that package, so `NCMailCore`'s,
+`NCMailNet`'s and `NCMailStore`'s own test targets can all load fixtures through
+`Bundle.module` without a package cycle back through `NCMailTestSupport` itself
+([ADR-0026](../decisions/0026-fixtures-through-a-dependency-free-target.md)). Names below
+are what the recorder actually writes, not an aspirational list — a name that lied about
+what the server sent (`error-mailbox-not-found.json` for an endpoint that answers 403, not
+404) got renamed rather than left to mislead the next reader:
 
 ```
-accounts.json                 mailboxes-account1.json
-messages-inbox-page1.json     messages-inbox-page2.json
-message-body-html.json        message-body-plain.json
-message-html-plain.html       sync-initial.json
-sync-incremental.json         sync-vanished.json
-capabilities.json             error-mailbox-not-cached.json
-error-sync-202.json           avatar-404.txt
+accounts.json                    mailboxes-account.json
+messages-inbox-page1.json        messages-inbox-page2.json
+message-body.json                message-body-attachments.json
+message-html-plain.html          message-thread.json
+sync-initial.json                sync-incremental.json
+capabilities.json                mailbox-stats.json
+preference-sort-order.json       trustedsenders.json
+error-mailbox-forbidden.json     error-message-forbidden.json
+avatar-404.txt
 ```
 
 A test per fixture asserts the model decodes and that the fields we depend on are present.
@@ -76,6 +84,21 @@ which is the whole point, and why `MailError.decoding` carries the endpoint name
 Scrubbing is part of the recorder, not a manual step: addresses become `user1@example.com`,
 subjects and preview text are kept (they are the interesting part for decoding) unless
 `--scrub-content` is passed, and every token, hmac and URL credential is replaced.
+
+**Known gap: no envelope carries an avatar.** Nextcloud resolves avatars asynchronously and
+caches them; the recording ran against a cold cache, so `avatar` is `null` on all 95
+recorded envelopes. Warming the cache first — fetching `/api/avatars/image/{sender}` for a
+few senders before recording — would give a populated fixture, but it also makes the
+Nextcloud server fetch each sender's favicon or Gravatar from their domain, which tells that
+domain who the account owner corresponds with, every time anyone runs the recorder. Not
+worth it for a URL field. `ModelDecodingTests` in `NCMailCoreTests` asserts the null path
+unconditionally and checks the populated shape only if a future recording happens to have
+one — an honest gap, not a flaky assertion waiting for cache luck.
+
+**Also missing:** `error-mailbox-not-cached.json` (a 428 mid-warm) and `error-sync-202.json`
+(a sync still in progress) are not yet recorded. The live account's mailboxes cache fast
+enough that catching either requires racing the request against the server, which the
+recorder does not attempt yet — left for whichever workstream first needs them.
 
 ## Store — real GRDB, in memory
 

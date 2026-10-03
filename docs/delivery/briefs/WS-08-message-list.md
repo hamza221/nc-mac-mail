@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: Hamza Mahjoubi
+SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+
 # WS-08 — Message list
 
 **Wave 3, after WS-04. Size: L. Parallel with WS-07, WS-09, WS-13.**
@@ -37,20 +42,26 @@ final class MessageListStore {
 
 ```swift
 NCListItem(row.senderName, subtitle: row.subject) {
-    NCAvatar(displayName: row.senderName, user: row.senderEmail, load: avatarLoader(row.senderEmail))
+    HStack { accessoryColumn; NCAvatar(displayName: row.senderName, user: row.senderEmail) }
 } details: {
-    NCListItemDetails(date: row.sentAt, unreadCount: row.isSeen ? 0 : 1)
+    NCListItemDetails(date: row.sentAt, unreadCount: row.threadUnreadCount)
 }
-.fontWeight(row.isSeen ? nil : .semibold)
+.fontWeight(row.threadUnreadCount > 0 ? .semibold : nil)
 ```
+
+Corrected as built. Unread is the thread's unread count in both views, not the drawn
+message's `isSeen` ([../../decisions/0041-unread-is-the-threads-unread-count.md](../../decisions/0041-unread-is-the-threads-unread-count.md)),
+and there is no `load:` because `MailStore` has no avatar reader yet.
 
 plus a fixed-width leading accessory column for star, attachment and answered glyphs, so
 rows stay aligned whether or not they have them. That column is the workaround for the
 library gap noted in the component map — write down how it felt.
 
 **Threaded and flat.** Both are queries over the same rows; switching is instant and
-remembered per account. Threaded shows the newest message per `threadRootId` with a count
-badge and the thread's unread count.
+remembered once for the app rather than per account, which is a correction to this brief
+([../../decisions/0040-list-view-is-remembered-per-app.md](../../decisions/0040-list-view-is-remembered-per-app.md)).
+Threaded shows the newest message per `threadRootId` with a count badge and the thread's
+unread count.
 
 **Windowing.** The list is a window over the database. Scrolling extends it. A 50,000-row
 mailbox never becomes a 50,000-element array, and "load more" has no spinner because the
@@ -58,7 +69,10 @@ rows are local.
 
 **Date grouping** — Today / Yesterday / This week / Earlier as section headers.
 
-**Sort** follows the account's server-side `sort-order` preference, so both clients agree.
+**Sort** is newest first. Following the account's server-side `sort-order` preference is
+not built: nothing persists that preference and the store's list queries are
+`ORDER BY m.sentAt DESC`. See [../../product/ux-spec.md](../../product/ux-spec.md#message-list)
+and WS-08's report for what it needs.
 
 **Selection** — single, ⇧-range, ⌘-toggle, published for WS-10 to act on.
 

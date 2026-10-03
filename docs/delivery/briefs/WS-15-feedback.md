@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: Hamza Mahjoubi
+SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+
 # WS-15 — Library and server feedback
 
 **Runs throughout. Lands at the end. Size: S — but it is half of why this project exists.**

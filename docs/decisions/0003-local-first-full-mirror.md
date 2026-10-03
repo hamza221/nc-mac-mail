@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: Hamza Mahjoubi
+SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+
 # ADR-0003: Keep a complete local mirror and read from it always
 
 **Status:** Accepted — **supersedes** the "No local database" decision in `plan/macos-client.md`

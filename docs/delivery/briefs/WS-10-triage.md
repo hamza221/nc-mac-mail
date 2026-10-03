@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: Hamza Mahjoubi
+SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+
 # WS-10 — Triage actions, toolbar, keyboard
 
 **Wave 4, after WS-06, WS-08, WS-09. Size: M.**
@@ -34,9 +39,11 @@ final class MessageActions {
 }
 ```
 
-Each one builds a `MailOperation` and calls `OperationQueue.perform`. **No HTTP in this
-workstream at all.** The local write updates the list through observation; you never touch
-the view state directly.
+Each one builds a `MailOperation` and calls `MutationQueue.perform` — the type is
+`MutationQueue`, not `OperationQueue`, because Foundation owns that name
+([ADR-0044](../../decisions/0044-the-queue-type-is-not-called-operationqueue.md)). **No HTTP
+in this workstream at all.** The local write updates the list through observation; you never
+touch the view state directly.
 
 Rules that are easy to get wrong:
 
@@ -47,15 +54,29 @@ Rules that are easy to get wrong:
 - **Thread actions** use the thread endpoints, whose move parameter is `destMailboxId`
   while the message one is `destFolderId`.
 - An account missing the special mailbox disables the action with an explanation, not a
-  greyed button with no reason.
+  greyed button with no reason. **Every account on the live test server has
+  `archiveMailboxId` null**, so this is the ordinary state rather than an edge case, and a
+  disabled AppKit control cannot show a tooltip — the explanation is the context-menu item's
+  title ([ADR-0050](../../decisions/0050-an-unavailable-action-says-why-in-the-menu.md)).
 
 **Toolbar** — `NCButtonStyle.icon` with `.help` tooltips carrying the shortcut.
-**Context menu** on rows, acting on the whole selection. **Move ▾** is a `Menu` over the
-mailbox tree with a filter field.
+**Context menu** on rows, acting on the whole selection. **Move ▾** is a **popover** over the
+mailbox tree with a filter field: an `NSMenu` cannot hold a `TextField`, and SwiftUI renders a
+macOS `Menu` into one, so a menu and a filter field are not available at the same time
+([ADR-0052](../../decisions/0052-move-is-a-popover-because-a-menu-cannot-hold-a-field.md)).
+The context menu's Move stays a real submenu, flat and unfiltered.
 
 **Commands** — a `CommandMenu` so every shortcut appears in the menu bar with its key. A
 shortcut that exists only in a `keyboardShortcut` modifier is undiscoverable. The table:
 `A` `S` `U` `J` `⌫` `R` `←` `→` `↑` `↓` `⌘F` `⌘⇧F` `⌘P`.
+
+Two of those are **not** registered as menu items. `↑` and `↓` already move the selection in
+`List(selection:)`, and a key equivalent is matched ahead of the first responder, so binding
+them would take the arrow keys from the list, the search field and the message body at once.
+`⌘F` and `⌘⇧F` are registered only once a search handler is wired, because `.searchable`
+binds `⌘F` itself and a second binding leaves one of the two dead. Both keys are listed in
+Help ▸ Keyboard Shortcuts either way
+([ADR-0049](../../decisions/0049-the-arrow-keys-stay-with-the-list.md)).
 
 **After acting on the selected message**, selection advances to the next one — that is what
 makes a triage pass a rhythm rather than a sequence of clicks. Advance direction follows

@@ -10,10 +10,11 @@
 #
 #   Scripts/record-fixtures.sh https://cloud.example.com alice 'app-password' [--scrub-content]
 #
-# Writes to Packages/NCMailTestSupport/Sources/NCMailTestSupport/Fixtures/, which every
-# package's tests reach through Bundle.module. Addresses, tokens, hmacs and hostnames are replaced
-# before anything is written. Subjects and preview text are KEPT — they are what
-# makes a decoding test real — unless --scrub-content is passed.
+# Writes to Packages/NCMailTestSupport/Sources/NCMailFixtures/Resources/Fixtures/, the
+# dependency-free target every package's tests can reach through Bundle.module (ADR-0026).
+# Addresses, tokens, hmacs and hostnames are replaced before anything is written. Subjects
+# and preview text are KEPT — they are what makes a decoding test real — unless
+# --scrub-content is passed.
 
 set -euo pipefail
 
@@ -28,7 +29,7 @@ PASSWORD="$3"
 SCRUB_CONTENT="${4:-}"
 
 API="$SERVER/index.php/apps/mail/api"
-OUT="$(cd "$(dirname "$0")/.." && pwd)/Packages/NCMailTestSupport/Sources/NCMailTestSupport/Fixtures"
+OUT="$(cd "$(dirname "$0")/.." && pwd)/Packages/NCMailTestSupport/Sources/NCMailFixtures/Resources/Fixtures"
 mkdir -p "$OUT"
 
 command -v jq >/dev/null 2>&1 || { echo "jq is required" >&2; exit 69; }
@@ -44,13 +45,38 @@ scrub() {
         -e 's#"(appPassword|token|hmac|requesttoken)":[[:space:]]*"[^"]*"#"\1":"REDACTED"#g' \
         -e 's#(hmac=)[A-Za-z0-9%+/=_-]+#\1REDACTED#g' \
         -e 's#https?://[^/"]*:[^@"]*@#https://REDACTED@#g' \
-        -e 's#[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}#user@example.com#g'
+        -e 's#[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}#user@example.com#g' \
+        -e 's#[A-Za-z0-9._+-]+%40[A-Za-z0-9.-]+\.[A-Za-z]{2,}#user%40example.com#g' \
+        -e 's#"(imapHost|smtpHost)":[[:space:]]*"[^"]*"#"\1":"mail.example.com"#g'
+}
+
+# Per-recipient tracking tokens. A marketing mail's links carry an opaque id
+# that identifies the recipient to the sender's click tracker. The URL shape is
+# what a WebView test needs; the token is not. Structure kept, token replaced.
+scrub_tracking() {
+    python3 -c '
+import re, sys
+# 24+ url-safe characters containing at least one digit. The digit requirement
+# is what keeps CSS keywords such as -webkit-text-size-adjust intact.
+sys.stdout.write(re.sub(r"(?=[A-Za-z0-9_-]*[0-9])[A-Za-z0-9_-]{24,}", "TRACKINGID", sys.stdin.read()))
+'
 }
 
 scrub_content() {
     if [ "$SCRUB_CONTENT" = "--scrub-content" ]; then
+        # Everything a human wrote or was named in. Addresses are handled by
+        # scrub(); these are the fields that carry a person's NAME rather than
+        # their address -- display labels, attachment filenames (a CV filename
+        # is as identifying as an address), and the body text itself. The
+        # shapes all survive: a label is still a string, an attachment still
+        # has a fileName with its real extension.
         jq '(.. | objects | select(has("subject")) | .subject) |= "Subject redacted"
-            | (.. | objects | select(has("previewText")) | .previewText) |= "Preview redacted"'
+            | (.. | objects | select(has("previewText")) | .previewText) |= "Preview redacted"
+            | (.. | objects | select(has("summary")) | .summary) |= "Summary redacted"
+            | (.. | objects | select(has("label")) | .label) |= "Name redacted"
+            | (.. | objects | select(has("body")) | .body) |= "Body redacted"
+            | (.. | objects | select(has("fileName")) | .fileName) |=
+                (if test("\\.") then "attachment." + (split(".") | last) else "attachment" end)'
     else
         cat
     fi
@@ -69,9 +95,9 @@ fetch() {
         "$url" || true)"
 
     if [ "$mode" = "json" ] && jq -e . >/dev/null 2>&1 < "$tmp"; then
-        jq '.' < "$tmp" | scrub_content | scrub > "$out"
+        jq '.' < "$tmp" | scrub_content | scrub | scrub_tracking > "$out"
     else
-        scrub < "$tmp" > "$out"
+        scrub < "$tmp" | scrub_tracking > "$out"
     fi
     printf '  %-38s HTTP %s  %s\n' "$1" "$status" "$(wc -c < "$out" | tr -d ' ') bytes"
     rm -f "$tmp"
@@ -89,9 +115,9 @@ post() {
         -H 'User-Agent: Nextcloud Mail (macOS)/fixtures' \
         -d "$3" "$2" || true)"
     if jq -e . >/dev/null 2>&1 < "$tmp"; then
-        jq '.' < "$tmp" | scrub_content | scrub > "$out"
+        jq '.' < "$tmp" | scrub_content | scrub | scrub_tracking > "$out"
     else
-        scrub < "$tmp" > "$out"
+        scrub < "$tmp" | scrub_tracking > "$out"
     fi
     printf '  %-38s HTTP %s  %s\n' "$1" "$status" "$(wc -c < "$out" | tr -d ' ') bytes"
     rm -f "$tmp"
@@ -132,10 +158,35 @@ if [ -n "$HTML_ID" ]; then
     fetch "message-thread.json" "$API/messages/$HTML_ID/thread"
 fi
 
+# A body that carries an attachment. The attachment entries inside an envelope
+# are a reduced shape -- id, fileName, mime, downloadUrl, mimeUrl -- and only
+# the body endpoint returns the full one with size, cid, disposition, isImage
+# and isCalendarEvent. Attachment is decoded from both, so both are recorded.
+ATTACHMENT_MESSAGE_ID="$(jq -r 'if type == "array" then ([.[] | select((.attachments | length) > 0)][0].databaseId // empty) else empty end' < "$OUT/messages-inbox-page1.json")"
+if [ -n "$ATTACHMENT_MESSAGE_ID" ]; then
+    fetch "message-body-attachments.json" "$API/messages/$ATTACHMENT_MESSAGE_ID/body"
+fi
+
+# Small payloads with their own models: MailboxStats, Preference and the
+# trusted-sender list, which arrives wrapped in the JsonResponse success
+# envelope rather than as a bare array.
+fetch "mailbox-stats.json" "$API/mailboxes/$MAILBOX_ID/stats"
+fetch "preference-sort-order.json" "$API/preferences/sort-order"
+fetch "trustedsenders.json" "$API/trustedsenders"
+
 # Error shapes. These are the fixtures nobody has when they need them.
-fetch "error-mailbox-not-found.json" "$API/mailboxes/99999999/stats"
-fetch "error-message-not-found.json" "$API/messages/99999999/body"
-fetch "avatar-missing.json" "$API/avatars/image/nobody%40example.invalid" raw
+#
+# A bad id on either route answers HTTP 403 with a body of exactly `[]`, not a 404 —
+# DelegationService resolves the effective user before the controller runs, and an id that
+# does not exist cannot be resolved to one the caller may see, so "gone" and "never yours"
+# are the same answer. See docs/reference/api-payloads.md#what-a-missing-thing-actually-answers.
+# Naming these "-not-found" would repeat the mistake this comment is fixing: the fixture
+# names say what the server actually sent, not what the id turned out to mean.
+fetch "error-mailbox-forbidden.json" "$API/mailboxes/99999999/stats"
+fetch "error-message-forbidden.json" "$API/messages/99999999/body"
+# A missing avatar is a genuine 404 with a zero-byte text/html body, not JSON — hence "raw"
+# and the .txt extension rather than .json.
+fetch "avatar-404.txt" "$API/avatars/image/nobody%40example.invalid" raw
 
 echo
 echo "Done. Before committing:"
