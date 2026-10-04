@@ -194,6 +194,7 @@ struct EditorDocumentTests {
             $0.setString(
                 "<p><b>bold</b><img src=\"https://evil.example/t.png\"></p>", forType: .html)
         }
+        defer { pasteboard.releaseGlobally() }
         #expect(view.readSelection(from: pasteboard, type: .html))
         #expect(document.html() == "<p><strong>bold</strong></p>")
     }
@@ -203,8 +204,18 @@ struct EditorDocumentTests {
         let (document, view) = Self.makeEditor()
         var dropped: [EditorDroppedFile] = []
         view.onFileDrop = { dropped.append($0) }
-        let file = URL(fileURLWithPath: "/tmp/menu.pdf")
+        // A real file inside the container: the host is sandboxed, so a file URL outside it
+        // (or one that does not exist) makes the pasteboard server fail to mint a sandbox
+        // extension for `public.file-url`, and that synchronous IPC can stall the main actor.
+        let file = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ncmail-paste-\(UUID().uuidString)")
+            .appendingPathComponent("menu.pdf")
+        try FileManager.default.createDirectory(
+            at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data("%PDF-1.4\n".utf8).write(to: file)
+        defer { try? FileManager.default.removeItem(at: file.deletingLastPathComponent()) }
         let pasteboard = Self.pasteboard { $0.writeObjects([file as NSURL]) }
+        defer { pasteboard.releaseGlobally() }
         #expect(view.readSelection(from: pasteboard, type: .fileURL))
         #expect(document.storage.length == 0)
         #expect(dropped.count == 1)
@@ -225,6 +236,7 @@ struct EditorDocumentTests {
                 base64Encoded:
                     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="))
         let pasteboard = Self.pasteboard { $0.setData(png, forType: .png) }
+        defer { pasteboard.releaseGlobally() }
         #expect(view.readSelection(from: pasteboard, type: .png))
         #expect(document.storage.length == 0)
         #expect(dropped.count == 1)
@@ -253,6 +265,7 @@ struct EditorDocumentTests {
             source.rtf(from: NSRange(location: 0, length: source.length), documentAttributes: [:]))
         let (document, view) = Self.makeEditor()
         let pasteboard = Self.pasteboard { $0.setData(data, forType: .rtf) }
+        defer { pasteboard.releaseGlobally() }
         #expect(view.readSelection(from: pasteboard, type: .rtf))
         #expect(document.html() == "<p><span style=\"font-family:Georgia\"><strong>styled</strong></span></p>")
     }

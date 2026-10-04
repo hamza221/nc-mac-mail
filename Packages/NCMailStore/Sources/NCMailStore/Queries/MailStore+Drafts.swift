@@ -17,10 +17,35 @@ extension MailStore {
         }
     }
 
-    /// Rewrites a draft row — the composer's autosave. Recipients and attachments have their
-    /// own calls because they are edited at a different cadence than the body.
+    /// Rewrites a whole draft row, engine columns included. The composer uses
+    /// `updateDraftContent` instead so it cannot clobber engine stamps.
     public func update(draft: DraftRecord) async throws {
         try await dbQueue.write { db in try draft.update(db) }
+    }
+
+    /// The composer's autosave: writes only the columns the composer owns, so engine stamps
+    /// (`remoteId`, `savedAt`, `syncError`, `sendState`, `sendRequestedAt`) landing between the
+    /// composer's read and this write survive. `updatedAt` never moves backwards.
+    public func updateDraftContent(_ draft: DraftRecord) async throws {
+        guard let id = draft.id else { return }
+        try await dbQueue.write { db in
+            try db.execute(
+                sql: """
+                    UPDATE draft SET
+                        accountId = ?, aliasId = ?, subject = ?, isHtml = ?, bodyHtml = ?, bodyPlain = ?,
+                        editorBody = ?, inReplyToMessageId = ?, replacesMessageId = ?, requestMdn = ?,
+                        isAiGenerated = ?, smimeSign = ?, smimeEncrypt = ?, smimeCertificateRemoteId = ?,
+                        sendAt = ?, updatedAt = MAX(?, updatedAt + 1)
+                    WHERE id = ?
+                    """,
+                arguments: [
+                    draft.accountId, draft.aliasId, draft.subject, draft.isHtml, draft.bodyHtml, draft.bodyPlain,
+                    draft.editorBody, draft.inReplyToMessageId, draft.replacesMessageId, draft.requestMdn,
+                    draft.isAiGenerated, draft.smimeSign, draft.smimeEncrypt, draft.smimeCertificateRemoteId,
+                    draft.sendAt, draft.updatedAt, id,
+                ]
+            )
+        }
     }
 
     public func draft(id: Int64) async throws -> DraftRecord? {
@@ -108,6 +133,23 @@ extension MailStore {
             try db.execute(
                 sql: "UPDATE draft SET sendState = ?, sendRequestedAt = ?, syncError = ? WHERE id = ?",
                 arguments: [sendState, sendRequestedAt, syncError, id]
+            )
+        }
+    }
+
+    /// Records a send request in one write: the send intent plus `sendAt`, pinned at send
+    /// time. `sendAt` is otherwise composer-owned; the send request is its one engine writer.
+    /// Content columns are untouched, so an autosave racing the request survives.
+    public func setDraftSendRequest(
+        id: Int64, sendAt: Int64?, sendState: String, sendRequestedAt: Int64
+    ) async throws {
+        try await dbQueue.write { db in
+            try db.execute(
+                sql: """
+                    UPDATE draft SET sendAt = ?, sendState = ?, sendRequestedAt = ?, syncError = NULL
+                    WHERE id = ?
+                    """,
+                arguments: [sendAt, sendState, sendRequestedAt, id]
             )
         }
     }

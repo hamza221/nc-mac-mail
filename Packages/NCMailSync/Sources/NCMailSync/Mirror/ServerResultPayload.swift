@@ -46,8 +46,9 @@ public enum ServerResultKind: String, Sendable, CaseIterable {
     /// "fileId", "time", "direction": "incoming"|"outgoing"}]`, newest first.
     case sharedItems
 
-    /// How long a `ready` or `empty` row answers a request without asking again, in
-    /// seconds. Each kind's owner set it from how often the answer can change.
+    /// How long a `ready` row answers a request without asking again, in seconds. Each
+    /// kind's owner set it from how often the answer can change. An `empty` row is capped
+    /// at ``emptyRetryAfter``.
     public var expiry: Int64 {
         switch self {
         case .threadSummary, .eventData: 7 * 86_400
@@ -67,6 +68,24 @@ public enum ServerResultKind: String, Sendable, CaseIterable {
     /// A `failed` row stops looking fresh after this long, so a view re-requesting after a
     /// failure gets one retry per five minutes and never a request loop.
     public static let failureRetryAfter: Int64 = 300
+
+    /// An `empty` row stops looking fresh after this long, or after the kind's
+    /// ``expiry`` if that is shorter. "Nothing" is the answer most likely to change, and
+    /// the AI kinds answer it for a whole instance at once: with LLM processing off every
+    /// summary and smart reply is a 204. Fifteen minutes lets the admin turning it on reach
+    /// a reader on the next open of the message instead of a week (summary) or a month
+    /// (translation) later, while a message with genuinely nothing to say is still asked at
+    /// most four times an hour.
+    public static let emptyRetryAfter: Int64 = 900
+
+    /// How long a row holding `payload` answers a request by itself.
+    func freshness(of payload: ServerResultPayload) -> Int64 {
+        switch payload {
+        case .ready: expiry
+        case .empty: min(expiry, Self.emptyRetryAfter)
+        case .failed: Self.failureRetryAfter
+        }
+    }
 
     public static func messageKey(_ messageId: Int64) -> String { String(messageId) }
 
@@ -153,9 +172,7 @@ struct ServerResultWriter: Sendable {
             let row = try? await store.serverResult(kind: kind.rawValue, key: key, loginId: loginId),
             let payload = try? ServerResultPayload(payloadJSON: row.payloadJSON)
         else { return false }
-        let age = now - row.fetchedAt
-        if case .failed = payload { return age < ServerResultKind.failureRetryAfter }
-        return age < kind.expiry
+        return now - row.fetchedAt < kind.freshness(of: payload)
     }
 }
 

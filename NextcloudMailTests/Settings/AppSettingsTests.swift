@@ -59,8 +59,18 @@ struct DefaultMailAppCheckTests {
 struct SmimeCertificateConverterTests {
     static let password = "nc-mail-test"
 
+    /// The marker `Bundle(for:)` needs: Swift Testing suites are structs.
+    private final class BundleMarker {}
+
+    /// The test bundle's copy of a fixture, never the checkout's: the host app reading the
+    /// repository under the developer's home trips the folder-access consent, and a single
+    /// denial there is remembered — every run after it fails the read with EPERM. The copy
+    /// in the bundle is the test's own, wherever the build put it.
     static func fixture(_ name: String) throws -> Data {
-        try Data(contentsOf: URL(filePath: #filePath).deletingLastPathComponent().appending(path: "Fixtures/\(name)"))
+        struct MissingFixture: Error { let name: String }
+        guard let url = Bundle(for: BundleMarker.self).url(forResource: name, withExtension: nil)
+        else { throw MissingFixture(name: name) }
+        return try Data(contentsOf: url)
     }
 
     /// The base64 bodies of every `label` block in a PEM text.
@@ -467,7 +477,9 @@ struct AppSettingsModelTests {
         #expect(await settled { !model.contextChatAvailable && !model.followUpAvailable })
     }
 
-    private func settled(_ condition: () -> Bool, seconds: Double = 5) async -> Bool {
+    /// Clock-bound at the in-tree 10 s: a full parallel run was measured missing five
+    /// seconds here. Only a failing run waits this long.
+    private func settled(_ condition: () -> Bool, seconds: Double = 10) async -> Bool {
         let deadline = ContinuousClock.now + .seconds(seconds)
         while ContinuousClock.now < deadline {
             if condition() { return true }

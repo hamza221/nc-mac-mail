@@ -191,6 +191,60 @@ struct OutboxSenderTests {
         #expect(draft.sendRequestedAt == nil)
     }
 
+    /// The composer autosaves while the send request is in flight: the request writes only
+    /// send columns, so the user's last content survives on the row next to the send intent.
+    @Test func autosaveRacingTheSendRequestKeepsTheLastContent() async throws {
+        let fixture = try await OutboxTest.make(sleepsForReal: true)
+        let id = try await fixture.makeDraft()
+        let base = try #require(try await fixture.draft(id))
+        let store = fixture.store
+
+        async let edits: Void = {
+            for edit in 0..<50 {
+                var draft = base
+                draft.subject = "edit-\(edit)"
+                draft.bodyPlain = "body-\(edit)"
+                draft.updatedAt = base.updatedAt + Int64(edit) + 1
+                try await store.updateDraftContent(draft)
+            }
+        }()
+        try await fixture.sender.send(draftId: id, sendAt: Date(timeIntervalSince1970: 2_000_000_000))
+        try await edits
+
+        let row = try #require(try await fixture.draft(id))
+        #expect(row.subject == "edit-49")
+        #expect(row.bodyPlain == "body-49")
+        #expect(row.sendState == "undo")
+        #expect(row.sendRequestedAt != nil)
+        await fixture.sender.stop()
+    }
+
+    /// Deterministic half of the race: a content write between the request's read and its
+    /// write is simulated by writing content first and asserting the request leaves it.
+    @Test func theSendRequestWritesOnlySendColumns() async throws {
+        let fixture = try await OutboxTest.make(sleepsForReal: true)
+        let id = try await fixture.makeDraft()
+        var edited = try #require(try await fixture.draft(id))
+        edited.subject = "latest"
+        edited.bodyPlain = "latest body"
+        edited.updatedAt += 5
+        try await fixture.store.updateDraftContent(edited)
+        try await fixture.store.setDraftSync(id: id, remoteId: 77, savedAt: 3, syncError: "old")
+
+        try await fixture.sender.send(draftId: id, sendAt: Date(timeIntervalSince1970: 2_000_000_000))
+
+        let row = try #require(try await fixture.draft(id))
+        #expect(row.subject == "latest")
+        #expect(row.bodyPlain == "latest body")
+        #expect(row.updatedAt == edited.updatedAt)
+        #expect(row.remoteId == 77)
+        #expect(row.savedAt == 3)
+        #expect(row.syncError == nil)
+        #expect(row.sendAt == 2_000_000_000)
+        #expect(row.sendState == "undo")
+        await fixture.sender.stop()
+    }
+
     @Test func undoAfterTheWindowIsRefused() async throws {
         let fixture = try await OutboxTest.make(sleepsForReal: true)
         let id = try await fixture.makeDraft()

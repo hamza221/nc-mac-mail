@@ -48,9 +48,9 @@ public actor ServerResultFetcher {
     /// Registers interest in one result and returns immediately.
     ///
     /// Nothing is sent when the existing row is younger than the kind's
-    /// ``ServerResultKind/expiry`` (five minutes for a `failed` row), when the same
-    /// `(kind, key)` is already in flight, or while offline — offline, the last row stays
-    /// exactly as it was.
+    /// ``ServerResultKind/expiry`` (at most fifteen minutes for an `empty` row, five for a
+    /// `failed` one), when the same `(kind, key)` is already in flight, or while offline —
+    /// offline, the last row stays exactly as it was.
     ///
     /// - Parameter force: ignore the expiry, for an explicit "regenerate".
     public func request(kind: ServerResultKind, key: String, force: Bool = false) {
@@ -123,7 +123,7 @@ public actor ServerResultFetcher {
 
         case .smartReply:
             let message = try await remoteMessageId(key)
-            return try readyOrEmpty(try await client.get(.smartReply(messageId: message)).data)
+            return try readyOrEmpty(try await client.get(.smartReply(messageId: message)).replies)
 
         case .itinerary:
             let message = try await remoteMessageId(key)

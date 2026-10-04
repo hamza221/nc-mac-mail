@@ -176,6 +176,10 @@ final class MessageViewModel {
 
     private(set) var smartReplies: ServerResultState<[String]> = .idle
     private(set) var threadSummary: ServerResultState<String> = .idle
+    /// The conversation's size across the account's mailboxes but Trash and Junk — what the
+    /// web counts for the summary gate — which can be more than ``thread``, this mailbox's
+    /// part of it: the reader's replies are in Sent.
+    private(set) var conversationSize = 0
     /// `true` once the follow-up check says somebody answered.
     private(set) var followUpAnswered = false
     private(set) var source: ServerResultState<String> = .idle
@@ -227,6 +231,7 @@ final class MessageViewModel {
         threadObservation = nil
         messageId = newId
         thread = []
+        conversationSize = 0
         threadSummary = .idle
         cancelResult(prefix: ServerResultKind.threadSummary.rawValue)
         show(newId)
@@ -292,6 +297,8 @@ final class MessageViewModel {
         await prioritiseIfNeeded(messageId: messageId)
         await resolveLogin(messageId: messageId)
         requestPerMessageResults()
+        // The thread may have arrived before the login: the summary waits for it.
+        requestThreadSummary()
 
         do {
             for try await stored in services.store.observeBody(messageId: messageId) {
@@ -335,6 +342,9 @@ final class MessageViewModel {
                 mailboxId: record.mailboxId
             ) {
                 thread = rows
+                let size = await size(of: record, shown: rows.count)
+                guard !Task.isCancelled else { return }
+                conversationSize = size
                 requestThreadSummary()
                 guard let expandedId else { continue }
                 await refresh(messageId: expandedId)
@@ -342,6 +352,14 @@ final class MessageViewModel {
         } catch {
             renderLog.error("thread observation stopped: \(RenderFailure.label(error), privacy: .public)")
         }
+    }
+
+    /// ``conversationSize`` for the thread `record` is in; never less than what is shown.
+    private func size(of record: MessageRecord, shown: Int) async -> Int {
+        guard let rootId = record.threadRootId, !rootId.isEmpty else { return shown }
+        let counted = try? await services.store.conversationSize(
+            rootId: rootId, accountId: record.accountId, mailboxId: record.mailboxId)
+        return max(shown, counted ?? 0)
     }
 
     // MARK: - Reading the mirror

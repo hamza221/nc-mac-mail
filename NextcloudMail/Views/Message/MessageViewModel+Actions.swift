@@ -57,10 +57,13 @@ extension MessageViewModel {
         }
     }
 
-    /// The summary of a conversation of three or more, keyed by its oldest message.
+    /// The summary of a conversation of three or more, the web's `Thread.vue` gate: counted
+    /// across the account (``conversationSize``), not just this mailbox's part of it, and
+    /// keyed by the oldest message shown — the server summarises that message's thread root.
+    /// Asked once the login is known: the row lives under it.
     func requestThreadSummary() {
-        guard threadSummary == .idle, thread.count >= 3, login?.llmSummariesAvailable != false,
-            let first = thread.first
+        guard threadSummary == .idle, conversationSize >= 3, resolvedLoginId != nil,
+            login?.llmSummariesAvailable != false, let first = thread.first
         else { return }
         set(threadSummary: .pending)
         watch(.threadSummary, key: ServerResultKind.messageKey(first.id)) { model, payload in
@@ -114,20 +117,14 @@ extension MessageViewModel {
         }
     }
 
-    /// The smart-reply payload's populated shape was never recorded (no LLM provider on the
-    /// test server, api-payloads.md), so every shape the route could plausibly send is read:
-    /// a list of strings, an object of strings, or either under `replies`.
+    /// The smart-reply row's data: the server's list of reply strings, as the fetcher stores
+    /// the route's bare array (recorded live, `message-smartreply-populated.json`). Blank
+    /// entries are dropped and at most three are shown.
     nonisolated static func replies(in data: AnyJSON) -> [String]? {
-        let strings: [String]
-        switch data {
-        case .array(let items): strings = items.compactMap(\.stringValue)
-        case .object(let fields):
-            if let nested = fields["replies"] { return replies(in: nested) }
-            strings = fields.keys.sorted().compactMap { fields[$0]?.stringValue }
-        case .string(let text): strings = [text]
-        default: strings = []
-        }
-        let cleaned = strings.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+        guard case .array(let items) = data else { return nil }
+        let cleaned = items.compactMap(\.stringValue)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
         return cleaned.isEmpty ? nil : Array(cleaned.prefix(3))
     }
 

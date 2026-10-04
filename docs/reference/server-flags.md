@@ -88,8 +88,11 @@ check is a precondition and the route itself is the final word.
 - **Then:** with the type present, the admin switch is still unknown, so the feature is
   shown and the route decides. `GET /api/thread/{id}/summary` and
   `GET /api/messages/{id}/smartreply` answer **204, empty body** when processing is
-  unavailable (observed live); `MailClient` decodes that to a nil payload and the UI hides
-  the result area for that login until the next flag refresh.
+  unavailable (observed live); `MailClient` decodes that to a nil payload, the fetcher
+  writes an `empty` `serverResult` row, and the UI hides the result area for that message.
+  An `empty` row is re-asked after at most fifteen minutes
+  (`ServerResultKind.emptyRetryAfter`), so the admin turning processing on reaches a reader
+  the next time a message is opened, without a relaunch.
 
 ### `llm_translation_enabled`
 
@@ -159,4 +162,7 @@ check is a precondition and the route itself is the final word.
 The three discovery reads are cheap — capabilities, `taskprocessing/tasktypes`,
 `translation/languages` — and every one is a retryable GET. Whoever mirrors server state
 refreshes them together and stamps `login.flagsFetchedAt`; no workstream brief names that
-owner yet (reported by WS-16).
+owner yet (reported by WS-16). Until one does, nothing writes the `llm_*` and
+`context_chat_available` columns: they stay NULL, every gate reads "on", and the route's
+own answer (the `empty` row above) is the only "off" a reader sees — which therefore can
+never be stale beyond `emptyRetryAfter`.

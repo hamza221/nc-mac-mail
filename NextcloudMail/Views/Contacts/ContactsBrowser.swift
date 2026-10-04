@@ -69,6 +69,15 @@ final class ContactsBrowser {
         login(sessionId).entries.filter { selection.contains($0.id) }.map(\.record)
     }
 
+    /// What the detail column shows for one login: the new-contact editor, the batch pane for
+    /// more than one selected card, the one selected card, or nothing.
+    func detailPane(sessionId: String) -> ContactsDetailPane {
+        if let newContact, newContact.sessionId == sessionId { return .newContact(newContact) }
+        if selection.count > 1 { return .batch(count: selection.count) }
+        if let id = selection.first { return .contact(id) }
+        return .nothing
+    }
+
     func reveal(_ contactId: Int64) {
         newContact = nil
         selection = [contactId]
@@ -150,6 +159,14 @@ final class ContactsBrowser {
     }
 
     nonisolated static let logger = Logger(subsystem: "com.nextcloud.mail.macos", category: "contacts")
+}
+
+/// The Contacts detail column's content, resolved by ``ContactsBrowser/detailPane(sessionId:)``.
+enum ContactsDetailPane: Equatable {
+    case newContact(ContactsBrowser.NewContactRequest)
+    case batch(count: Int)
+    case contact(Int64)
+    case nothing
 }
 
 /// One login's books, cards and groups, live from the mirror.

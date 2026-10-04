@@ -17,13 +17,14 @@ struct ContactsDetailColumn: View {
     @Environment(ContactsBrowser.self) private var browser
 
     var body: some View {
-        if let request = browser.newContact, request.sessionId == sessionId {
+        switch browser.detailPane(sessionId: sessionId) {
+        case .newContact(let request):
             ContactNewEditor(request: request).id(request.id)
-        } else if browser.selection.count > 1 {
+        case .batch:
             ContactsMultiSelectionView(sessionId: sessionId)
-        } else if let id = browser.selection.first {
+        case .contact(let id):
             ContactDetailView(contactId: id, sessionId: sessionId).id(id)
-        } else {
+        case .nothing:
             ContentUnavailableView {
                 Label {
                     Text("No contact selected")
@@ -111,7 +112,10 @@ private struct ContactDetailContent: View {
     }
 
     var body: some View {
-        Group {
+        // A ZStack, not a Group: modifiers on a Group go to its children, and while the card is
+        // loading there are none, so the `.task` that loads it never started and a clicked
+        // contact stayed a blank pane.
+        ZStack {
             if let record = model.record, let card = model.card {
                 if draft != nil {
                     ContactEditor(
@@ -134,8 +138,12 @@ private struct ContactDetailContent: View {
                         MailSymbol.account.view(size: .large, label: .decorative)
                     }
                 }
+            } else {
+                // Loading: the mirror answers in milliseconds, so nothing to draw.
+                Color.clear
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .task { await model.run() }
         .sheet(item: $cropping) { item in
             ContactPhotoCropSheet(image: item.image) { data in

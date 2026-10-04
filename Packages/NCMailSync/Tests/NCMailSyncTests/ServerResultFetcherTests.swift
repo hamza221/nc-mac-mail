@@ -295,6 +295,148 @@ struct ServerResultFetcherTests {
         #expect(await f.transport.sendCount == 2)
     }
 
+    /// One AI kind as the instance answers it before and after the admin enables LLM
+    /// processing: the recorded "nothing", then the recorded answer (live, 2026-10-04).
+    struct AIKind: Sendable, CustomTestStringConvertible {
+        let kind: ServerResultKind
+        let route: @Sendable (Int64) -> String
+        let nothing: String
+        let nothingStatus: Int
+        let answer: String
+        /// Whether the answer sits inside `{"data": …}`; smartreply's is a bare array.
+        let enveloped: Bool
+
+        var testDescription: String { kind.rawValue }
+
+        func nothingResponse() throws -> StubResponse { try .fixture(nothing, status: nothingStatus) }
+        func answerResponse() throws -> StubResponse { try .fixture(answer) }
+
+        /// The row the recorded answer must become: the fixture's JSON as the server sent it.
+        func expected() throws -> ServerResultPayload {
+            let json = try JSONDecoder().decode(AnyJSON.self, from: try FixtureBytes.data(answer))
+            return .ready(enveloped ? try #require(json.objectValue?["data"]) : json)
+        }
+    }
+
+    static let aiKinds: [AIKind] = [
+        AIKind(
+            kind: .smartReply, route: { "/messages/\($0)/smartreply" },
+            nothing: "message-smartreply.json", nothingStatus: 204,
+            answer: "message-smartreply-populated.json", enveloped: false),
+        AIKind(
+            kind: .threadSummary, route: { "/thread/\($0)/summary" },
+            nothing: "thread-summary.json", nothingStatus: 204,
+            answer: "thread-summary-populated.json", enveloped: true),
+        AIKind(
+            kind: .eventData, route: { "/thread/\($0)/eventdata" },
+            nothing: "thread-eventdata.json", nothingStatus: 200,
+            answer: "thread-eventdata-populated.json", enveloped: true),
+    ]
+
+    @Test(
+        "an empty AI row is asked again after emptyRetryAfter, so LLM turned on reaches the next open",
+        arguments: aiKinds)
+    func emptyAIRowIsAskedAgainSoon(_ ai: AIKind) async throws {
+        let f = try await Self.fixture()
+        await f.transport.stubSequence(
+            .pathSuffix(ai.route(f.remoteId)), [try ai.nothingResponse(), try ai.answerResponse()])
+
+        await f.fetcher.request(kind: ai.kind, key: f.messageKey)
+        await f.fetcher.settle()
+        #expect(try await f.payload(ai.kind, f.messageKey) == .empty)
+
+        // Still fresh just before the window closes: no request loop.
+        f.clock.advance(by: ServerResultKind.emptyRetryAfter - 1)
+        await f.fetcher.request(kind: ai.kind, key: f.messageKey)
+        await f.fetcher.settle()
+        #expect(await f.transport.sendCount == 1)
+
+        f.clock.advance(by: 1)
+        await f.fetcher.request(kind: ai.kind, key: f.messageKey)
+        await f.fetcher.settle()
+        #expect(await f.transport.sendCount == 2)
+        #expect(try await f.payload(ai.kind, f.messageKey) == ai.expected())
+        #expect(ServerResultKind.emptyRetryAfter < ai.kind.expiry)
+    }
+
+    @Test("a ready AI row keeps the kind's full expiry", arguments: aiKinds)
+    func readyAIRowKeepsExpiry(_ ai: AIKind) async throws {
+        let f = try await Self.fixture()
+        await f.transport.stub(.pathSuffix(ai.route(f.remoteId)), with: try ai.answerResponse())
+        await f.fetcher.request(kind: ai.kind, key: f.messageKey)
+        await f.fetcher.settle()
+        #expect(try await f.payload(ai.kind, f.messageKey) == ai.expected())
+
+        f.clock.advance(by: ai.kind.expiry - 1)
+        await f.fetcher.request(kind: ai.kind, key: f.messageKey)
+        await f.fetcher.settle()
+        #expect(await f.transport.sendCount == 1)
+
+        f.clock.advance(by: 1)
+        await f.fetcher.request(kind: ai.kind, key: f.messageKey)
+        await f.fetcher.settle()
+        #expect(await f.transport.sendCount == 2)
+    }
+
+    @Test(
+        "an empty row written while LLM was off, younger than the kind's expiry, becomes ready",
+        arguments: aiKinds)
+    func staleEmptyRowFromBeforeLLM(_ ai: AIKind) async throws {
+        let f = try await Self.fixture()
+        // The row the old policy kept for a whole day (smart reply) or week (summary).
+        try await f.seeded.store.upsert(
+            serverResult: ServerResultRecord(
+                loginId: f.loginId,
+                kind: ai.kind.rawValue,
+                key: f.messageKey,
+                payloadJSON: try ServerResultPayload.empty.jsonText(),
+                fetchedAt: f.clock.now - ai.kind.expiry + 1
+            )
+        )
+        await f.transport.stub(.pathSuffix(ai.route(f.remoteId)), with: try ai.answerResponse())
+        await f.fetcher.request(kind: ai.kind, key: f.messageKey)
+        await f.fetcher.settle()
+        #expect(await f.transport.sendCount == 1)
+        #expect(try await f.payload(ai.kind, f.messageKey) == ai.expected())
+    }
+
+    @Test("an empty translation is asked again after emptyRetryAfter, not after 30 days")
+    func emptyTranslationIsAskedAgainSoon() async throws {
+        let f = try await Self.fixture()
+        let body = try JSONDecoder().decode(
+            RawBacked<MessageBody>.self, from: try FixtureBytes.data("message-body.json"))
+        try await f.seeded.store.upsert(
+            body: try MirrorMapping.bodyWrite(body, html: nil, fetchedAt: 1),
+            for: f.messageId
+        )
+        let ok = #"{"ocs":{"meta":{"status":"ok","statuscode":200,"message":"OK"},"data":"#
+        await f.transport.stubSequence(
+            .pathSuffix("/translation/translate"),
+            [.json(ok + #"{"text":"","from":null}}}"#), .json(ok + #"{"text":"Hallo","from":"en"}}}"#)])
+        let key = ServerResultKind.translationKey(messageId: f.messageId, to: "de")
+
+        await f.fetcher.request(kind: .translation, key: key)
+        await f.fetcher.settle()
+        #expect(try await f.payload(.translation, key) == .empty)
+
+        f.clock.advance(by: ServerResultKind.emptyRetryAfter)
+        await f.fetcher.request(kind: .translation, key: key)
+        await f.fetcher.settle()
+        #expect(await f.transport.sendCount == 2)
+        #expect(
+            try await f.payload(.translation, key)
+                == .ready(.object(["text": .string("Hallo"), "from": .string("en")])))
+    }
+
+    @Test("a kind whose expiry is already shorter than emptyRetryAfter keeps it for empty rows")
+    func emptyNeverOutlivesTheKind() {
+        for kind in ServerResultKind.allCases {
+            #expect(kind.freshness(of: .empty) == min(kind.expiry, ServerResultKind.emptyRetryAfter))
+            #expect(kind.freshness(of: .ready(.null)) == kind.expiry)
+            #expect(kind.freshness(of: .failed("x")) == ServerResultKind.failureRetryAfter)
+        }
+    }
+
     @Test("two requests for the same row while one is in flight send one request")
     func inFlightRequestsJoin() async throws {
         let f = try await Self.fixture()

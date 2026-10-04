@@ -215,19 +215,31 @@ actor EventLog {
         events.append(event)
     }
 
+    /// The deadline was reached before the condition held. Its own type, so a timeout is
+    /// never reported as a `CancellationError` the engine might have leaked.
+    struct TimedOut: Error {
+        let events: [String]
+    }
+
     /// Polls until `condition` holds. The engine is fire-and-forget by design, so there is
     /// nothing to await directly; a condition that never holds fails rather than hangs.
+    ///
+    /// The bound is a clock, and a generous one: the engine's hops all land on the main
+    /// actor, which a full parallel `make test-app` shares with every other `@MainActor`
+    /// suite, and five seconds was measured not to be enough there. A passing run returns
+    /// the moment the condition holds, so the deadline only ever costs a failing one.
     nonisolated func waitUntil(
-        within seconds: Double = 5,
+        within limit: Duration = .seconds(10),
         _ condition: @Sendable ([String]) -> Bool
     ) async throws {
-        let deadline = ContinuousClock.now.advanced(by: .seconds(seconds))
+        let deadline = ContinuousClock.now.advanced(by: limit)
         while ContinuousClock.now < deadline {
             if condition(await events) { return }
             try await Task.sleep(for: .milliseconds(5))
         }
-        Issue.record("timed out; events: \(await events)")
-        throw CancellationError()
+        let events = await events
+        Issue.record("timed out after \(limit); events: \(events)")
+        throw TimedOut(events: events)
     }
 }
 

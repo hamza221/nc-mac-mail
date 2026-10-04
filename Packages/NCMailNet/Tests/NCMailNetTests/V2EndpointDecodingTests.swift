@@ -231,11 +231,22 @@ struct MessageEndpointReplayTests {
     @Test("LLM routes answer 204 without a provider; the client builds nil")
     func llmWithoutProvider() async throws {
         let reply = try await replaying("message-smartreply.json", status: 204).get(.smartReply(messageId: 1))
-        #expect(reply.data == nil)
+        #expect(reply.replies.isEmpty)
         let summary = try await replaying("thread-summary.json", status: 204).get(.threadSummary(messageId: 1))
         #expect(summary.data == nil)
         let event = try await replaying("thread-eventdata.json").get(.threadEventData(messageId: 1))
         #expect(event.data == nil)
+    }
+
+    @Test("with a provider, smartreply is a bare array while summary and eventdata keep the envelope")
+    func llmWithProvider() async throws {
+        let reply = try await replaying("message-smartreply-populated.json").get(.smartReply(messageId: 1))
+        #expect(reply.replies == ["Perfect, see you Sat!", "Can we meet at ____ first?"])
+        let summary = try await replaying("thread-summary-populated.json").get(.threadSummary(messageId: 1))
+        #expect(summary.data?.hasPrefix("Two friends arrange") == true)
+        let event = try await replaying("thread-eventdata-populated.json").get(.threadEventData(messageId: 1))
+        #expect(event.data?.summary == "Saturday Afternoon Bookshop Visit")
+        #expect(event.data?.description?.isEmpty == false)
     }
 }
 

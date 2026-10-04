@@ -82,8 +82,11 @@ struct MailNotifierTests {
         try await f.mirror.store.setEnvelopeCursor(nil, complete: true, mailboxId: account.inboxId, lastSyncAt: 1)
     }
 
+    /// Clock-bound, like the other suites' waits: observations deliver on the main actor,
+    /// which a full parallel run shares with every `@MainActor` suite, and a baseline was
+    /// measured missing a five-second bound there. Only a failing run waits this long.
     private func eventually(
-        _ what: String, within seconds: Double = 5, _ condition: () async throws -> Bool
+        _ what: String, within seconds: Double = 10, _ condition: () async throws -> Bool
     ) async throws {
         let deadline = ContinuousClock.now.advanced(by: .seconds(seconds))
         while ContinuousClock.now < deadline {
@@ -199,21 +202,31 @@ struct MailNotifierTests {
         defer { f.notifier.stop() }
         let account = f.mirror.accounts[0]
         let isKey = Box(true)
-        f.notifier.isMainWindowKey = { isKey.value }
+        // `notify` asks this once per batch, at the moment it decides between a banner and
+        // silence, so the count is when the suppression was decided rather than a guess.
+        let asked = Box(0)
+        f.notifier.isMainWindowKey = {
+            asked.value += 1
+            return isKey.value
+        }
         f.navigation.select(.mailbox(account.inboxId))
         start(f)
         try await completeEnumeration(f, account)
         try await eventually("baseline") { f.notifier.watermark(mailboxId: account.inboxId) != nil }
 
         try await f.mirror.addMessages(count: 1, account: account, firstRemoteId: 600)
-        try await quiet()
+        // Flipping the window before that decision would race it: a scan slowed by a busy
+        // run would then see another app frontmost and banner the row meant to be silent.
+        try await eventually("suppression decided") { asked.value == 1 }
         #expect(f.center.requests.isEmpty)
 
         // The same inbox, but another app is frontmost.
         isKey.value = false
         let ids = try await f.mirror.addMessages(count: 1, account: account, firstRemoteId: 601)
         try await eventually("banner") { !f.center.requests.isEmpty }
+        try await quiet()
         #expect(f.center.requests.map(\.messageId) == [ids[0]])
+        #expect(asked.value == 2)
     }
 
     @Test func suppressionFollowsTheSelection() async throws {

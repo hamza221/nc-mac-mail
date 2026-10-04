@@ -506,7 +506,9 @@ Where this table disagrees with `plan/API.md`, the table is what the server does
 | `POST /api/messages/{id}/attachment/{attachmentId}`, `/file` | `[]` | |
 | `POST /api/list/unsubscribe/{id}` | **403** `{"status":"fail","data":null}` without a one-click header | |
 | `GET /api/messages/{id}/smartreply`, `/api/thread/{id}/summary` | **204, empty body** with no LLM provider | `EmptyBodyRepresentable` |
-| `GET /api/thread/{id}/eventdata` | `{"data": null}` when nothing is found | |
+| `GET /api/messages/{id}/smartreply` with a provider | **bare array** of reply strings, no envelope (live 2026-10-04) | `message-smartreply-populated.json` |
+| `GET /api/thread/{id}/summary` with a provider | `{"data": "<summary text>"}` (live 2026-10-04) | `thread-summary-populated.json` |
+| `GET /api/thread/{id}/eventdata` | `{"data": null}` when nothing is found; `{"data": {"summary", "description"}}` with a provider | `thread-eventdata-populated.json` |
 | `POST /api/drafts` | 201, envelope around the local message (`type` 1) | |
 | `PUT /api/drafts/{id}`, `DELETE /api/drafts/{id}`, `POST /api/drafts/move/{id}` | **202** with the *success* envelope | see below |
 | `GET /api/outbox` | envelope `{"messages": [...]}` — one level deeper than the draft answers | |

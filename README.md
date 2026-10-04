@@ -115,6 +115,27 @@ xcodebuild -project NextcloudMail.xcodeproj -scheme NextcloudMail SUPPRESS_WARNI
 
 [ADR-0018](docs/decisions/0018-ad-hoc-signature-in-the-checked-in-project.md) has the rest.
 
+### Releasing
+
+Push a tag `v<version>` (or run the **Release** workflow by hand with a tag) and
+`.github/workflows/release.yml` builds Release on a macOS runner, packages
+`NextcloudMail-<version>.dmg` with `Scripts/make-dmg.sh` — styled background, app icon
+next to an `/Applications` drop link — and publishes a GitHub release with the DMG
+attached and generated notes. The same script runs locally:
+
+```sh
+brew install create-dmg
+Scripts/make-dmg.sh            # writes build/NextcloudMail-<version>.dmg
+```
+
+With no secrets configured the app inside the DMG is ad-hoc signed (ADR-0018), so
+Gatekeeper on another Mac requires right-click → Open, and notarization is a manual
+follow-up. To turn real signing on, no workflow edit is needed: set the repository
+secrets `MACOS_CERT_P12` (base64 Developer ID certificate), `MACOS_CERT_PASSWORD`,
+`APPLE_TEAM_ID`, and for notarization `NOTARY_APPLE_ID` plus `NOTARY_PASSWORD`
+(an app-specific password); the import, sign, notarize and staple steps activate
+when they exist.
+
 ## Status
 
 | | |

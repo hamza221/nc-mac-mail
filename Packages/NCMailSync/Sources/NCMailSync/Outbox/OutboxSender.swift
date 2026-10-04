@@ -119,7 +119,7 @@ public actor OutboxSender {
     /// - Throws: ``OutboxError`` when the send cannot start — no such draft, no recipient,
     ///   or already sending.
     public func send(draftId: Int64, sendAt: Date?) async throws {
-        guard var draft = try await store.draft(id: draftId), draft.accountId == accountId else {
+        guard let draft = try await store.draft(id: draftId), draft.accountId == accountId else {
             throw OutboxError.noSuchDraft
         }
         switch draft.sendState.flatMap(DraftSendState.init(rawValue:)) {
@@ -134,13 +134,14 @@ public actor OutboxSender {
 
         cancelSaveTimer(draftId)
         let requestedAt = configuration.nowSeconds
-        // A whole-row write is safe here and only here: the composer has handed the draft
-        // over, so nothing else is editing it.
-        draft.sendAt = sendAt.map { Int64($0.timeIntervalSince1970.rounded(.down)) }
-        draft.sendState = DraftSendState.undo.rawValue
-        draft.sendRequestedAt = requestedAt
-        draft.syncError = nil
-        try await store.update(draft: draft)
+        // Column-targeted: a composer autosave landing between the read above and this write
+        // keeps its content. `sendAt` is pinned here — the one engine write to that column.
+        try await store.setDraftSendRequest(
+            id: draftId,
+            sendAt: sendAt.map { Int64($0.timeIntervalSince1970.rounded(.down)) },
+            sendState: DraftSendState.undo.rawValue,
+            sendRequestedAt: requestedAt
+        )
         OutboxLog.outbox.info(
             "draft \(draftId, privacy: .public) send requested; scheduled \(sendAt != nil, privacy: .public)"
         )

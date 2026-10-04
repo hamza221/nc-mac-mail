@@ -118,6 +118,17 @@ enum MailSymbol: CaseIterable {
     case team
     case orgChart
     case leaveTeam
+    // Settings tabs
+    case settingsGeneral
+    case settingsAccounts
+    case settingsAppearance
+    case settingsMessages
+    case settingsPrivacy
+    case settingsSecurity
+    case settingsAssistance
+    case settingsContextChat
+    case settingsShortcuts
+    case settingsStorage
 
     /// The symbol to hand a library component whose icon slot takes one directly, such as
     /// `NCNavigationItem(icon:)`. `NCIcon` already falls back to `systemFallback` for any
@@ -238,6 +249,18 @@ enum MailSymbol: CaseIterable {
         case .team: .accountMultiple
         case .orgChart: NCSymbol(asset: "sitemap-outline", systemFallback: "point.3.connected.trianglepath.dotted")
         case .leaveTeam: NCSymbol(asset: "logout", systemFallback: "rectangle.portrait.and.arrow.right")
+        // Settings tabs — macOS Settings-window glyphs; no MDI asset, so the fallback renders.
+        case .settingsGeneral: NCSymbol(asset: "settings-general", systemFallback: "gearshape")
+        case .settingsAccounts: NCSymbol(asset: "settings-accounts", systemFallback: "at")
+        case .settingsAppearance: NCSymbol(asset: "settings-appearance", systemFallback: "paintbrush")
+        case .settingsMessages: NCSymbol(asset: "settings-messages", systemFallback: "envelope")
+        case .settingsPrivacy: NCSymbol(asset: "settings-privacy", systemFallback: "hand.raised")
+        case .settingsSecurity: NCSymbol(asset: "settings-security", systemFallback: "lock")
+        case .settingsAssistance: NCSymbol(asset: "settings-assistance", systemFallback: "sparkles")
+        case .settingsContextChat:
+            NCSymbol(asset: "settings-context-chat", systemFallback: "bubble.left.and.text.bubble.right")
+        case .settingsShortcuts: NCSymbol(asset: "settings-shortcuts", systemFallback: "keyboard")
+        case .settingsStorage: NCSymbol(asset: "settings-storage", systemFallback: "externaldrive")
         }
     }
 
@@ -340,6 +363,16 @@ enum MailSymbol: CaseIterable {
         case .team: .text("Team")
         case .orgChart: .text("Organization chart")
         case .leaveTeam: .text("Leave team")
+        case .settingsGeneral: .text("General")
+        case .settingsAccounts: .text("Accounts")
+        case .settingsAppearance: .text("Appearance")
+        case .settingsMessages: .text("Messages")
+        case .settingsPrivacy: .text("Privacy")
+        case .settingsSecurity: .text("Security")
+        case .settingsAssistance: .text("Assistance")
+        case .settingsContextChat: .text("Context Chat")
+        case .settingsShortcuts: .text("Shortcuts")
+        case .settingsStorage: .text("Storage")
         }
     }
 
@@ -348,5 +381,11 @@ enum MailSymbol: CaseIterable {
     /// footer's sync glyph.
     func view(size: NCIcon.Size = .medium, label: NCAccessibilityLabel? = nil) -> some View {
         NCIcon(symbol, label: label ?? defaultLabel, size: size)
+    }
+
+    /// A bare `Image`, for slots that only accept one — `.tabItem`'s `Label` drops any other
+    /// view, so the Settings window's tab headers need this rather than ``view(size:label:)``.
+    var tabImage: Image {
+        Image(systemName: symbol.systemFallback ?? "questionmark.square.dashed")
     }
 }

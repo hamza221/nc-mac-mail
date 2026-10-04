@@ -42,9 +42,14 @@ private struct ContactOrgSection: View {
 
     var body: some View {
         let entries = login.entries.filter { $0.record.addressBookId == record.addressBookId }
-        Group {
+        // A ZStack with an explicit empty branch, not a bare Group: a Group applies its
+        // modifiers to its children, and with no children the `.task` below never runs
+        // (the same trap ContactDetailContent hit), so the chart would never build.
+        ZStack {
             if let chart, let id = record.id, chart.people[id] != nil {
                 section(chart, id: id)
+            } else {
+                Color.clear.frame(width: 0, height: 0)
             }
         }
         .task(id: Self.version(entries)) {

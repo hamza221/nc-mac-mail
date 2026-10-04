@@ -296,8 +296,11 @@ A `serverResult` payload is always an object with a `status`: `ready` with the a
 `data`; `empty` when the server answered and had nothing (the 204 of an instance with no LLM
 provider); `failed` with a short error name when the request failed. A `failed` row is only
 written when there is no `ready` row to keep — a stale answer beats an error. A request whose
-row is younger than its expiry sends nothing; the same `(kind, key)` already in flight joins
-the request in flight. Offline, nothing is sent and no row is touched.
+row is younger than its expiry sends nothing. The table's expiry is a `ready` row's; an
+`empty` row expires after fifteen minutes when the kind's own expiry is longer
+(`ServerResultKind.emptyRetryAfter`), so an admin turning LLM processing on reaches the next
+open of a message, and a `failed` row after five. The same `(kind, key)` already in flight
+joins the request in flight. Offline, nothing is sent and no row is touched.
 
 ### Alongside: contacts and the calendar list — `ContactsSync`, `CalendarListSync` (ADR-0069)
 

@@ -104,6 +104,19 @@ extension MailStore {
         }
     }
 
+    /// How many messages the conversation `rootId` holds in the account, counted the way the
+    /// web's `Thread.vue` counts it for the summary gate: every mailbox but Trash and Junk —
+    /// a reply in Sent counts — or only `mailboxId` when that is Trash or Junk itself.
+    public func conversationSize(rootId: String, accountId: Int64, mailboxId: Int64) async throws -> Int {
+        try await dbQueue.read { db in
+            try Int.fetchOne(
+                db,
+                sql: MessageSQL.conversationSize,
+                arguments: ["accountId": accountId, "rootId": rootId, "mailboxId": mailboxId]
+            ) ?? 0
+        }
+    }
+
     public func message(id: Int64) async throws -> MessageRecord? {
         try await dbQueue.read { db in
             try MessageRecord.fetchOne(db, sql: "SELECT * FROM message WHERE id = ?", arguments: [id])
@@ -222,6 +235,19 @@ enum MessageSQL {
         FROM message m
         WHERE m.mailboxId = :mailboxId AND m.threadRootId = :rootId
         ORDER BY m.sentAt ASC, m.id ASC
+        """
+
+    /// The size of one conversation across the account; see `conversationSize`.
+    static let conversationSize = """
+        SELECT COUNT(*)
+        FROM message m
+        JOIN mailbox b ON b.id = m.mailboxId
+        WHERE m.accountId = :accountId AND m.threadRootId = :rootId AND (
+            CASE WHEN (SELECT specialRole FROM mailbox WHERE id = :mailboxId) IN ('trash', 'junk')
+            THEN m.mailboxId = :mailboxId
+            ELSE COALESCE(b.specialRole, '') NOT IN ('trash', 'junk')
+            END
+        )
         """
 }
 

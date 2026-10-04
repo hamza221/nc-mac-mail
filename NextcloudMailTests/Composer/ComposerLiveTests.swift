@@ -328,6 +328,42 @@ struct ComposerLiveTests {
         reply.discard()
     }
 
+    // MARK: - Autosave
+
+    /// Typing alone, no ⌘S: the debounced write and the engine's 5 s flush land a server
+    /// draft and the status reads "saved". Every autosave used to fail locally with
+    /// "Error saving draft" before the engine heard of it.
+    @Test(.enabled(if: ComposerLiveTests.serverEnvironment != nil))
+    func typingAutosavesAServerDraft() async throws {
+        try await Self.withLive(Self.autosave)
+    }
+
+    private static func autosave(_ live: Live, token: String) async throws {
+        let compose = await live.model(.new(accountId: live.account.id, mailto: nil))
+        compose.subject = "\(token) autosave"
+        compose.document.setPlainText("Typed, never saved by hand.")
+        try await live.waitUntil("autosave reached the server", timeout: 30) {
+            guard let row = try await live.row(compose.draftId) else { return false }
+            return row.remoteId != nil && row.syncError == nil && compose.saveStatus == .saved
+        }
+        let draftId = try #require(compose.draftId)
+        let remoteId = try #require(try await live.row(draftId)?.remoteId)
+        let stored = try await live.client.put(
+            .updateDraft(id: Int(remoteId)),
+            body: ComposeMessageRequest(
+                accountId: Int(live.account.remoteId), subject: "\(token) autosave", isHtml: false))
+        #expect(stored.data.value.subject == "\(token) autosave")
+
+        compose.discard()
+        try await live.waitUntil("autosaved draft discarded", timeout: 30) { try await live.row(draftId) == nil }
+        do {
+            _ = try await live.client.put(
+                .updateDraft(id: Int(remoteId)),
+                body: ComposeMessageRequest(accountId: Int(live.account.remoteId), subject: "probe"))
+            Issue.record("server draft \(remoteId) still exists after discard")
+        } catch MailError.notFound {}
+    }
+
     // MARK: - Send later, undo
 
     @Test(.enabled(if: ComposerLiveTests.serverEnvironment != nil))

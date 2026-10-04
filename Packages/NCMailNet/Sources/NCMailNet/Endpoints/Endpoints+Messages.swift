@@ -139,9 +139,9 @@ extension Endpoint where Response == EmptyResponse {
 // MARK: - LLM routes
 
 extension Endpoint where Response == SmartReplyResponse {
-    /// `GET /api/messages/{messageId}/smartreply` — two suggested replies.
-    /// **204 with an empty body** when the server has no LLM provider
-    /// (verified live); `EmptyBodyRepresentable` turns that into nil.
+    /// `GET /api/messages/{messageId}/smartreply` — suggested replies as a bare
+    /// JSON array of strings (verified live). **204 with an empty body** when the
+    /// server has no LLM provider; `EmptyBodyRepresentable` turns that into none.
     public static func smartReply(messageId: Int) -> Endpoint<SmartReplyResponse> {
         Endpoint(name: "smartReply", method: .get, encodedPath: "messages/\(messageId)/smartreply", isRetryable: true)
     }

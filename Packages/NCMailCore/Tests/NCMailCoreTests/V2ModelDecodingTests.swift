@@ -38,7 +38,17 @@ struct JSONEnvelopeDecodingTests {
         let summary = ThreadSummaryResponse()
         #expect(summary.data == nil)
         let reply = SmartReplyResponse()
-        #expect(reply.data == nil)
+        #expect(reply.replies.isEmpty)
+    }
+
+    @Test("smartreply with a provider is a bare array of strings, no envelope")
+    func decodesPopulatedSmartReply() throws {
+        let reply = try Fixture.decode(SmartReplyResponse.self, from: "message-smartreply-populated.json")
+        #expect(reply.replies == ["Perfect, see you Sat!", "Can we meet at ____ first?"])
+        // The shape the client used to expect is what made every populated answer a failure.
+        #expect(throws: DecodingError.self) {
+            try Fixture.decode(JSONEnvelope<AnyJSON?>.self, from: "message-smartreply-populated.json")
+        }
     }
 
     @Test("eventdata sends an explicit null when there is nothing to suggest")

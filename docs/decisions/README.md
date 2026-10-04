@@ -114,6 +114,7 @@ old one stays.*
 | [0100](0100-app-group-and-extension-targets.md) | Team-prefixed app group `$(TeamIdentifierPrefix)com.nextcloud.mail.macos` (no profile under ad-hoc signing); extensions signed ad hoc like the app and embedded by it; `NextcloudMailShared/` compiled into all three | Accepted |
 | [0101](0101-an-answered-invitation-shows-its-buttons-again-once-sent.md) | An invitation answered here shows its answer while it is queued and Accept/Decline again once sent, because calendar objects are not mirrored; mirroring them is the revisit trigger | Accepted |
 | [0102](0102-no-not-grouped-contacts-entry.md) | The Contacts sidebar has no "Not grouped" entry; a `ContactsScope.notGrouped` case is the revisit trigger | Accepted |
+| [0103](0103-the-test-host-launches-inert.md) | A hosted test run launches inert: in-memory mirror, no `AppSession.start()`, so no Keychain consent prompt and no real engines under the suites | Accepted |
 
 ## Which ones matter most
 

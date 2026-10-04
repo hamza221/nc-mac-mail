@@ -181,6 +181,59 @@ struct V2QueryTests {
         #expect(try await store.unsavedDrafts().map(\.subject) == ["edited", "noStamp"])
     }
 
+    /// The composer's content write lands after an engine stamp made from a stale copy:
+    /// only composer columns change, and `updatedAt` never moves backwards.
+    @Test func composerContentWriteKeepsEngineColumns() async throws {
+        let store = try MailStore.inMemory()
+        try await Seed.base(store)
+        var stale = try await store.insert(
+            draft: DraftRecord(accountId: 1, subject: "v1", bodyPlain: "b1", createdAt: 1, updatedAt: 9))
+        let id = try #require(stale.id)
+
+        try await store.setDraftSync(id: id, remoteId: 42, savedAt: 9, syncError: "net")
+        try await store.setDraftSendState(id: id, sendState: "queued", sendRequestedAt: 6, syncError: "net")
+
+        stale.subject = "v2"
+        stale.bodyPlain = "b2"
+        stale.replacesMessageId = 7
+        stale.updatedAt = 3
+        try await store.updateDraftContent(stale)
+
+        let read = try #require(try await store.draft(id: id))
+        #expect(read.subject == "v2")
+        #expect(read.bodyPlain == "b2")
+        #expect(read.replacesMessageId == 7)
+        #expect(read.updatedAt == 10)
+        #expect(read.remoteId == 42)
+        #expect(read.savedAt == 9)
+        #expect(read.syncError == "net")
+        #expect(read.sendState == "queued")
+        #expect(read.sendRequestedAt == 6)
+    }
+
+    /// The send request stamps `sendAt` and the send intent without touching content.
+    @Test func sendRequestWritesOnlySendColumns() async throws {
+        let store = try MailStore.inMemory()
+        try await Seed.base(store)
+        let draft = try await store.insert(
+            draft: DraftRecord(accountId: 1, subject: "v1", bodyPlain: "b1", createdAt: 1, updatedAt: 9))
+        let id = try #require(draft.id)
+        try await store.setDraftSync(id: id, remoteId: 42, savedAt: 9, syncError: "net")
+
+        try await store.setDraftSendRequest(id: id, sendAt: 500, sendState: "undo", sendRequestedAt: 6)
+
+        let read = try #require(try await store.draft(id: id))
+        #expect(read.subject == "v1")
+        #expect(read.bodyPlain == "b1")
+        #expect(read.updatedAt == 9)
+        #expect(read.remoteId == 42)
+        #expect(read.savedAt == 9)
+        #expect(read.syncError == nil)
+        #expect(read.sendAt == 500)
+        #expect(read.sendState == "undo")
+        #expect(read.sendRequestedAt == 6)
+    }
+
     /// The composer autosaves while the engine stamps; an engine write must leave the
     /// composer's columns exactly as the composer last wrote them.
     @Test func engineWritesDoNotClobberComposerColumns() async throws {

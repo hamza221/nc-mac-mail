@@ -126,27 +126,10 @@ struct MessageViewLiveTests {
     }
 
     private static func makeSeed() async throws -> Seed {
-        guard
-            let raw = environment["NCMAIL_LIVE_MIRROR"], let server = URL(string: raw),
-            let user = environment["NCMAIL_LIVE_USER"], let password = environment["NCMAIL_LIVE_PASSWORD"]
-        else { throw LiveError.missingEnvironment }
-        let store = try MailStore.inMemory()
-        let client = MailClient(
-            server: server, credentials: BasicCredentials(loginName: user, appPassword: password),
-            clientVersion: "ws30-live-test")
-        let identity = ServerIdentity(serverURL: server.absoluteString, loginName: user)
-        _ = try await store.ensureLogin(identity)
-        let accounts = try await MirrorCoordinator.discoverAccounts(store: store, client: client, identity: identity)
-        let account = try #require(accounts.first)
-        let list = try await client.get(Endpoint.mailboxes(accountId: Int(account.remoteId)))
-        try await store.upsert(
-            mailboxes: try list.entries.map { try MirrorMapping.mailboxWrite($0, accountId: account.id) },
-            accountId: account.id)
-        let inbox = try #require(
-            try await store.mailboxes(accountId: account.id).first { $0.specialRole?.lowercased() == "inbox" })
-        let live = Live(
-            store: store, client: client, identity: identity, account: account, inbox: inbox,
-            drainer: OperationDrainer(store: store, client: client, accountId: account.id))
+        let live = try await connect()
+        let client = live.client
+        let store = live.store
+        let inbox = live.inbox
 
         // A token whose probes were already delivered is reused rather than sent again: every
         // run otherwise adds three self-sends, and the SMTP relay started refusing them.
@@ -201,6 +184,67 @@ struct MessageViewLiveTests {
             live: live, token: token,
             mdnId: try #require(byKind["mdn"]), replyId: try #require(byKind["reply"]),
             pgpId: try #require(byKind["pgp"]))
+    }
+
+    /// The account's mirror with its mailboxes and nothing else: no mail sent.
+    static func connect() async throws -> Live {
+        guard
+            let raw = environment["NCMAIL_LIVE_MIRROR"], let server = URL(string: raw),
+            let user = environment["NCMAIL_LIVE_USER"], let password = environment["NCMAIL_LIVE_PASSWORD"]
+        else { throw LiveError.missingEnvironment }
+        let store = try MailStore.inMemory()
+        let client = MailClient(
+            server: server, credentials: BasicCredentials(loginName: user, appPassword: password),
+            clientVersion: "ws30-live-test")
+        let identity = ServerIdentity(serverURL: server.absoluteString, loginName: user)
+        _ = try await store.ensureLogin(identity)
+        let accounts = try await MirrorCoordinator.discoverAccounts(store: store, client: client, identity: identity)
+        let account = try #require(accounts.first)
+        let list = try await client.get(Endpoint.mailboxes(accountId: Int(account.remoteId)))
+        try await store.upsert(
+            mailboxes: try list.entries.map { try MirrorMapping.mailboxWrite($0, accountId: account.id) },
+            accountId: account.id)
+        let inbox = try #require(
+            try await store.mailboxes(accountId: account.id).first { $0.specialRole?.lowercased() == "inbox" })
+        return Live(
+            store: store, client: client, identity: identity, account: account, inbox: inbox,
+            drainer: OperationDrainer(store: store, client: client, accountId: account.id))
+    }
+
+    /// A real conversation of three or more already on the server — two in the Inbox and
+    /// the reply in Sent is the usual shape — mirrored into the mailboxes it lives in, with
+    /// the bodies. Returns the local id of one of its Inbox messages, the one to open.
+    static func mirrorRealConversation(_ live: Live) async throws -> Int64 {
+        let mailboxes = try await live.store.mailboxes(accountId: live.account.id)
+        let local = Dictionary(uniqueKeysWithValues: mailboxes.map { ($0.remoteId, $0) })
+        let listed = try await live.client.get(.messages(mailboxId: Int(live.inbox.remoteId)))
+        for candidate in listed {
+            let thread = try await live.client.get(
+                Endpoint<[RawBacked<Envelope>]>(
+                    name: "thread", method: .get, encodedPath: "messages/\(candidate.value.id)/thread",
+                    isRetryable: true))
+            let counted = thread.filter {
+                let role = local[Int64($0.value.mailboxId)]?.specialRole
+                return role != "trash" && role != "junk"
+            }
+            guard counted.count >= 3, thread.contains(where: { $0.value.mailboxId == Int(live.inbox.remoteId) })
+            else { continue }
+            var opened: Int64?
+            for raw in counted {
+                let mailbox = try #require(local[Int64(raw.value.mailboxId)])
+                let ids = try await live.store.upsert(envelopes: [
+                    try MirrorMapping.envelopeWrite(
+                        raw, accountId: live.account.id, mailboxId: mailbox.id, syncedAt: 1)
+                ])
+                let id = try #require(ids.first)
+                let body = try await live.client.get(.messageBody(id: raw.value.id))
+                try await live.store.upsert(body: try MirrorMapping.bodyWrite(body, html: nil, fetchedAt: 1), for: id)
+                if mailbox.id == live.inbox.id { opened = id }
+            }
+            report("conversation \"\(candidate.value.subject ?? "")\": \(counted.count) messages")
+            return try #require(opened)
+        }
+        throw LiveError.notDelivered("no conversation of three in the inbox")
     }
 
     private static func waitFor(
@@ -287,9 +331,11 @@ struct MessageViewLiveTests {
         model.present(messageId: seed.mdnId)
         #expect(await Self.waitUntil { model.header != nil } != nil)
 
-        // No LLM provider on the test server: the route's 204 is an `empty` row.
+        // LLM processing is on (2026-10-04): the route's bare array is a `ready` row. With it
+        // off the row would be `empty` — the 204 — and re-asked after `emptyRetryAfter`.
         let replies = await Self.waitUntil { model.smartReplies != .pending && model.smartReplies != .idle }
         #expect(replies != nil)
+        #expect(model.smartReplies.value?.isEmpty == false)
         Self.report(
             "smart replies row: \(model.smartReplies) after \(replies.map(String.init(describing:)) ?? "never")")
 
@@ -303,6 +349,43 @@ struct MessageViewLiveTests {
         let translation = await Self.waitUntil { model.translation == .failed || model.translation == .empty }
         #expect(translation != nil)
         Self.report("translation row: \(model.translation) in \(translation.map(String.init(describing:)) ?? "never")")
+    }
+
+    // MARK: - Thread summary and Reply with meeting on a real conversation
+
+    /// A real conversation of three (two in the Inbox, the reply in Sent): the summary card
+    /// reaches `.ready` with the server's text, and the Reply with meeting form takes the
+    /// event data over its title and description.
+    @Test(.enabled(if: MessageViewLiveTests.hasLiveServer), .timeLimit(.minutes(5)))
+    func realConversationGetsItsSummaryAndMeetingDetails() async throws {
+        let live = try await Self.connect()
+        let opened = try await Self.mirrorRealConversation(live)
+        let model = MessageViewModel(services: live.services())
+        model.present(messageId: opened)
+
+        let summarised = await Self.waitUntil(.seconds(180)) {
+            model.threadSummary != .pending && model.threadSummary != .idle
+        }
+        Self.report(
+            "thread of \(model.thread.count) shown, \(model.conversationSize) in the conversation: "
+                + "\(model.threadSummary) after \(summarised.map(String.init(describing:)) ?? "never")")
+        #expect(model.conversationSize >= 3)
+        #expect(model.threadSummary.value?.isEmpty == false)
+
+        let form = MeetingForm()
+        let calendar = MessageCalendarModel(services: model.services)
+        let preparing = Task { await form.prepare(message: model, calendar: calendar) }
+        defer { preparing.cancel() }
+        let generated = await Self.waitUntil(.seconds(180)) {
+            form.generation != nil && form.generation != .pending
+        }
+        let state = form.generation
+        Self.report(
+            "event data: \(String(describing: state)) after "
+                + "\(generated.map(String.init(describing:)) ?? "never"); title \"\(form.draft.title)\"")
+        let suggestion = try #require(state?.value)
+        #expect(suggestion.summary.map { form.draft.title == $0 } ?? true)
+        #expect(form.draft.description.hasSuffix("This description was generated by AI."))
     }
 
     // MARK: - §5.4 download, save to Files, trust domain; §5.10 zip

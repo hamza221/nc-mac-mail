@@ -42,7 +42,10 @@ Server-computed results are cached rows.
 - **A failure never overwrites a `ready` row.** A stale answer beats an error, and offline
   is not the moment to lose one. Offline, nothing is sent and nothing is touched.
 - Expiry per kind lives in `ServerResultKind.expiry`; a `failed` row allows one retry per
-  five minutes. The same `(kind, key)` in flight is joined, not repeated.
+  five minutes, and an `empty` row is re-asked after at most fifteen minutes
+  (`emptyRetryAfter`), because "nothing" is the answer an admin switch (LLM processing)
+  flips for a whole instance at once. The same `(kind, key)` in flight is joined, not
+  repeated.
 
 ## Consequences
 

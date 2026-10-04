@@ -53,7 +53,13 @@ private struct SettingsRootView: View {
         TabView(selection: $selectedTab) {
             ForEach(SettingsTab.allCases, id: \.self) { tab in
                 content(for: tab)
-                    .tabItem { Text(tab.title) }
+                    .tabItem {
+                        Label {
+                            Text(tab.title)
+                        } icon: {
+                            tab.symbol.tabImage
+                        }
+                    }
                     .tag(tab)
             }
         }
@@ -126,6 +132,23 @@ enum SettingsTab: String, CaseIterable {
         case .shortcuts: String(localized: "Shortcuts")
         case .storage: String(localized: "Storage")
         case .about: String(localized: "About")
+        }
+    }
+
+    /// The tab header's glyph, macOS Settings-window convention.
+    var symbol: MailSymbol {
+        switch self {
+        case .general: .settingsGeneral
+        case .accounts: .settingsAccounts
+        case .appearance: .settingsAppearance
+        case .messages: .settingsMessages
+        case .privacy: .settingsPrivacy
+        case .security: .settingsSecurity
+        case .assistance: .settingsAssistance
+        case .contextChat: .settingsContextChat
+        case .shortcuts: .settingsShortcuts
+        case .storage: .settingsStorage
+        case .about: .info
         }
     }
 

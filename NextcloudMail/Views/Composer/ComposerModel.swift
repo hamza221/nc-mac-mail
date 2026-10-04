@@ -456,12 +456,16 @@ final class ComposerModel {
         scheduleWrite()
     }
 
+    /// The pending write is cancelled while it waits, never once it runs: the store throws
+    /// `CancellationError` from a cancelled task, so a keystroke landing mid-write — or the
+    /// write cancelling its own task — would fail the save it was meant to make.
     private func scheduleWrite() {
         writeTask?.cancel()
         writeTask = Task { [weak self] in
             try? await Task.sleep(for: Self.localWriteDelay)
-            guard !Task.isCancelled else { return }
-            await self?.writeNow()
+            guard !Task.isCancelled, let self else { return }
+            self.writeTask = nil
+            await self.writeNow()
         }
     }
 
@@ -508,8 +512,8 @@ final class ComposerModel {
         }
     }
 
-    /// Writes every field to the row and tells the engine. Whole-row write: the engine's
-    /// own writes are column-targeted and never touch these columns.
+    /// Writes the composer-owned columns and tells the engine. Column-targeted: engine stamps
+    /// (remoteId/savedAt/syncError/sendState) that land after the read below survive.
     func writeNow() async {
         writeTask?.cancel()
         guard phase == .editing, hasChanges else { return }
@@ -532,8 +536,8 @@ final class ComposerModel {
             row.smimeEncrypt = smimeEncrypt
             row.smimeCertificateRemoteId = smimeSign || smimeEncrypt ? smimeCertificate?.remoteId : nil
             row.sendAt = sendAt.map { Int64($0.timeIntervalSince1970.rounded(.down)) }
-            row.updatedAt = max(Int64(Date().timeIntervalSince1970), row.updatedAt + 1)
-            try await session.store.update(draft: row)
+            row.updatedAt = Int64(Date().timeIntervalSince1970)
+            try await session.store.updateDraftContent(row)
             try await session.store.replaceRecipients(recipientRows(draftId: id), draftId: id)
             await outbox?.saveDraft(id)
         } catch {

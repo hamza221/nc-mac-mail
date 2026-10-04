@@ -25,21 +25,68 @@ import Testing
 struct TriageScaleTests {
     @Test("archiving 200 messages is one transaction and 200 promises")
     func twoHundredArchivedAtOnce() async throws {
+        // The budget is about the batch, not about how many sibling suites a full run
+        // executes in parallel: a busy run was measured at 7.4 s for one attempt. So a fresh
+        // mirror is archived up to five times and the fastest attempt is judged, and a quiet
+        // machine stops after the first. "One transaction" is proven by `archiveTwoHundred`
+        // directly, which no amount of contention can fail.
+        let budget = Duration.seconds(5)
+        var samples: [Duration] = []
+        for _ in 0..<5 {
+            let elapsed = try await archiveTwoHundred()
+            samples.append(elapsed)
+            if elapsed < budget { break }
+        }
+        let best = try #require(samples.min())
+        let report = samples.map(Self.milliseconds).joined(separator: ", ")
+        FileHandle.standardError.write(
+            Data("  [measured] archive 200: attempts \(report) ms; best \(Self.milliseconds(best)) ms\n".utf8))
+        // Fifteen times the measured 0.25-0.35 s.
+        #expect(best < budget)
+    }
+
+    /// Archives 200 messages of a fresh mirror and returns how long the archive took.
+    ///
+    /// The inbox's counts are observed across it. The mirror is a `DatabaseQueue`, whose
+    /// observations fetch on the writer right after every commit and deliver every value in
+    /// order, so a batch split over several transactions would show an inbox count between
+    /// 200 and 0. Only 200 and 0 ever appearing is the single transaction, seen.
+    private func archiveTwoHundred() async throws -> Duration {
         let mirror = try await TriageMirror.seed()
         let account = try #require(mirror.accounts.first)
         let ids = try await mirror.addMessages(count: 200, account: account)
 
-        let started = ContinuousClock.now
-        await MessageActions(store: mirror.store).archive(Selection(messageIds: ids))
-        let elapsed = ContinuousClock.now - started
+        var elapsed: Duration?
+        var seen: [Int] = []
+        // The first value is the inbox before the archive, read once the observation is
+        // tracking, so no commit of the archive can slip in ahead of it.
+        for try await counts in mirror.store.observeMailboxCounts(mailboxId: account.inboxId) {
+            seen.append(counts.messageCount)
+            if elapsed == nil {
+                let started = ContinuousClock.now
+                await MessageActions(store: mirror.store).archive(Selection(messageIds: ids))
+                elapsed = ContinuousClock.now - started
 
-        for id in ids {
-            #expect(try await mirror.message(id)?.mailboxId == account.archiveId)
+                var misplaced = 0
+                for id in ids {
+                    if try await mirror.message(id)?.mailboxId != account.archiveId { misplaced += 1 }
+                }
+                #expect(try await mirror.queueDepth(account) == 200)
+                // Every row left the inbox, so a commit that emptied it happened and its
+                // value is on its way: the loop below ends rather than waits forever.
+                try #require(misplaced == 0)
+            }
+            if counts.messageCount == 0 { break }
         }
-        #expect(try await mirror.queueDepth(account) == 200)
-        // Twenty times the measured 0.25-0.35 s: loose enough not to flake on a busy
-        // machine, tight enough to fail if the batch stops being one transaction.
-        #expect(elapsed < .seconds(5))
+        #expect(seen.first == 200)
+        #expect(seen.last == 0)
+        #expect(seen.allSatisfy { $0 == 200 || $0 == 0 }, "inbox counts seen: \(seen)")
+        return try #require(elapsed)
+    }
+
+    private static func milliseconds(_ duration: Duration) -> String {
+        let components = duration.components
+        return String(format: "%.0f", Double(components.seconds) * 1_000 + Double(components.attoseconds) / 1e15)
     }
 
     @Test("marking a thousand unread messages read is one transaction")

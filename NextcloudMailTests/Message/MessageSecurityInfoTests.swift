@@ -135,11 +135,10 @@ struct MessageSecurityInfoTests {
         #expect(TranslationOffer.language(for: "Guten Morgen", reader: reader) == nil)
     }
 
-    @Test("smart replies read every plausible payload shape and cap at three")
+    @Test("smart replies read the list of strings and cap at three")
     func smartReplyShapes() {
         #expect(MessageViewModel.replies(in: .array([.string("Yes"), .string(" "), .string("No")])) == ["Yes", "No"])
-        #expect(MessageViewModel.replies(in: .object(["reply1": .string("A"), "reply2": .string("B")])) == ["A", "B"])
-        #expect(MessageViewModel.replies(in: .object(["replies": .array([.string("A")])])) == ["A"])
+        #expect(MessageViewModel.replies(in: .object(["replies": .array([.string("A")])])) == nil)
         #expect(
             MessageViewModel.replies(in: .array([.string("1"), .string("2"), .string("3"), .string("4")]))?.count == 3)
         #expect(MessageViewModel.replies(in: .null) == nil)

@@ -66,8 +66,9 @@ struct SignatureSection: View {
                 Text("Signature")
             }
             Section {
-                ComposerEditor(document: document)
-                    .frame(minHeight: 180)
+                ComposerEditor(document: document, scrollsToolbar: true)
+                    .frame(maxWidth: 520, minHeight: 180, idealHeight: 220, maxHeight: 220)
+                    .frame(maxWidth: .infinity)
                 if SignatureRules.isLarge(current) {
                     NCNoteCard(.warning) {
                         Text(

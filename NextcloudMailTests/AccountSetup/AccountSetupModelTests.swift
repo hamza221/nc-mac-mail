@@ -367,13 +367,17 @@ struct AccountSetupModelTests {
 @MainActor
 @Suite("OAuth consent polling")
 struct OAuthConsentPollingTests {
+    /// The limit is clock-bound at the in-tree 10 s: the 1 ms sleeps resume on the main
+    /// actor, which a full parallel run shares with every `@MainActor` suite, and a full
+    /// run was measured aborting a five-second limit before the third poll ran. A passing
+    /// run returns at the third call; only a failing one waits this long.
     @Test func grantedOnTheFirstPassingTest() async {
         var calls = 0
         let result = await OAuthConsentSession.poll(
             {
                 calls += 1
                 return calls == 3
-            }, every: .milliseconds(1), for: .seconds(5))
+            }, every: .milliseconds(1), for: .seconds(10))
         #expect(result == .granted)
         #expect(calls == 3)
     }

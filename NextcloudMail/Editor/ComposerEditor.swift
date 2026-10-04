@@ -16,6 +16,9 @@ struct ComposerEditor: View {
     var onFileDrop: (EditorDroppedFile) -> Void = { _ in }
     /// A mention was accepted; the composer adds the address to To.
     var onMention: (MentionCandidate) -> Void = { _ in }
+    /// Narrow hosts (the Settings signature page) scroll the toolbar sideways instead of
+    /// letting its intrinsic width force the window wider. The composer keeps the plain row.
+    var scrollsToolbar = false
 
     @Environment(\.ncTheme) private var theme
     @State private var showingSource = false
@@ -27,7 +30,12 @@ struct ComposerEditor: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            EditorToolbar(document: document, showingSource: $showingSource, onToggleFormatting: toggleFormatting)
+            if scrollsToolbar {
+                ScrollView(.horizontal) { toolbar }
+                    .scrollIndicators(.never)
+            } else {
+                toolbar
+            }
             Divider()
             if showingSource {
                 sourceEditor
@@ -63,6 +71,10 @@ struct ComposerEditor: View {
             Text(document.imageError ?? "")
         }
         .task(id: triggerFingerprint) { await fetchCandidates() }
+    }
+
+    private var toolbar: some View {
+        EditorToolbar(document: document, showingSource: $showingSource, onToggleFormatting: toggleFormatting)
     }
 
     // MARK: - Modes

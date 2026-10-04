@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Hamza Mahjoubi
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import Foundation
 import NCMailStore
 import NextcloudUI
 import OSLog
@@ -34,7 +35,11 @@ struct NextcloudMailApp: App {
             RootSplitView(session: session)
                 .environment(session)
                 .ncTheme(session.theme)
-                .task { await session.start() }
+                .task {
+                    // The host of a test run keeps its session inert — see `isHostingTests`.
+                    guard !Self.isHostingTests else { return }
+                    await session.start()
+                }
                 .systemIntegration(session: session)  // WS-42 exception
                 .mailNotifications(session.notifier)  // WS-41 exception
         }
@@ -51,11 +56,36 @@ struct NextcloudMailApp: App {
         }
     }
 
+    /// True when this process hosts a test run rather than a user's app.
+    ///
+    /// The suites build their own stores and sessions, so the launch that hosts them stays
+    /// inert: it never opens the developer's real mirror, never starts engines against it,
+    /// and never reads a real Keychain item. The last one is the sharp edge:
+    /// `SecItemCopyMatching` answers with a consent dialog whenever the item's ACL does not
+    /// match the running binary, and an ad-hoc signature changes on every build (ADR-0054),
+    /// so a hosted launch that read passwords would prompt again on every rebuild (ADR-0103).
+    ///
+    /// The environment variables are the half that is already set when `init` runs; the
+    /// class check covers anything that asks after the runner has injected the test bundle.
+    static var isHostingTests: Bool {
+        NSClassFromString("XCTestCase") != nil
+            || ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+            || ProcessInfo.processInfo.environment["XCTestBundlePath"] != nil
+            || ProcessInfo.processInfo.environment["XCTestSessionIdentifier"] != nil
+    }
+
     /// Falls back to an in-memory mirror rather than refusing to launch, and says so:
     /// `RootSplitView` then offers to delete the unreadable file and download everything
     /// again (`AppSession.mirrorIsTemporary`), which is the recovery
-    /// `MailStoreError.unreadable` exists to make possible.
-    private static func openStore() -> (MailStore, isTemporary: Bool) {
+    /// `MailStoreError.unreadable` exists to make possible. A hosted test run opens an
+    /// in-memory mirror instead — deliberate, so not `isTemporary` — and never the real one.
+    static func openStore() -> (MailStore, isTemporary: Bool) {
+        if isHostingTests {
+            guard let inert = try? MailStore.inMemory() else {
+                fatalError("could not open even an in-memory mirror")
+            }
+            return (inert, false)
+        }
         do {
             return (try MailStore(url: try MailStore.defaultDatabaseURL()), false)
         } catch {
