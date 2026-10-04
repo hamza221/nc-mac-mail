@@ -20,8 +20,9 @@ public import NCMailStore
 /// database changed and the observation fired, not because this method answered — which is
 /// `CLAUDE.md`'s one invariant, at the one place a view is most tempted to break it.
 public actor MutationQueue {
-    private let store: MailStore
-    private let configuration: MutationQueueConfiguration
+    // Internal rather than private: `MutationQueue+V2.swift` builds the v2 rows.
+    let store: MailStore
+    let configuration: MutationQueueConfiguration
     /// Woken after each commit. Optional so a test can watch the queue fill without anything
     /// draining it, which is exactly the offline case.
     private let drainer: OperationDrainer?
@@ -53,15 +54,81 @@ public actor MutationQueue {
         }
         let units = try await units(for: operation, accountId: accountId)
         guard !units.isEmpty else { throw OperationError.noSuchMessages }
+        if units.contains(where: { $0.dav != nil }), configuration.dav == nil {
+            throw OperationError.noDAVHandler
+        }
 
-        try await store.enqueue(units.map(\.record), applying: units.map(\.effect))
+        let ids = try await store.enqueue(units.map(\.record), applying: units.map(\.effect))
         OperationLog.queue.info(
             """
             account \(accountId, privacy: .public) queued \(units.count, privacy: .public) \
             \(units.first?.record.kind ?? "?", privacy: .public) operation(s)
             """
         )
+        await applyDAV(units, ids: ids, accountId: accountId)
         await drainer?.wake()
+    }
+
+    /// ``perform(_:accountId:)`` for a login-scoped operation — preferences, text blocks,
+    /// internal addresses, trusted domains, contacts and calendars.
+    ///
+    /// `pendingOperation.accountId` is a required foreign key, so the row is stored under the
+    /// login's first mail account (the lowest local id), whose drainer is the one that sends it.
+    public func perform(_ operation: MailOperation, loginId: Int64) async throws {
+        try await perform(operation, accountId: try await queueAccountId(loginId: loginId))
+    }
+
+    /// The account a login's login-scoped rows are queued under.
+    public func queueAccountId(loginId: Int64) async throws -> Int64 {
+        guard
+            let login = try await store.logins().first(where: { $0.id == loginId }),
+            let account = try await store.accounts(identity: login.identity).min(by: { $0.id < $1.id })
+        else { throw OperationError.noAccountForLogin(loginId: loginId) }
+        return account.id
+    }
+
+    /// Every queued contact and calendar write of a login, collapsed, oldest first, in every
+    /// state — including parked conflicts. What the contacts sync reads so a
+    /// `sync-collection` does not overwrite an href with a write still waiting to go.
+    public func pendingDAVWrites(loginId: Int64) async throws -> [DAVWrite] {
+        let accountId: Int64
+        do {
+            accountId = try await queueAccountId(loginId: loginId)
+        } catch OperationError.noAccountForLogin {
+            return []
+        }
+        let rows = try await store.pendingOperations(accountId: accountId)
+        return OperationCollapse.collapse(rows).compactMap { item in
+            guard item.kind.isDAV, let payload = item.payload.dav, payload.loginId == loginId else { return nil }
+            return DAVWrite(
+                operationId: item.id,
+                kind: item.kind,
+                accountId: item.accountId,
+                payload: payload,
+                isConflicted: item.lastError == DAVWrite.conflictMarker
+            )
+        }
+    }
+
+    /// The DAV kinds' optimistic effect, which is the handler's own write and so a second
+    /// transaction. The row is already queued, so a crash here loses the optimistic view of
+    /// the edit and never the edit.
+    private func applyDAV(_ units: [Unit], ids: [Int64], accountId: Int64) async {
+        guard let handler = configuration.dav else { return }
+        for (index, unit) in units.enumerated() {
+            guard
+                let payload = unit.dav, index < ids.count,
+                let kind = OperationKind(rawValue: unit.record.kind)
+            else { continue }
+            do {
+                try await handler.apply(
+                    DAVWrite(operationId: ids[index], kind: kind, accountId: accountId, payload: payload))
+            } catch {
+                OperationLog.queue.error(
+                    "operation \(ids[index], privacy: .public) local DAV apply failed: \(describeOperation(error), privacy: .public)"
+                )
+            }
+        }
     }
 
     /// The mirror's id for one of the three mailboxes a triage action names by role.
@@ -92,9 +159,11 @@ public actor MutationQueue {
     // MARK: - Building the rows
 
     /// A row and the local change it describes, which only ever travel together.
-    private struct Unit {
+    struct Unit {
         var record: PendingOperationRecord
         var effect: LocalEffect
+        /// A DAV kind's payload, handed to ``DAVWriteHandling/apply(_:)`` once queued.
+        var dav: DAVWritePayload?
     }
 
     private func units(for operation: MailOperation, accountId: Int64) async throws -> [Unit] {
@@ -147,13 +216,16 @@ public actor MutationQueue {
 
         case .trustSender(let email, let trusted):
             return [try await trustUnit(email: email, trusted: trusted, accountId: accountId)]
+
+        default:
+            return try await v2Units(for: operation, accountId: accountId)
         }
     }
 
     /// Reads each message that still exists and turns it into a unit. An id the mirror has
     /// already lost is skipped rather than queued: the local change would be a no-op and the
     /// request a guaranteed 404.
-    private func messageUnits(
+    func messageUnits(
         _ messageIds: [Int64],
         accountId: Int64,
         _ build: (MessageRecord) throws -> Unit
@@ -279,7 +351,7 @@ public actor MutationQueue {
         )
     }
 
-    private func record(
+    func record(
         kind: OperationKind,
         accountId: Int64,
         message: MessageRecord,

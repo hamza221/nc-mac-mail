@@ -77,6 +77,12 @@ final class DAVMultistatusParser: NSObject, XMLParserDelegate {
             } else {
                 propertyElements.append(DAVElement(name: name, attributes: attributes))
             }
+        } else if propertyName == DAVQualifiedName.currentUserPrivilegeSet, depth == propertyDepth + 2,
+            isDAV(stack[stack.count - 2], "privilege")
+        {
+            // RFC 3744 nests the privilege one level down (`privilege > write`); the
+            // privilege's name is the only thing worth keeping, so it is lifted up.
+            propertyElements.append(DAVElement(name: name, attributes: attributes))
         } else if stack.count >= 2, propertyName == nil, isInsideProp() {
             // A property element directly inside prop.
             propertyName = name

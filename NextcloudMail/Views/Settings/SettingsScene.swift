@@ -32,7 +32,11 @@ private struct SettingsRootView: View {
 
     init(session: AppSession) {
         self.session = session
-        _settingsStore = State(initialValue: SettingsStore(store: session.store, sessions: session.accounts))
+        let settingsStore = SettingsStore(store: session.store, sessions: session.accounts)
+        settingsStore.signedOut = { [weak session] account, removeLocalCopies in
+            await session?.signedOut(account: account, removeLocalCopies: removeLocalCopies)
+        }
+        _settingsStore = State(initialValue: settingsStore)
     }
 
     var body: some View {
@@ -50,7 +54,10 @@ private struct SettingsRootView: View {
         .environment(settingsStore)
         .ncTheme(session.theme)
         .frame(minWidth: 480, idealWidth: 560, minHeight: 320, idealHeight: 420)
-        .task { settingsStore.start() }
+        .task {
+            settingsStore.start()
+            session.settingsOpened()
+        }
         .onDisappear { settingsStore.stop() }
         .onChange(of: session.accounts) { _, newValue in
             settingsStore.updateSessions(newValue)

@@ -208,6 +208,7 @@ question worth answering first.
 | Interactive fetch (user opened something) | Unlimited, and it preempts a backfill slot |
 | Mutation drain | 1 per account |
 | Avatars | 4 total, lowest priority |
+| Server-state refresh (settings, lists, quota, outbox) | 4 per login, once per trigger ([sync-engine.md](sync-engine.md)) |
 
 One `URLSession` for the app, `httpMaximumConnectionsPerHost = 6`, `waitsForConnectivity`
 off (we manage that ourselves), `timeoutIntervalForRequest = 60`,

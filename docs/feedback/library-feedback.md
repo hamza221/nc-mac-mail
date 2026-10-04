@@ -1047,3 +1047,117 @@ with this package graph.
 `FakeTransport` with `.fixture(name, status:)` made "every endpoint replayed through the
 client with the status the live server answered" a one-line helper, which is what caught
 the 202 problem (ADR-0077) before any caller existed.
+
+## WS-23 — Drafts and outbox engine
+
+WS-23 adds no UI, so `NextcloudUI` was not exercised.
+
+### The Mail draft API's `draftId` is a trap every client will fall into
+**Workstream:** WS-23 · **Component:** nextcloud/mail API (upstream) · **Severity:** friction
+**Where:** Packages/NCMailSync/Sources/NCMailSync/Outbox/OutboxRequest.swift
+`draftId` on `POST /api/drafts` and `POST /api/outbox` reads as "the draft I am sending" and
+is in fact the id of an IMAP message to expunge; passing a `/api/drafts` id there deletes an
+unrelated message. Combined with the server job that silently deletes drafts idle for
+300 s, a client cannot hold a draft id across a long compose without re-deriving all of this
+from the PHP source (ADR-0083). Worth an upstream rename (`replacesMessageId`) or at least
+API documentation; any shared Nextcloud Mail client kit should model the draft lifecycle
+once rather than each app rediscovering it.
+
+### Things that worked
+`FakeTransport.fail(_:times:then:)` throwing a real `MailError.transport` made "offline mid-
+send" a two-line test; recorded `draft-*`/`outbox-*` fixtures covered every route the
+engine calls.
+
+## WS-22 — Queue v2 and settings commands
+
+WS-22 adds no UI, so `NextcloudUI` was not exercised.
+
+### Concurrent sibling builds of one package serialise on the `.build` lock
+**Workstream:** WS-22 · **Component:** SwiftPM (toolchain) · **Severity:** friction
+**Where:** Packages/NCMailSync
+Four agents running `swift build --build-system native` in the same package directory queue
+behind one lock; one WS-22 build waited the full 900 s timeout without compiling anything.
+`--scratch-path /tmp/<own>` (still with `--build-system native`) builds in parallel and
+links. Worth a line in the README's development section for anyone running agents in
+parallel.
+
+### Upstream answers a Sieve syntax error with a usable 422
+**Workstream:** WS-22 · **Component:** nextcloud/mail API (upstream) · **Severity:** praise
+`PUT /api/sieve/active/{id}` answers a script that does not parse with HTTP 422 and
+`{"message": "<parser text with line and column>"}` (recorded live,
+`error-sieve-script-422.json`) — exactly what a native form needs to show, with no scraping.
+
+### Things that worked
+`RequestMatcher` composed with `&&` plus a path predicate made stubbing all 47 v2 routes
+with recorded fixtures one table in `QueueV2TestSupport.stubV2`.
+
+## WS-21 — Server-state mirror
+
+WS-21 adds no UI, so `NextcloudUI` was not exercised.
+
+### `FakeTransport.stall` can miss a request that arrives first
+**Workstream:** WS-21 · **Component:** NCMailTestSupport · **Severity:** friction
+**Where:** `FakeTransport.stall(_:)`
+`stall` only catches a request sent *after* the test registered it, and the documented
+`async let handle = stall(…)` pattern races the code under test. One WS-21 test hung the
+whole suite for 20 minutes when the refresh won the race. `GatedTransport` in
+`ServerStateTestSupport.swift` (hold everything matching from construction, `waitForHeld`,
+`open`) is deterministic; worth promoting into `NCMailTestSupport`.
+
+### Settings models decode, but cannot re-encode
+**Workstream:** WS-21 · **Component:** NCMailCore · **Severity:** friction
+Most settings routes decode into plain `Decodable` models rather than `RawBacked`, so their
+rows keep `rawJSON = "{}"` and the mirror re-states `MailFilter`/`OutOfOfficeState`/
+certificate info as small `Encodable` mirrors to fill its JSON columns. `RawBacked` on the
+settings list endpoints would make ADR-0020 hold for v2 tables too.
+
+## WS-24 — Contacts and calendars mirror
+
+WS-24 adds no UI, so `NextcloudUI` was not exercised.
+
+### The multistatus parser flattened `current-user-privilege-set`
+**Workstream:** WS-24 · **Component:** NCMailNet · **Severity:** friction
+**Where:** `DAVMultistatusParser`
+The parser kept only a property's direct children, so every privilege arrived as a bare
+`privilege` element and writability was undecidable (the birthday calendar has no
+`oc:read-only`). Fixed in place with Main's approval: `DAVResource.privileges` lifts the name
+inside each `privilege`; test `privilegesComeBackFlatFromTheNestedSet`.
+
+### `RequestMatcher` has `&&` but no `||`, and `.path` drops the trailing slash
+**Workstream:** WS-24 · **Component:** NCMailTestSupport · **Severity:** papercut
+**Where:** `RequestMatcher.path(_:)`
+`URL.path` strips the collection's trailing `/`, so `.path("/…/addressbooks/users/user/")`
+never matches a DAV collection request; `.pathSuffix` without the slash does. Worth one line
+in the matcher's doc comment.
+
+### `#require` cannot nest
+**Workstream:** WS-24 · **Component:** swift-testing · **Severity:** papercut
+`try #require(try await f(id: try #require(x)))` is a hard error (recursive macro expansion)
+under warnings-as-errors, and one such line in one test file breaks every sibling's
+`swift test`. Hoist the inner value first.
+
+## WS-25 — App shell v2
+
+WS-25 builds no new UI beyond a `ContentUnavailableView` placeholder, so `NextcloudUI` was
+not exercised.
+
+### Three sync actors have no `stop()`
+**Workstream:** WS-25 · **Component:** NCMailSync · **Severity:** friction
+**Where:** `MirrorCoordinator`, `ServerStateMirror`, `ServerResultFetcher`
+Sign-out has to stop everything, and these three only stop when told they are offline
+(`apply(conditions:)` with `isOffline`), which is what `AccountEngine`'s `EnginePart`
+conformances do (ADR-0084). It works because a stopped instance is discarded, but it leaves
+`ServerStateMirror`'s launch refresh uncancellable: a refresh in flight at sign-out finishes
+its writes. A real `stop()` on each, cancelling the run in flight, would replace the stand-in.
+
+### `.local` servers never resolve inside the app-hosted test runner
+**Workstream:** WS-25 · **Component:** test harness · **Severity:** friction
+**Where:** `NextcloudMailTests` hosted in `NextcloudMail.app`
+`AccountEngineLiveTests` against `http://nextcloud.local` (an `/etc/hosts` entry) times out
+in the resolver: the unified log shows `resolver:dns_stall` and then `-1001` four times, while
+`curl` from the same shell answers in 0.3 s and the package live tests (`swift test`, not an
+app process) reach the same host. Network.framework resolves `.local` through mDNS, which
+needs Local Network permission the test host app never gets a prompt for. Resolved in the
+dev stack: nginx and `trusted_domains` now also accept `localhost` and `127.0.0.1`, so
+app-hosted live tests use `NCMAIL_LIVE_SHELL=http://localhost` (also `TEST_RUNNER_`-prefixed
+for xcodebuild); the package tests can keep `nextcloud.local`.

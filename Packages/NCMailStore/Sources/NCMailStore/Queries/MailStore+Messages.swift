@@ -50,6 +50,8 @@ extension MailStore {
                     ).insert(db)
                 }
 
+                try Self.replaceTags(envelope.tags, messageId: messageId, accountId: envelope.accountId, in: db)
+
                 try SearchIndexWriter.indexEnvelope(
                     messageId: messageId,
                     subject: envelope.subject,

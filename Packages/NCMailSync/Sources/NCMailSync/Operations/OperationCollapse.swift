@@ -46,6 +46,11 @@ enum OperationCollapse {
         case thread(String)
         /// Lowercased, so `Ann@x` and `ann@x` are one sender and the later choice wins.
         case sender(String)
+        /// A v2 row's subject: a mailbox, a preference key, a settings row by server id, a
+        /// DAV href.
+        case row(String)
+        /// A row that never collapses with anything: creates and one-shot actions.
+        case unique(Int64)
     }
 
     /// - Parameter rows: the account's queue, any order.
@@ -86,6 +91,13 @@ enum OperationCollapse {
                 for earlier in stack.reversed() {
                     folded.payload.before = folded.payload.before.merging(earlier: earlier.payload.before)
                 }
+                // A DAV delete after puts: revert to the state before the first put, and send
+                // with the precondition the server can still check.
+                if let first = stack.first?.payload.dav, var dav = folded.payload.dav {
+                    dav.before = first.before
+                    dav.etag = first.etag ?? dav.etag
+                    folded.payload.dav = dav
+                }
                 stack = [folded]
             } else if var last = stack.last, last.kind == kind, merge(item, into: &last) {
                 stack[stack.count - 1] = last
@@ -111,7 +123,18 @@ enum OperationCollapse {
             // Latest wins for the same sender: trust then untrust is one DELETE.
             last.payload.trusted = item.payload.trusted
             last.payload.senderEmail = item.payload.senderEmail
-        case .delete, .deleteThread:
+        case _ where item.kind.mergesWithItself:
+            // A v2 setter: later intent wins (field by field for an account patch, edited
+            // properties unioned for a vCard), the earliest `before` stays.
+            if let earlier = last.payload.intent, let later = item.payload.intent {
+                last.payload.intent = earlier.merging(later)
+            } else if let later = item.payload.intent {
+                last.payload.intent = later
+            }
+            if let earlier = last.payload.dav, let later = item.payload.dav {
+                last.payload.dav = earlier.merging(later)
+            }
+        default:
             return false
         }
         last.payload.before = item.payload.before.merging(earlier: last.payload.before)
@@ -124,13 +147,58 @@ enum OperationCollapse {
     }
 
     private static func subject(of row: PendingOperationRecord, kind: OperationKind) -> Subject? {
+        let unique = row.id.map(Subject.unique)
         switch kind {
-        case .moveThread, .deleteThread:
+        case .moveThread, .deleteThread, .snoozeThread, .unsnoozeThread:
             return row.threadRootId.map(Subject.thread)
-        case .setFlags, .move, .delete:
+        case .setFlags, .move, .delete, .snooze, .unsnooze:
+            return row.messageId.map(Subject.message)
+        case .setTag, .unsetTag:
+            // A tag change on a message is absorbed by the message's delete, like its flags.
             return row.messageId.map(Subject.message)
         case .trustSender:
             return OperationPayload.decode(row.payloadJSON).senderEmail.map { Subject.sender($0.lowercased()) }
+        case .createTag, .createMailbox, .createAlias, .createTextBlock, .createQuickAction, .clearMailbox,
+            .markMailboxRead, .sendMDN, .unsubscribe, .saveToFiles, .addressBookShare:
+            return unique
+        default:
+            let payload = OperationPayload.decode(row.payloadJSON)
+            guard let key = rowKey(kind, payload, accountId: row.accountId) else { return unique }
+            return .row(key)
+        }
+    }
+
+    /// What a v2 row is about. Kinds that share a key are about the same thing, so a delete
+    /// absorbs the updates before it and two setters of one kind merge.
+    private static func rowKey(_ kind: OperationKind, _ payload: OperationPayload, accountId: Int64) -> String? {
+        if kind.isDAV { return payload.dav?.href.map { "dav:\($0)" } }
+        guard let intent = payload.intent else { return nil }
+        let target = intent.targetRemoteId.map(String.init) ?? intent.placeholder.map(String.init)
+        switch kind {
+        case .updateTag, .deleteTag:
+            return target.map { "tag:\($0)" }
+        case .renameMailbox, .moveMailbox, .deleteMailbox, .setMailboxSubscribed, .setMailboxSyncInBackground:
+            return intent.mailboxId.map { "mailbox:\($0)" }
+        case .setPreference:
+            return intent.key.map { "preference:\(intent.loginId ?? 0):\($0)" }
+        case .patchAccount, .setSignature:
+            return "\(kind.rawValue):\(accountId)"
+        case .updateAlias, .deleteAlias, .setAliasSignature:
+            return target.map { "alias:\($0)" }
+        case .updateTextBlock, .deleteTextBlock:
+            return target.map { "textBlock:\($0)" }
+        case .shareTextBlock, .unshareTextBlock:
+            return target.map { "textBlockShare:\($0):\(intent.shareWith ?? "")" }
+        case .updateQuickAction, .deleteQuickAction:
+            return target.map { "quickAction:\($0)" }
+        case .upsertActionStep, .deleteActionStep:
+            return target.map { "actionStep:\(intent.parentRemoteId ?? 0):\($0)" }
+        case .addInternalAddress, .removeInternalAddress:
+            return intent.email.map { "internalAddress:\(intent.type ?? ""):\($0.lowercased())" }
+        case .trustDomain:
+            return intent.email.map { "trustedDomain:\($0.lowercased())" }
+        default:
+            return nil
         }
     }
 }
@@ -148,6 +216,7 @@ extension OperationSnapshot {
         if let earlierTrust = earlier.senderTrusted {
             merged.senderTrusted = (senderTrusted ?? [:]).merging(earlierTrust) { _, older in older }
         }
+        merged.rows = earlier.rows ?? rows
         return merged
     }
 }

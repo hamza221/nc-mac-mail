@@ -30,11 +30,12 @@ extension MailStore {
             for book in books {
                 try db.execute(
                     sql: """
-                        INSERT INTO addressBook (loginId, url, displayName, isReadOnly, isEnabled, position)
-                        VALUES (:loginId, :url, :displayName, :isReadOnly, :isEnabled, :position)
+                        INSERT INTO addressBook (loginId, url, displayName, isReadOnly, isEnabled, sharedBy, position)
+                        VALUES (:loginId, :url, :displayName, :isReadOnly, :isEnabled, :sharedBy, :position)
                         ON CONFLICT (loginId, url) DO UPDATE SET
                             displayName = excluded.displayName,
                             isReadOnly = excluded.isReadOnly,
+                            sharedBy = excluded.sharedBy,
                             position = excluded.position
                         """,
                     arguments: [
@@ -43,6 +44,7 @@ extension MailStore {
                         "displayName": book.displayName,
                         "isReadOnly": book.isReadOnly,
                         "isEnabled": book.isEnabled,
+                        "sharedBy": book.sharedBy,
                         "position": book.position,
                     ]
                 )

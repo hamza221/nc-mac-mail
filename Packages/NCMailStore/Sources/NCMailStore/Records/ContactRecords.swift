@@ -17,8 +17,13 @@ public struct AddressBookRecord: Codable, FetchableRecord, MutablePersistableRec
     public var url: String
     public var displayName: String?
     public var isReadOnly: Bool
-    /// Include this book in lists and autocomplete. The user's choice, never the server's.
+    /// Include this book in lists and autocomplete. The user's toggle, mirrored from the
+    /// server's `oc:enabled` (the web Contacts app PROPPATCHes it); a listing refresh keeps the
+    /// local value.
     public var isEnabled: Bool
+    /// The book's `oc:owner-principal` when it is not the login's own principal (e.g.
+    /// `principals/users/alice`); nil for the login's own book.
+    public var sharedBy: String?
     public var position: Int
     /// RFC 6578 sync token. nil means never synced; `syncAddressBooks` preserves it.
     public var syncToken: String?
@@ -31,6 +36,7 @@ public struct AddressBookRecord: Codable, FetchableRecord, MutablePersistableRec
         displayName: String? = nil,
         isReadOnly: Bool = false,
         isEnabled: Bool = true,
+        sharedBy: String? = nil,
         position: Int = 0,
         syncToken: String? = nil,
         lastSyncAt: Int64? = nil
@@ -41,6 +47,7 @@ public struct AddressBookRecord: Codable, FetchableRecord, MutablePersistableRec
         self.displayName = displayName
         self.isReadOnly = isReadOnly
         self.isEnabled = isEnabled
+        self.sharedBy = sharedBy
         self.position = position
         self.syncToken = syncToken
         self.lastSyncAt = lastSyncAt

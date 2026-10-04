@@ -136,6 +136,9 @@ public struct EnvelopeWrite: Encodable, PersistableRecord, Sendable {
 
     /// Written to `messageAddress`, and flattened into the `people` column of the search index.
     public var addresses: [EnvelopeAddress]
+    /// The tags the envelope carries. Upserted into `tag` by `(accountId, remoteId)` and
+    /// replacing this message's `messageTag` rows, in the envelope's transaction.
+    public var tags: [TagWrite]
 
     enum CodingKeys: String, CodingKey {
         case remoteId, mailboxId, accountId, uid, messageId, threadRootId, inReplyTo, referencesJSON
@@ -163,6 +166,7 @@ public struct EnvelopeWrite: Encodable, PersistableRecord, Sendable {
         fromEmail: String? = nil,
         fromLabel: String? = nil,
         addresses: [EnvelopeAddress] = [],
+        tags: [TagWrite] = [],
         rawJSON: String = "{}"
     ) {
         self.remoteId = remoteId
@@ -196,6 +200,7 @@ public struct EnvelopeWrite: Encodable, PersistableRecord, Sendable {
         self.syncedAt = syncedAt
         self.rawJSON = rawJSON
         self.addresses = addresses
+        self.tags = tags
     }
 
     /// `"Name <addr>"` for from, to and cc, space joined — the `people` column of the index.

@@ -659,6 +659,7 @@ func describe(_ error: any Error) -> String {
     switch error {
     case let error as MailError: error.description
     case let error as MirrorError: error.description
+    case let error as ServerResultError: error.description
     case is CancellationError: "cancelled"
     default: String(describing: type(of: error))
     }

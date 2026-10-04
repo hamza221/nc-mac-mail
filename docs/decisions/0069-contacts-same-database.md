@@ -5,9 +5,10 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 # ADR-0069: Contacts use the same database and the same five modules, keyed by Nextcloud login
 
-**Status:** Proposed
-**Date:** 2026-10-03
-**Decided by:** v2 roadmap, to be confirmed by the owning workstream
+**Status:** Accepted
+**Date:** 2026-10-03 (accepted 2026-10-04)
+**Decided by:** v2 roadmap; placement and lossless vCard confirmed by WS-17/WS-18, the sync
+protocol confirmed by WS-24 against the live server
 
 ## Context
 
@@ -33,7 +34,21 @@ Contacts use the same database and the same five modules, keyed by Nextcloud log
   unknown properties and parameters. Not `CNContactVCardSerialization`, which drops `X-`
   properties and loses data on round trip.
 - Sync protocol: RFC 6578 `sync-collection` with sync tokens. Writes use `If-Match`. On
-  412, refetch and reapply the locally edited properties.
+  412, refetch and reapply the locally edited properties
+  ([ADR-0082](0082-contact-writes-reapply-per-property.md) fixes the unit, the winner and the
+  retry count).
+
+## Validation (WS-24)
+
+Measured against Nextcloud with Contacts 8.10, recorded in `docs/architecture/sync-engine.md`:
+
+- `sync-collection` + `addressbook-multiget` in batches of 100 mirrors a 2,000-card book well
+  inside the 60-second budget (the number is in the WS-24 report and the sync-engine doc).
+- Two server behaviours the plan did not foresee, both handled without leaving the protocol:
+  a book listed **without** a `sync-token` ("Recently contacted") refuses `sync-collection`
+  with 415, so it is mirrored from an ETag listing; and a refused token is a 403
+  `InvalidSyncToken`, answered with a full resync.
+- The address book on/off toggle is server state (`oc:enabled`), not local preference.
 
 ## Consequences
 
@@ -61,3 +76,6 @@ set of address books; the contacts would be duplicated or orphaned.
 
 Contacts outgrow the mail database (size or schema churn), or a shared Nextcloud CardDAV
 package appears worth depending on.
+
+Nextcloud gives "Recently contacted" a sync token, or the store grows past what one
+multiget per 100 cards can fill in a minute.

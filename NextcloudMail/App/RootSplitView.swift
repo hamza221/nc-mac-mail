@@ -80,18 +80,12 @@ struct RootSplitView: View {
                         StatusFooter(status: session.status, retry: { session.engine.retryFailedActions() })
                     }
             } content: {
-                SearchableMessageList(
-                    model: session.search,
-                    list: messageList,
-                    navigation: session.navigation,
-                    isOffline: session.status.isOffline,
-                    triage: session.triage
-                )
-                .navigationSplitViewColumnWidth(
-                    min: ColumnWidth.content.min, ideal: contentWidth, max: ColumnWidth.content.max
-                )
-                .trackingWidth($contentWidth)
-                .task { session.triage.listStore = messageList }
+                contentColumn
+                    .navigationSplitViewColumnWidth(
+                        min: ColumnWidth.content.min, ideal: contentWidth, max: ColumnWidth.content.max
+                    )
+                    .trackingWidth($contentWidth)
+                    .task { session.triage.listStore = messageList }
             } detail: {
                 detailColumn
                     .navigationSplitViewColumnWidth(min: ColumnWidth.detail.min, ideal: ColumnWidth.detail.ideal)
@@ -119,6 +113,30 @@ struct RootSplitView: View {
         }
     }
 
+    /// Routes on ``SidebarSelection``. A mailbox, or nothing yet, is v1's searchable list;
+    /// every other selection is wave 3's to draw and shows ``PendingSelectionView`` until it
+    /// is (ux-spec.md, "What the sidebar can select").
+    @ViewBuilder
+    private var contentColumn: some View {
+        switch session.navigation.selection {
+        case nil, .mailbox:
+            SearchableMessageList(
+                model: session.search,
+                list: messageList,
+                navigation: session.navigation,
+                isOffline: session.status.isOffline,
+                triage: session.triage
+            )
+        case let selection?:
+            PendingSelectionView(selection: selection)
+        }
+    }
+
+    /// Nothing selected yet, or a mailbox: the v1 detail column.
+    private var showsMailbox: Bool {
+        session.navigation.selection.map { $0.mailboxId != nil } ?? true
+    }
+
     /// The message, from the account the selected mailbox belongs to.
     ///
     /// `.id(accountId)` is what makes a second account correct rather than nearly correct:
@@ -128,7 +146,7 @@ struct RootSplitView: View {
     @ViewBuilder
     private var detailColumn: some View {
         let accountId = messageList.mailbox?.accountId
-        if let services = session.messageServices(accountId: accountId) {
+        if showsMailbox, let services = session.messageServices(accountId: accountId) {
             MessageView(
                 services: services,
                 messageId: messageList.focusedMessageId,
@@ -214,6 +232,43 @@ private struct StatusFooter: View {
             .padding(theme.metrics.spacing.tight)
         case .none:
             EmptyView()
+        }
+    }
+}
+
+/// The content column for a selection whose list a wave-3 workstream has not built yet: the
+/// same `ContentUnavailableView` surface the message list uses for its empty states, naming
+/// what was picked. Each case disappears from here when its view lands.
+private struct PendingSelectionView: View {
+    let selection: SidebarSelection
+
+    var body: some View {
+        ContentUnavailableView {
+            Label {
+                Text(title)
+            } icon: {
+                symbol.view(size: .large, label: .decorative)
+            }
+        }
+    }
+
+    private var title: String {
+        switch selection {
+        case .mailbox: "Mailbox"
+        case .unifiedInbox: "All inboxes"
+        case .priorityInbox: "Priority inbox"
+        case .favorites: "Favorites"
+        case .outbox: "Outbox"
+        case .contacts: "Contacts"
+        }
+    }
+
+    private var symbol: MailSymbol {
+        switch selection {
+        case .mailbox, .unifiedInbox, .priorityInbox: .inbox
+        case .favorites: .star
+        case .outbox: .sent
+        case .contacts: .account
         }
     }
 }

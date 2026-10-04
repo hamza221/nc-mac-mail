@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<d:multistatus xmlns:d="DAV:" xmlns:s="http://sabredav.org/ns" xmlns:card="urn:ietf:params:xml:ns:carddav" xmlns:oc="http://owncloud.org/ns" xmlns:nc="http://nextcloud.org/ns"><d:response><d:href>/remote.php/dav/addressbooks/users/user/ws24-temp-merge/ws24-merge.vcf</d:href><d:propstat><d:prop><d:getetag>&quot;a328a1bd5a33b083383d55e8ffc8e6c8&quot;</d:getetag><card:address-data>BEGIN:VCARD&#13;
+VERSION:3.0&#13;
+UID:ws24-merge&#13;
+FN:WS24 Merge&#13;
+N:Merge;WS24;;;&#13;
+EMAIL;TYPE=WORK:merge-base@example.org&#13;
+TEL;TYPE=CELL:+1 555 0199&#13;
+NOTE:base&#13;
+END:VCARD&#13;</card:address-data></d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response></d:multistatus>

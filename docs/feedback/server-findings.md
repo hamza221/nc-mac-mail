@@ -415,6 +415,92 @@ the full Nextcloud HTML error page with status 500, so a client has no message t
 
 **Suggestion:** catch the same `ClientException` and answer the 400 the siblings do.
 
+### 23. Three Sieve routes, three wrapping conventions
+
+**Where:** `GET /api/sieve/active/{id}`, `GET /api/filter/{id}`, `GET /api/out-of-office/{id}`
+with ManageSieve on (recorded by WS-21's scratch lifecycle, ADR-0080)
+**Kind:** shape · **Impact:** medium — each silently decodes wrong under the obvious model
+**Found by:** WS-21, the first recording with Sieve enabled
+
+The active script answers bare `{"scriptName": …, "script": …}`; the filters answer a bare
+array; the out-of-office route answers the `{"status","data"}` envelope around
+`{"state": …|null, "script", "untouchedScript"}`, where `state` is the out-of-office
+settings and is null until they were ever saved. With Sieve off all three answer the
+envelope (finding 22 aside). A client that modelled them from the Sieve-off recordings —
+as this one had — reads every script as nil and fails every filter list.
+
+**Suggestion:** one convention for the three; the envelope is what the rest of the
+settings surface uses.
+
+### 24. A trusted address disappears from the listing while its domain is trusted
+
+**Where:** `GET /api/trustedsenders`
+**Kind:** behaviour · **Impact:** low, confusing in a settings list
+**Found by:** WS-21, recording a list with one domain and one address
+
+Trust `example.org` as a domain, then `someone@example.org` as an individual: both `PUT`s
+answer 201, and the listing shows only the domain (measured). Removing the domain brings the
+address back. A settings view that mirrors the listing therefore cannot show — or delete —
+the individual entry while the domain is there.
+
+**Suggestion:** list both; the client can show the address as implied by the domain.
+
+### 25. A settings refresh is 25 requests with no batch form
+
+**Where:** `GET /api/preferences/{key}` (one key per request), `GET /api/accounts/{id}/quota`
+**Kind:** cost · **Impact:** medium on every launch
+**Found by:** WS-21, timing a full server-state refresh against the live server
+
+Every Mail route costs ~210 ms of PHP bootstrap on the test server; fifteen of the 25
+requests a native client needs to mirror the settings the web client gets in its page state
+are one preference each; and the quota route opens an IMAP session, 2.4 s on its own.
+Serially 7.3 s, four at a time 2.6–3.1 s.
+
+**Suggestion:** `GET /api/preferences` returning every user preference at once, which is
+what `PageController::index` already assembles for the web client.
+
+### 26. "Recently contacted" refuses `sync-collection`
+
+**Where:** `/remote.php/dav/addressbooks/users/{u}/z-app-generated--contactsinteraction--recent/`
+**Kind:** protocol · **Impact:** low, a full listing every pass
+**Found by:** WS-24, mirroring every address book of the test login
+
+The book is listed with no `sync-token` (404 in the PROPFIND), and a `sync-collection`
+REPORT on it answers **415** `Sabre\DAV\Exception\ReportNotSupported`. Multiget works. A
+mirror has to fall back to a Depth-1 ETag listing of the whole book on every pass.
+
+**Suggestion:** implement `ISyncSupport` for the contacts-interaction book (it already keeps
+per-card ETags), so clients can use the one sync protocol everywhere.
+
+### 27. The default scheduling calendar is on the principal, and the birthday calendar does not say it is read-only
+
+**Where:** `PROPFIND` on `/remote.php/dav/principals/users/{u}/` and on the calendar home
+**Kind:** protocol · **Impact:** low, each costs a client an extra probe
+**Found by:** WS-24, building the calendar list
+
+`schedule-default-calendar-URL` answers 404 on the schedule inbox, where RFC 6638 §9.2 puts
+it, and 200 on the principal. The birthday calendar answers `oc:read-only` 404 although it
+is read-only; only `current-user-privilege-set` (no `write-content`) tells. Both measured.
+
+**Suggestion:** also answer the property on the inbox; set `oc:read-only` on the birthday
+calendar as on shared read-only ones.
+
+### 28. Ten address books an hour, then 429
+
+**Where:** extended `MKCOL` under `/remote.php/dav/addressbooks/users/{u}/`
+**Kind:** limit · **Impact:** medium for test tooling, none for users
+**Found by:** WS-24, re-running the fixture recorder's scratch lifecycles
+
+After about ten creations in an hour, `MKCOL` answers **429**
+`OCA\DAV\Connector\Sabre\Exception\TooManyRequests` ("Too many addressbooks created"), and
+every request into the would-be book then answers 404. The limit is the dav app's
+`rateLimitAddressBookCreation` (default 10 per `rateLimitPeriodAddressBookCreation`, 3600 s).
+A full recorder run creates three scratch books, so three runs in an hour exhaust it. The
+test server's limit was raised for WS-24's recording and restored afterwards.
+
+**Suggestion:** none for the server — the limit is sensible. Recorder authors: reuse one
+scratch book per run.
+
 ## Deliberate behaviour that looks like a bug, and should be documented as deliberate
 
 ### 14. The 1x1 tracking pixel is unrecoverable, which is right

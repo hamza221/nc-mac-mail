@@ -1,7 +1,7 @@
 -- SPDX-FileCopyrightText: Hamza Mahjoubi
 -- SPDX-License-Identifier: AGPL-3.0-or-later
 --
--- Canonical schema for the local mirror, version 2.
+-- Canonical schema for the local mirror, version 4.
 --
 -- This file is the contract. `Packages/NCMailStore/Sources/NCMailStore/Migrations.swift`
 -- must produce exactly this schema, and `MigrationTests.testSchemaMatchesReference`
@@ -444,7 +444,12 @@ CREATE TABLE draft (
     createdAt                INTEGER NOT NULL,
     updatedAt                INTEGER NOT NULL,
     savedAt                  INTEGER,                   -- last successful server flush
-    syncError                TEXT
+    syncError                TEXT,
+    -- v3 (ALTER TABLE, so rendered last): the drafts engine's send intent.
+    sendState TEXT,                                    -- NULL = not requested
+    sendRequestedAt INTEGER,                           -- unix seconds
+    replacesMessageId INTEGER                          -- IMAP remote id of the superseded
+                                                       -- Drafts-folder copy (server draftId)
 );
 
 CREATE INDEX idxDraftAccount ON draft(accountId, updatedAt DESC);
@@ -700,6 +705,9 @@ CREATE TABLE addressBook (
     position    INTEGER NOT NULL DEFAULT 0,
     syncToken   TEXT,                      -- RFC 6578 token; NULL = never synced
     lastSyncAt  INTEGER,
+    -- v4 (ALTER TABLE, so rendered last): oc:owner-principal of a book shared to this
+    -- login, e.g. principals/users/alice; NULL = the login's own book.
+    sharedBy TEXT,
     UNIQUE (loginId, url)
 );
 
@@ -796,6 +804,9 @@ CREATE TABLE calendar (
     supportsTasks  INTEGER NOT NULL DEFAULT 0,
     position       INTEGER NOT NULL DEFAULT 0,
     fetchedAt      INTEGER NOT NULL,
+    -- v4 (ALTER TABLE, so rendered last): the default scheduling calendar; at most
+    -- one per login by convention, not by constraint.
+    isDefaultSchedule INTEGER NOT NULL DEFAULT 0,
     UNIQUE (loginId, url)
 );
 

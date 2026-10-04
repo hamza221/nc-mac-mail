@@ -45,6 +45,9 @@ final class SettingsStore {
     /// on the same run the first one started. It does not survive the Settings window
     /// closing and reopening. See the report for the residual gap that leaves.
     private var coordinators: [Int64: MirrorCoordinator] = [:]
+    /// Told once a sign-out has removed the Keychain item and any rows, so the app shell
+    /// stops that login's engines (`AppSession.signedOut(account:removeLocalCopies:)`).
+    var signedOut: (@MainActor (AccountRecord, _ removeLocalCopies: Bool) async -> Void)?
 
     private static let logger = Logger(subsystem: "com.nextcloud.mail.macos", category: "settings")
 
@@ -290,15 +293,13 @@ final class SettingsStore {
     }
 
     /// Removes the Keychain item unconditionally, then either keeps the mirrored rows or
-    /// deletes and `VACUUM`s them, per the user's choice.
+    /// deletes and `VACUUM`s them, per the user's choice, then tells ``signedOut``.
     ///
-    /// Deleting the row is also what stops this account's live `MirrorCoordinator`,
-    /// `SyncScheduler` and `OperationDrainer`: `AccountEngine.apply(rows:)` already reacts to
-    /// `store.observeAccounts()` losing a row by stopping everything it was running for it,
-    /// so nothing here has to reach into `AppSession` to say so. Choosing **Keep** stops
-    /// nothing this launch, because the account's `AccountSession.client` already has its
-    /// app password captured in memory. It takes effect at the next launch instead, when the
-    /// Keychain enumeration no longer finds it. See the report.
+    /// The hook is what stops the login's engines either way: deleting rows would stop the
+    /// account-level ones through `AccountEngine`'s row observation, but **Keep** leaves the
+    /// rows, and the login-level engines (contacts, calendars, server state) have no row to
+    /// lose. With removal, the app shell also deletes the login row once its engines have
+    /// stopped.
     func signOut(account: AccountRecord, removeLocalCopies: Bool) async {
         if let serverURL = URL(string: account.serverURL) {
             do {
@@ -310,14 +311,16 @@ final class SettingsStore {
             }
         }
         coordinators[account.id] = nil
-        guard removeLocalCopies else { return }
-        do {
-            try await store.deleteAccount(id: account.id)
-            try await store.vacuum()
-        } catch {
-            Self.logger.error(
-                "removing local copies at sign-out failed for account \(account.id, privacy: .public): \(String(describing: error), privacy: .public)"
-            )
+        if removeLocalCopies {
+            do {
+                try await store.deleteAccount(id: account.id)
+                try await store.vacuum()
+            } catch {
+                Self.logger.error(
+                    "removing local copies at sign-out failed for account \(account.id, privacy: .public): \(String(describing: error), privacy: .public)"
+                )
+            }
         }
+        await signedOut?(account, removeLocalCopies)
     }
 }

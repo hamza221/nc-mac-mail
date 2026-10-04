@@ -512,8 +512,11 @@ Where this table disagrees with `plan/API.md`, the table is what the server does
 | `GET/PUT/DELETE /api/internalAddress[/{address}?type=]` | envelope; PUT echoes `{id, address, uid, type}` | |
 | `PUT/DELETE /api/trustedsenders/{email}?type=domain` | `{"status":"success","data":null}` | |
 | `GET /api/sieve/active/{id}`, `GET`/`POST /api/out-of-office/{id}[/follow-system]` | **400** `{"status":"fail","data":{"message":"ManageSieve is disabled"}}` with Sieve off | |
+| `GET /api/sieve/active/{id}` (Sieve on) | **bare** `{"scriptName":null,"script":""}` — no envelope | `Endpoint<SieveScript>`; fixture `sieve-active-enabled.json` |
+| `GET /api/out-of-office/{id}` (Sieve on) | envelope `{"state":null,"script":"","untouchedScript":""}` | `JSONEnvelope<OutOfOfficeFetch>`; `state` is the `OutOfOfficeState`, null until set |
 | `PUT /api/sieve/account/{id}` | `{"sieveEnabled": …}` | |
 | `GET`/`PUT /api/filter/{accountId}` | **500 with an HTML error page** with Sieve off | no message to show |
+| `GET /api/filter/{accountId}` (Sieve on) | **bare** array, `[]` with no filters — no envelope | `Endpoint<[MailFilter]>`; fixture `filters-enabled.json` |
 | `POST /api/follow-up/check-message-ids` | envelope `{"wasFollowedUp": [ids]}` | a read; retried |
 | quick actions, action steps | envelope around the object; DELETE `data: null` | |
 | `GET /api/textBlocks`, create, update, `…/{id}/shares` | envelope | |
@@ -525,6 +528,47 @@ Where this table disagrees with `plan/API.md`, the table is what the server does
 Drafts and outbox answer 202 to update, delete, move and send, with the success envelope.
 `MailClient` now treats a 202 as success when the body's `status` is `success` and as
 `syncInProgress` otherwise (ADR-0077).
+
+## Drafts, the outbox and what a send does on the server (WS-23)
+
+*Verified by `OutboxLiveTests` on 2026-10-04 (every send to the account's own address,
+ADR-0080) and read from the nextcloud/mail source where noted.*
+
+- **`draftId` is an IMAP message id, not a `/api/drafts` id.** On `POST /api/drafts` and
+  `POST /api/outbox` it names a mirrored message in the Drafts folder, which
+  `DeleteDraftListener` flags `\Deleted` and expunges. Verified: a draft closed to IMAP,
+  then a new draft sent with `draftId` = that message's id — the Drafts copy was gone
+  within the next cache sync (`sendingADraftFromTheDraftsFolderExpungesIt`).
+- **The server moves idle drafts by itself.** Its job (`DraftsService::flush`, source)
+  moves every `/api/drafts` row untouched for 300 s *with `sendAt` NULL* to the IMAP Drafts
+  folder and deletes the row. Afterwards `PUT /api/drafts/{id}` answers **404**
+  `{"status":"fail","data":[]}` (verified with a missing id).
+- **`POST /api/drafts/move/{id}`** does the same move now (202, success envelope); the
+  server row is deleted, so the id is dead afterwards.
+- **`POST /api/outbox/from-draft/{id}` keeps the id.** The draft becomes an outbox message
+  (`type` 0) with the same `id`. The routes are typed: `PUT /api/drafts/{id}` 404s on an
+  outbox message, `GET /api/outbox/{id}` 404s on a draft, and both 404 once sent.
+- **Draft cleanup on send:** after `from-draft` + `POST /api/outbox/{id}` the server draft
+  is gone (`PUT /api/drafts/{id}` → 404) and `GET /api/outbox` is empty — the send chain
+  deletes the row and its local attachments when it reaches `STATUS_PROCESSED`. There is no
+  second object to clean up. A draft that had been moved to IMAP is only removed if its
+  message id is passed as `draftId` (above).
+- **`POST /api/outbox/{id}` failure** is HTTP 500 with
+  `{"status":"error", …, "data":[<the message>]}` (source); the row stays in the outbox
+  with its `status`. Status 11 (`STATUS_IMAP_SENT_MAILBOX_FAIL`) means SMTP succeeded and
+  only the Sent copy failed; the web client's "Copy to Sent" is the same
+  `POST /api/outbox/{id}`, and the chain resumes at the copy step.
+- **Recently contacted:** each send made from a user request dispatches
+  `ContactInteractedWithEvent` for every recipient, and the `contactsinteraction` app
+  updates its address book `z-app-generated--contactsinteraction--recent`. Verified: the
+  card for the account's own address there changed ETag and `Last-Modified` to the second of
+  each live send (09:46:09 and 09:47:09 UTC). The listener needs a user session (source), so
+  a scheduled message sent by the server's background job does **not** record an
+  interaction. `GET /api/autoComplete?term=` (Basic auth) stayed `[]` for the address
+  afterwards; the address collector's table was not inspected.
+- **Timing (live, nextcloud.local):** `send()` to dispatch complete 13.5 s, of which 10 s is
+  the undo window and ~3.5 s the three requests (`PUT` draft, `from-draft`, send); the
+  message was in the Sent cache 9.8 s later.
 
 ## Non-Mail OCS routes
 

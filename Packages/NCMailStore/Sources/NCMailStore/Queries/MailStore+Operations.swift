@@ -31,6 +31,9 @@ public struct LocalEffect: Sendable, Equatable {
     /// `messageBody.isSenderTrusted` for exactly ``messageIds``. Discard's half of a sender
     /// trust: putting each body back to what it held, which is not one value for all of them.
     public var isSenderTrusted: Bool?
+    /// Row-level changes outside `message`'s own columns — tags, mailboxes, settings —
+    /// applied in order, after the message part, in the same transaction.
+    public var rows: [RowEffect]
 
     public init(
         messageIds: [Int64],
@@ -38,7 +41,8 @@ public struct LocalEffect: Sendable, Equatable {
         mailboxId: Int64? = nil,
         removesRows: Bool = false,
         senderTrust: SenderTrust? = nil,
-        isSenderTrusted: Bool? = nil
+        isSenderTrusted: Bool? = nil,
+        rows: [RowEffect] = []
     ) {
         self.messageIds = messageIds
         self.flags = flags
@@ -46,6 +50,7 @@ public struct LocalEffect: Sendable, Equatable {
         self.removesRows = removesRows
         self.senderTrust = senderTrust
         self.isSenderTrusted = isSenderTrusted
+        self.rows = rows
     }
 }
 
@@ -255,6 +260,11 @@ extension MailStore {
     /// One local effect, as SQL. Column names are looked up rather than interpolated from the
     /// payload, so a key nobody modelled cannot reach the statement.
     private static func apply(_ effect: LocalEffect, in db: Database) throws {
+        for row in effect.rows { try apply(row, in: db) }
+        try applyMessagePart(effect, in: db)
+    }
+
+    private static func applyMessagePart(_ effect: LocalEffect, in db: Database) throws {
         if let trust = effect.senderTrust {
             try db.execute(
                 sql: """

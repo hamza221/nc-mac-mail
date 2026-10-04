@@ -122,6 +122,156 @@ struct V2QueryTests {
         #expect(try await store.drafts(accountId: 1).map(\.subject) == ["new", "old"])
     }
 
+    @Test func pendingSendDraftsAreThoseWithASendStateAcrossAccounts() async throws {
+        let store = try MailStore.inMemory()
+        try await Seed.base(store)
+        try await store.upsert(accounts: [Seed.account(remoteId: 2)])
+        let accountIds = try await store.read { db in
+            try Int64.fetchAll(db, sql: "SELECT id FROM account ORDER BY id")
+        }
+        #expect(accountIds.count == 2)
+        let other = try #require(accountIds.last)
+
+        try await store.insert(draft: DraftRecord(accountId: 1, subject: "idle", createdAt: 1, updatedAt: 1))
+        try await store.insert(
+            draft: DraftRecord(
+                accountId: other, subject: "later", createdAt: 2, updatedAt: 2, sendState: "queued",
+                sendRequestedAt: 50, replacesMessageId: 321))
+        var earlier = try await store.insert(
+            draft: DraftRecord(accountId: 1, subject: "earlier", createdAt: 3, updatedAt: 3))
+        let earlierId = try #require(earlier.id)
+        try await store.setDraftSendState(id: earlierId, sendState: "sending", sendRequestedAt: 40, syncError: nil)
+
+        let pending = try await store.pendingSendDrafts()
+        #expect(pending.map(\.subject) == ["earlier", "later"])
+        #expect(pending.first?.sendState == "sending")
+        #expect(pending.first?.sendRequestedAt == 40)
+        #expect(pending.last?.replacesMessageId == 321)
+
+        // The record round-trips the new columns through update too.
+        earlier = try #require(try await store.draft(id: earlierId))
+        earlier.sendState = nil
+        earlier.sendRequestedAt = nil
+        earlier.replacesMessageId = 99
+        try await store.update(draft: earlier)
+        #expect(try await store.draft(id: earlierId)?.replacesMessageId == 99)
+        #expect(try await store.pendingSendDrafts().map(\.subject) == ["later"])
+
+        let laterId = try #require(pending.last?.id)
+        try await store.setDraftSendState(id: laterId, sendState: nil, sendRequestedAt: nil, syncError: nil)
+        #expect(try await store.pendingSendDrafts().isEmpty)
+    }
+
+    @Test func unsavedDraftsAreUnqueuedAndNeverOrNotLatelyFlushed() async throws {
+        let store = try MailStore.inMemory()
+        try await Seed.base(store)
+        try await store.insert(draft: DraftRecord(accountId: 1, subject: "new", createdAt: 1, updatedAt: 1))
+        try await store.insert(
+            draft: DraftRecord(accountId: 1, remoteId: 5, subject: "saved", createdAt: 2, updatedAt: 2, savedAt: 2))
+        try await store.insert(
+            draft: DraftRecord(accountId: 1, remoteId: 6, subject: "edited", createdAt: 3, updatedAt: 9, savedAt: 3))
+        try await store.insert(
+            draft: DraftRecord(accountId: 1, remoteId: 7, subject: "noStamp", createdAt: 4, updatedAt: 10))
+        try await store.insert(
+            draft: DraftRecord(accountId: 1, subject: "queued", createdAt: 5, updatedAt: 11, sendState: "undo"))
+        #expect(try await store.unsavedDrafts().map(\.subject) == ["new", "edited", "noStamp"])
+
+        let newId = try #require(try await store.unsavedDrafts().first?.id)
+        try await store.setDraftSync(id: newId, remoteId: 8, savedAt: 1, syncError: nil)
+        #expect(try await store.unsavedDrafts().map(\.subject) == ["edited", "noStamp"])
+    }
+
+    /// The composer autosaves while the engine stamps; an engine write must leave the
+    /// composer's columns exactly as the composer last wrote them.
+    @Test func engineWritesDoNotClobberComposerColumns() async throws {
+        let store = try MailStore.inMemory()
+        try await Seed.base(store)
+        var draft = try await store.insert(
+            draft: DraftRecord(accountId: 1, subject: "v1", bodyPlain: "b1", createdAt: 1, updatedAt: 1))
+        let id = try #require(draft.id)
+
+        // The composer saves a newer body after the engine read its copy.
+        draft.subject = "v2"
+        draft.bodyPlain = "b2"
+        draft.bodyHtml = "<p>b2</p>"
+        draft.updatedAt = 5
+        try await store.update(draft: draft)
+
+        try await store.setDraftSync(id: id, remoteId: 42, savedAt: 1, syncError: nil)
+        try await store.setDraftSendState(id: id, sendState: "closing", sendRequestedAt: 6, syncError: "boom")
+
+        let read = try #require(try await store.draft(id: id))
+        #expect(read.subject == "v2")
+        #expect(read.bodyPlain == "b2")
+        #expect(read.bodyHtml == "<p>b2</p>")
+        #expect(read.updatedAt == 5)
+        #expect(read.remoteId == 42)
+        #expect(read.savedAt == 1)
+        #expect(read.sendState == "closing")
+        #expect(read.sendRequestedAt == 6)
+        #expect(read.syncError == "boom")
+
+        let attachment = try await store.insert(
+            draftAttachment: DraftAttachmentRecord(draftId: id, fileName: "a.pdf", size: 3))
+        let attachmentId = try #require(attachment.id)
+        try await store.setDraftRemoteAttachmentId(
+            attachmentId: attachmentId, remoteAttachmentId: 77, payloadJSON: #"{"id":77}"#)
+        let stamped = try #require(try await store.attachments(draftId: id).first)
+        #expect(stamped.remoteAttachmentId == 77)
+        #expect(stamped.payloadJSON == #"{"id":77}"#)
+        #expect(stamped.fileName == "a.pdf")
+    }
+
+    // MARK: Tags
+
+    @Test func envelopeTagsUpsertIdempotentlyAndReplaceMessageTags() async throws {
+        let store = try MailStore.inMemory()
+        try await Seed.base(store)
+        let work = TagWrite(remoteId: 1, imapLabel: "$label1", displayName: "Work", color: "#f00")
+        let home = TagWrite(remoteId: 2, imapLabel: "$label2", displayName: "Home")
+
+        var envelope = Seed.envelope(remoteId: 1, sentAt: 100)
+        envelope.tags = [work, home]
+        let ids = try await store.upsert(envelopes: [envelope])
+        let messageId = try #require(ids.first)
+        try await store.upsert(envelopes: [envelope])
+
+        let first = try await store.tags(accountId: 1)
+        #expect(first.map(\.displayName) == ["Home", "Work"])
+        #expect(try await store.tags(messageId: messageId).map(\.remoteId) == [2, 1])
+
+        // Renamed server-side, and removed from the message: same row, fewer links.
+        envelope.tags = [TagWrite(remoteId: 1, imapLabel: "$label1", displayName: "Job", color: "#0f0")]
+        try await store.upsert(envelopes: [envelope])
+        let after = try await store.tags(accountId: 1)
+        #expect(after.count == 2)
+        #expect(after.first { $0.remoteId == 1 }?.id == first.first { $0.remoteId == 1 }?.id)
+        #expect(try await store.tags(messageId: messageId).map(\.displayName) == ["Job"])
+        #expect(try await store.tags(messageId: messageId).first?.color == "#0f0")
+
+        envelope.tags = []
+        try await store.upsert(envelopes: [envelope])
+        #expect(try await store.tags(messageId: messageId).isEmpty)
+    }
+
+    @Test func observedTagsFollowEnvelopeWrites() async throws {
+        let store = try MailStore.inMemory()
+        try await Seed.base(store)
+
+        var received: [[String]] = []
+        for try await tags in store.observeTags(accountId: 1) {
+            received.append(tags.map(\.displayName))
+            if received.count == 1 {
+                var envelope = Seed.envelope(remoteId: 1, sentAt: 100)
+                envelope.tags = [TagWrite(remoteId: 3, imapLabel: "$x", displayName: "X")]
+                _ = try await Task.detached { try await store.upsert(envelopes: [envelope]) }.value
+            } else {
+                break
+            }
+        }
+        #expect(received == [[], ["X"]])
+    }
+
     // MARK: Outbox
 
     @Test func theOutboxIsReplacedAndOrderedBySendTime() async throws {
@@ -404,6 +554,48 @@ struct V2QueryTests {
         #expect(personal.syncToken == "token-1")
         #expect(personal.lastSyncAt == 5)
         #expect(!personal.isEnabled)
+    }
+
+    @Test func syncingAddressBooksCarriesSharedByThroughInsertAndUpdate() async throws {
+        let store = try MailStore.inMemory()
+        let login = try await store.ensureLogin(Seed.identity)
+        let loginId = try #require(login.id)
+        let inserted = try await store.syncAddressBooks(
+            [
+                AddressBookRecord(loginId: loginId, url: "/dav/books/personal/"),
+                AddressBookRecord(loginId: loginId, url: "/dav/books/shared/", sharedBy: "principals/users/alice"),
+            ],
+            loginId: loginId
+        )
+        #expect(inserted.first(where: { $0.url == "/dav/books/personal/" })?.sharedBy == nil)
+        #expect(inserted.first(where: { $0.url == "/dav/books/shared/" })?.sharedBy == "principals/users/alice")
+
+        // The conflict-update path rewrites it both ways.
+        let updated = try await store.syncAddressBooks(
+            [
+                AddressBookRecord(loginId: loginId, url: "/dav/books/personal/", sharedBy: "principals/users/bob"),
+                AddressBookRecord(loginId: loginId, url: "/dav/books/shared/"),
+            ],
+            loginId: loginId
+        )
+        #expect(updated.first(where: { $0.url == "/dav/books/personal/" })?.sharedBy == "principals/users/bob")
+        #expect(updated.first(where: { $0.url == "/dav/books/shared/" })?.sharedBy == nil)
+    }
+
+    @Test func replacingCalendarsCarriesTheDefaultScheduleFlag() async throws {
+        let store = try MailStore.inMemory()
+        let login = try await store.ensureLogin(Seed.identity)
+        let loginId = try #require(login.id)
+        try await store.replaceCalendars(
+            [
+                CalendarRecord(loginId: loginId, url: "/dav/cal/personal/", isDefaultSchedule: true, fetchedAt: 1),
+                CalendarRecord(loginId: loginId, url: "/dav/cal/work/", fetchedAt: 1),
+            ],
+            loginId: loginId
+        )
+        let calendars = try await store.calendars(loginId: loginId)
+        #expect(calendars.first(where: { $0.url == "/dav/cal/personal/" })?.isDefaultSchedule == true)
+        #expect(calendars.first(where: { $0.url == "/dav/cal/work/" })?.isDefaultSchedule == false)
     }
 
     @Test func aContactKeepsItsLocalIdAcrossUpdates() async throws {

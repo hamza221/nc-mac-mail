@@ -70,6 +70,125 @@ mailbox happens to share that number. `MutationQueue.localMailboxId(for:accountI
 lookup, and it answers nil for an account with no archive folder configured — which a live
 server commonly has not.
 
+## v2 operations (WS-22)
+
+Every offline-capable v2 mutation is a queue kind and goes through the same
+`MutationQueue.perform(_:accountId:)` front door (login-scoped callers may use
+`perform(_:loginId:)`). The settings the server must *validate* are not here: they are
+`SettingsCommands` ([below](#settings-commands-adr-0068)).
+
+| Kind | Local effect (optimistic) | Request |
+| --- | --- | --- |
+| `setTag` / `unsetTag` | `messageTag` row for the label | `PUT` / `DELETE /api/messages/{id}/tags/{imapLabel}`, one row per message |
+| `createTag` / `updateTag` / `deleteTag` | `tag` row upserted / deleted | `POST /api/tags`, `PUT /api/tags/{id}`, `DELETE /api/tags/{accountId}/delete/{id}` |
+| `snooze` / `unsnooze` | moved to the snooze mailbox + `snooze.until` / snooze row cleared | `POST /api/messages/{id}/snooze` `{unixTimestamp, destMailboxId}` / `…/unsnooze` |
+| `snoozeThread` / `unsnoozeThread` | the same, every member of the thread | `POST /api/thread/{id}/snooze` / `…/unsnooze` |
+| `createMailbox` | `mailbox` row under a placeholder id | `POST /api/mailboxes` `{accountId, name}` |
+| `renameMailbox` / `moveMailbox` | `mailbox.name` / `displayName` | `PATCH /api/mailboxes/{id}` `{name}` — a move is a rename to the new full path |
+| `deleteMailbox` | row and its messages removed | `DELETE /api/mailboxes/{id}` |
+| `setMailboxSubscribed` / `setMailboxSyncInBackground` | the column | `PATCH /api/mailboxes/{id}` `{subscribed}` / `{syncInBackground}` |
+| `clearMailbox` | every message of the mailbox removed | `POST /api/mailboxes/{id}/clear` |
+| `markMailboxRead` | `isSeen` on every unread message of the mailbox | `POST /api/mailboxes/{id}/read` |
+| `setPreference` | `preference` row | `PUT /api/preferences/{key}` `{key, value}` |
+| `patchAccount` / `setSignature` | account columns | `PATCH /api/accounts/{id}` / `PUT /api/accounts/{id}/signature` |
+| `createAlias` / `updateAlias` / `deleteAlias` / `setAliasSignature` | `alias` row | `POST` / `PUT` / `DELETE /api/accounts/{id}/aliases[/{aliasId}]`, `PUT …/signature` |
+| `createTextBlock` / `updateTextBlock` / `deleteTextBlock` | `textBlock` row | `POST /api/textBlocks`, `PUT` / `DELETE /api/textBlocks/{id}` |
+| `shareTextBlock` / `unshareTextBlock` | `textBlockShare` row | `POST /api/textBlockshares`, `DELETE /api/textBlockshares/{id}?shareWith=` |
+| `createQuickAction` / `updateQuickAction` / `deleteQuickAction` | `quickAction` row | `POST /api/quick-actions`, `PUT` / `DELETE /api/quick-actions/{id}` |
+| `upsertActionStep` / `deleteActionStep` | `quickActionStep` row | `POST /api/action-step` or `PUT /api/action-step/{id}`; `DELETE /api/action-step/{id}` |
+| `addInternalAddress` / `removeInternalAddress` | `internalAddress` row | `PUT` / `DELETE /api/internalAddress/{address}?type=` |
+| `trustDomain` | `trustedSender` row, `type=domain` | `PUT` / `DELETE /api/trustedsenders/{domain}?type=domain` |
+| `sendMDN` | `isMdnSent` | `POST /api/messages/{id}/mdn` |
+| `unsubscribe` / `saveToFiles` | none — the effect is on the server or in Files | `POST /api/list/unsubscribe/{id}` / `POST /api/messages/{id}/file` or `…/attachment/{attachmentId}` `{targetPath}` |
+| `contactPut` / `contactDelete` / `addressBookCreate` / `addressBookUpdate` / `addressBookDelete` / `addressBookShare` / `calendarPut` | applied by the contacts sync's `DAVWriteHandling` | CardDAV/CalDAV through `DAVClient`: `PUT` with `If-Match`, `DELETE`, extended `MKCOL`, `PROPPATCH`, `oc:share` |
+
+**Every kind carries a `before` snapshot**, exactly as the v1 kinds do: the rows it changed,
+as they were (`OperationSnapshot.rows`), or for DAV kinds the previous vCard/iCalendar text,
+etag and collection properties (`DAVWriteSnapshot`). Discard writes `before` back; a create's
+`before` says the row did not exist, so its discard deletes the optimistic row.
+
+**Rows are named by the server's id, not the local id.** The v2 settings tables are
+refreshed by replacement, which reassigns local ids, so a queued row that named one would be
+pointing at nothing after the next sync. A row created offline has no server id yet, so the
+queue gives it a **negative placeholder** `remoteId`; when the create drains, the server's id
+is written over the placeholder in the mirror and recorded in `meta` under
+`queue.placeholder.<family>.<placeholder>`, and every later row that names the placeholder
+resolves it at send time. A row whose placeholder never resolved (its create was discarded)
+is dropped like a 404. [ADR-0081](../decisions/0081-queued-rows-are-keyed-by-server-id.md).
+
+**Login-scoped kinds** — preferences, text blocks, internal addresses, trusted domains,
+contacts and calendars — are stored under the login's first mail account (lowest
+`account.id` for the login's `ServerIdentity`), because `pendingOperation.accountId` is a
+required foreign key and that account's drainer is the one that runs. The payload carries
+the `loginId`.
+
+**Collapsing** extends naturally. Each v2 row has a subject — the message and label for a
+tag, the mailbox, the preference key, the entity's server id for a settings row, the href
+for a DAV object. Consecutive setters of the same kind on the same subject merge, later
+intent wins and the earliest `before` is kept (`patchAccount` merges field by field,
+`contactPut` unions `editedProperties`); a delete absorbs everything queued before it for
+its subject. Creates, shares, steps and one-shot actions (`sendMDN`, `unsubscribe`,
+`saveToFiles`, `clearMailbox`, `markMailboxRead`) never merge.
+
+**On success** a create writes the server's answer over its placeholder, in the same
+transaction that deletes the queue row (`MailStore.finish(ids:applying:)`): the
+`replace…RemoteId` row effect plus the `meta` entry. `createMailbox` also upserts the
+mailbox exactly as the server answered it, so the server's own naming wins. Everything
+else is already right locally.
+
+**DAV kinds** are executed by whoever conforms to `DAVWriteHandling` — the contacts sync
+(WS-24) — injected through `MutationQueueConfiguration.dav`. The queue calls `apply` right
+after the row is queued, the drainer calls `send` in queue order, and Discard calls
+`revert`. `DAVWriteSender` is the plain `DAVClient` implementation of `send`. Status mapping:
+404/410 drops the row quietly; a 412 the handler could not resolve keeps the row as a
+**conflict** — attempts set to the visibility threshold so it appears in the popover,
+`lastError = "conflict"`, and no automatic retry until **Retry now**.
+`MutationQueue.pendingDAVWrites(loginId:)` is what the contacts sync reads so a
+`sync-collection` does not overwrite an href with a queued write.
+
+**Atomicity.** The message-shaped effects (flags, moves, removals) and the row effects
+(`LocalEffect.rows`, NCMailStore's `RowEffect`) are applied by
+`MailStore.enqueue(_:applying:)` in the same transaction as the row insert, as ADR-0005
+requires — rows first, then the message part. DAV `apply` is the handler's own write and is
+the one second transaction: the row is queued first, so a crash between the two loses the
+optimistic view of the edit and never the edit.
+
+**What Discard cannot restore.** `clearMailbox` erases, like a delete in trash. A deleted
+mailbox, tag or text block comes back as a row, but the messages, message tags and shares
+the delete cascaded away come back only with the next sync.
+
+Measured: 48 queued v2 rows across all 47 kinds drain in 41 requests plus 7 DAV handler
+calls after a relaunch (`QueueV2Tests.everyV2KindSurvivesQuitAndDrainsOnReconnect`). Against
+the live test server, 4 offline-queued rows (create + edit of a text block and a tag, both
+by placeholder) drained in 0.82 s and their 2 deletes in 0.42 s
+(`QueueV2LiveTests.queuedCreatesAndDeletesDrainLive`).
+
+## Settings commands (ADR-0068)
+
+`actor SettingsCommands` runs the settings the server must validate, online only:
+`updateMailServer`, `testConnection`, `configureSieve`, `saveSieveScript`, `saveFilters`,
+`saveOutOfOffice`, `followSystemOutOfOffice`, `importSMIME(pem:privateKey:)`, `deleteSMIME`,
+`setAliasCertificate`, `delegate`, `revokeDelegation`, `createAccount`, `deleteAccount`,
+`repairMailbox`, `startOAuth`.
+
+`run(_:) async -> CommandOutcome` performs the request; on success it re-reads and writes
+the server's resulting state into the store (the account row, `sieveState`,
+`smimeCertificate`, `delegation`, `alias`, the mailbox list after a repair, and
+`serverResult` rows in ADR-0067's `ServerResultPayload` shape for the connection test's
+verdict — `SettingsCommands.connectionTestKind`, `.ready({"ok": Bool})` — and the minted
+OAuth state — `oauthStateKind`, `.ready({"state": …})`) and answers `.success`. On failure it
+answers `.failure(MailError)`, and `CommandOutcome.serverMessage` is the server's own text —
+a 422 from `saveSieveScript` comes back with the Sieve parser's
+`Expected token "command" but found "this" at line 0, column 0.` (fixture
+`error-sieve-script-422.json`, recorded live; `SettingsCommandsLiveTests` reproduces it
+against the server: enabling ManageSieve took 7.5 s, the rejected save 1.9 s). Nothing is
+queued and nothing is retried: the user is looking at the form. Passwords and private keys
+pass through to the request and are never stored or logged.
+
+A connection test is a command whose *verdict* is data, so the verdict is a row and the
+outcome only says the test ran. A 429 on `repairMailbox` is `.failure(.rateLimited)`; the
+view offers retry.
+
 ## The payload is intent, not a diff
 
 `payloadJSON` stores the **absolute desired state** of the fields the action touches:

@@ -5,9 +5,13 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 # ADR-0068: Settings the server must validate are online-only commands
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-10-03
-**Decided by:** v2 roadmap, to be confirmed by the owning workstream
+**Decided by:** v2 roadmap; confirmed by WS-22 on 2026-10-04. `SettingsCommands` implements
+the list below plus `deleteAccount`, `repairMailbox` and `startOAuth`, which are online-only
+for the same reason (they act on server state there is no local form of). A live 422 from
+`saveSieveScript` reaches the caller with the parser's message
+(`SettingsCommandsLiveTests`). No queue kind turned out to need server validation.
 
 ## Context
 

@@ -158,21 +158,22 @@ extension Endpoint where Response == EmptyResponse {
     }
 }
 
-extension Endpoint where Response == JSONEnvelope<SieveScript?> {
-    /// `GET /api/sieve/active/{id}`. With ManageSieve disabled this is a 400
+extension Endpoint where Response == SieveScript {
+    /// `GET /api/sieve/active/{id}` — a bare `{scriptName, script}` object, no
+    /// envelope (verified live). With ManageSieve disabled this is a 400
     /// `ClientException` ("ManageSieve is disabled"), surfaced as `MailError`.
-    public static func sieveScript(accountId: Int) -> Endpoint<JSONEnvelope<SieveScript?>> {
+    public static func sieveScript(accountId: Int) -> Endpoint<SieveScript> {
         Endpoint(name: "sieveScript", method: .get, encodedPath: "sieve/active/\(accountId)", isRetryable: true)
     }
 }
 
 // MARK: - Mail filters
 
-extension Endpoint where Response == JSONEnvelope<[MailFilter]?> {
+extension Endpoint where Response == [MailFilter] {
     /// `GET /api/filter/{accountId}` — the filters parsed out of the managed
-    /// Sieve section. With ManageSieve disabled this answers **HTTP 500 with an
-    /// empty body** (observed live, Mail 5.12).
-    public static func filters(accountId: Int) -> Endpoint<JSONEnvelope<[MailFilter]?>> {
+    /// Sieve section, as a bare JSON array (verified live). With ManageSieve
+    /// disabled this answers **HTTP 500 with an empty body** (Mail 5.12).
+    public static func filters(accountId: Int) -> Endpoint<[MailFilter]> {
         Endpoint(name: "filters", method: .get, encodedPath: "filter/\(accountId)", isRetryable: true)
     }
 }
@@ -187,10 +188,11 @@ extension Endpoint where Response == EmptyResponse {
 
 // MARK: - Out of office
 
-extension Endpoint where Response == JSONEnvelope<OutOfOfficeState?> {
-    /// `GET /api/out-of-office/{accountId}`. Same ManageSieve 400 as
+extension Endpoint where Response == JSONEnvelope<OutOfOfficeFetch> {
+    /// `GET /api/out-of-office/{accountId}` — `{state, script, untouchedScript}`
+    /// in the envelope (verified live). Same ManageSieve 400 as
     /// ``sieveScript(accountId:)`` when Sieve is off.
-    public static func outOfOffice(accountId: Int) -> Endpoint<JSONEnvelope<OutOfOfficeState?>> {
+    public static func outOfOffice(accountId: Int) -> Endpoint<JSONEnvelope<OutOfOfficeFetch>> {
         Endpoint(name: "outOfOffice", method: .get, encodedPath: "out-of-office/\(accountId)", isRetryable: true)
     }
 }

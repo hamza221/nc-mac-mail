@@ -342,6 +342,18 @@ struct SettingsEndpointReplayTests {
         _ = try await replaying("sieve-account-updated.json").put(.configureSieve(accountId: 1))
     }
 
+    @Test("with ManageSieve on, the script and filters are bare and out-of-office is enveloped")
+    func sieveOn() async throws {
+        let script = try await replaying("sieve-active-enabled.json").get(.sieveScript(accountId: 1))
+        #expect(script.scriptName == nil)
+        #expect(script.script == "")
+        let filters = try await replaying("filters-enabled.json").get(.filters(accountId: 1))
+        #expect(filters.isEmpty)
+        let away = try await replaying("out-of-office-enabled.json").get(.outOfOffice(accountId: 1))
+        #expect(away.data.state == nil)
+        #expect(away.data.untouchedScript == "")
+    }
+
     @Test("with ManageSieve off, filters are an HTML 500 with no message")
     func filtersOff() async throws {
         for (fixture, call) in [

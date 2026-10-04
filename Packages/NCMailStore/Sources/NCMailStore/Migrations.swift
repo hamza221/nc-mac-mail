@@ -15,7 +15,7 @@ import GRDB
 /// once, by the identity fix in ADR-0033, and only because nothing had shipped: there was
 /// no installed mirror anywhere for a `v2` to migrate.
 enum MailStoreMigrations {
-    static let currentVersion = "v2"
+    static let currentVersion = "v4"
 
     static var migrator: DatabaseMigrator {
         var migrator = DatabaseMigrator()
@@ -24,6 +24,12 @@ enum MailStoreMigrations {
         }
         migrator.registerMigration("v2") { db in
             try db.execute(sql: v2)
+        }
+        migrator.registerMigration("v3") { db in
+            try db.execute(sql: v3)
+        }
+        migrator.registerMigration("v4") { db in
+            try db.execute(sql: v4)
         }
         return migrator
     }
@@ -659,5 +665,33 @@ enum MailStoreMigrations {
         );
 
         CREATE INDEX idxSnoozeUntil ON snooze(until);
+        """
+
+    /// Everything v3 adds, all on `draft`, all nullable, all ALTER TABLE columns — so
+    /// `schema.sql` lists them after `syncError`, where SQLite renders them:
+    ///
+    /// - `sendState`: the drafts engine's local send intent; NULL for a draft nobody has asked
+    ///   to send.
+    /// - `sendRequestedAt`: when the user asked, unix seconds.
+    /// - `replacesMessageId`: the mirrored IMAP remote id of the Drafts-folder copy this draft
+    ///   supersedes. `POST /api/drafts` and `/api/outbox` take it as `draftId`, an IMAP message
+    ///   id the server expunges once the new copy lands.
+    private static let v3 = """
+        ALTER TABLE draft ADD COLUMN sendState TEXT;
+        ALTER TABLE draft ADD COLUMN sendRequestedAt INTEGER;
+        ALTER TABLE draft ADD COLUMN replacesMessageId INTEGER;
+        """
+
+    /// Everything v4 adds, for the contacts and calendar mirror, all ALTER TABLE columns — so
+    /// `schema.sql` lists them after each table's last v1 column, where SQLite renders them:
+    ///
+    /// - `addressBook.sharedBy`: the book's `oc:owner-principal` when it is not the login's own
+    ///   principal (e.g. `principals/users/alice`); NULL for the login's own book.
+    /// - `calendar.isDefaultSchedule`: the login's default calendar for scheduling
+    ///   (CalDAV `schedule-default-calendar-URL`). At most one per login by convention; no
+    ///   constraint enforces it.
+    private static let v4 = """
+        ALTER TABLE addressBook ADD COLUMN sharedBy TEXT;
+        ALTER TABLE calendar ADD COLUMN isDefaultSchedule INTEGER NOT NULL DEFAULT 0;
         """
 }

@@ -59,6 +59,23 @@ struct JSONEnvelopeDecodingTests {
         let state = try Fixture.decode(JSONEnvelope<OutOfOfficeState?>.self, from: "out-of-office.json")
         #expect(state.status == "fail")
     }
+
+    @Test("with ManageSieve on, script and filters are bare and out-of-office is enveloped")
+    func decodesSieveEnabledShapes() throws {
+        let script = try Fixture.decode(SieveScript.self, from: "sieve-active-enabled.json")
+        #expect(script.scriptName == nil)
+        #expect(script.script == "")
+        let filters = try Fixture.decode([MailFilter].self, from: "filters-enabled.json")
+        #expect(filters.isEmpty)
+        let away = try Fixture.decode(JSONEnvelope<OutOfOfficeFetch>.self, from: "out-of-office-enabled.json")
+        #expect(away.status == "success")
+        #expect(away.data.state == nil)
+        #expect(away.data.script == "")
+        #expect(away.data.untouchedScript == "")
+        let accounts = try Fixture.decode([RawBacked<Account>].self, from: "accounts-sieve-enabled.json")
+        let members = try #require(accounts.first?.json.objectValue)
+        #expect(members["sieveEnabled"] == .bool(true))
+    }
 }
 
 @Suite("v2 account models")

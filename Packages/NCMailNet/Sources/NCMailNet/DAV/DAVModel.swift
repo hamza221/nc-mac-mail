@@ -33,6 +33,9 @@ public struct DAVQualifiedName: Sendable, Hashable, CustomStringConvertible {
     public static let currentUserPrincipal = DAVQualifiedName(dav, "current-user-principal")
     public static let collection = DAVQualifiedName(dav, "collection")
     public static let getcontenttype = DAVQualifiedName(dav, "getcontenttype")
+    /// RFC 3744. Its `privilege` children each wrap one privilege element; the parser
+    /// lifts those names up, so ``DAVResource/privileges`` reads them flat.
+    public static let currentUserPrivilegeSet = DAVQualifiedName(dav, "current-user-privilege-set")
 
     // CardDAV / CalDAV / calendarserver
     public static let addressbook = DAVQualifiedName(carddav, "addressbook")
@@ -129,6 +132,15 @@ public struct DAVResource: Sendable, Equatable {
     /// CalDAV's `supported-calendar-component-set`, as component names.
     public var supportedCalendarComponents: [String] {
         property(.supportedCalendarComponentSet)?.elements.compactMap { $0.attributes["name"] } ?? []
+    }
+
+    /// The current user's privileges on this resource (`write`, `write-content`,
+    /// `read`…), from `current-user-privilege-set`. The only reliable writability
+    /// signal: Nextcloud's birthday calendar is read-only yet answers no
+    /// `oc:read-only` (measured).
+    public var privileges: [DAVQualifiedName] {
+        let wrapper = DAVQualifiedName(DAVQualifiedName.dav, "privilege")
+        return property(.currentUserPrivilegeSet)?.elements.map(\.name).filter { $0 != wrapper } ?? []
     }
 
     /// The single href of an href-valued property: `current-user-principal`,

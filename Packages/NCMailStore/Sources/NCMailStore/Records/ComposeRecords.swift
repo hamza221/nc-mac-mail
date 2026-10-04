@@ -35,6 +35,13 @@ public struct DraftRecord: Codable, FetchableRecord, MutablePersistableRecord, S
     public var updatedAt: Int64
     public var savedAt: Int64?
     public var syncError: String?
+    /// The drafts engine's send intent (v3). NULL means nobody asked to send this draft.
+    public var sendState: String?
+    /// When the user asked to send, unix seconds; NULL alongside a NULL `sendState`.
+    public var sendRequestedAt: Int64?
+    /// The IMAP remote id of the Drafts-folder copy this draft supersedes — the `draftId`
+    /// `POST /api/drafts` and `/api/outbox` expunge.
+    public var replacesMessageId: Int64?
 
     public init(
         id: Int64? = nil,
@@ -57,7 +64,10 @@ public struct DraftRecord: Codable, FetchableRecord, MutablePersistableRecord, S
         createdAt: Int64,
         updatedAt: Int64,
         savedAt: Int64? = nil,
-        syncError: String? = nil
+        syncError: String? = nil,
+        sendState: String? = nil,
+        sendRequestedAt: Int64? = nil,
+        replacesMessageId: Int64? = nil
     ) {
         self.id = id
         self.accountId = accountId
@@ -80,6 +90,9 @@ public struct DraftRecord: Codable, FetchableRecord, MutablePersistableRecord, S
         self.updatedAt = updatedAt
         self.savedAt = savedAt
         self.syncError = syncError
+        self.sendState = sendState
+        self.sendRequestedAt = sendRequestedAt
+        self.replacesMessageId = replacesMessageId
     }
 
     public mutating func didInsert(_ inserted: InsertionSuccess) {

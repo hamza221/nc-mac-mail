@@ -69,12 +69,17 @@ public actor SyncScheduler {
     private var isBusy = false
     private var waiters: [CheckedContinuation<Void, Never>] = []
 
+    /// The login's server-state mirror, refreshed at every deep reconcile
+    /// (`sync-engine.md` § server state). Shared by every account scheduler of one login.
+    let serverState: ServerStateMirror?
+
     public init(
         store: MailStore,
         client: MailClient,
         accountId: Int64,
         drainer: (any OperationDraining)? = nil,
         mirror: MirrorCoordinator? = nil,
+        serverState: ServerStateMirror? = nil,
         configuration: SyncConfiguration = SyncConfiguration()
     ) {
         self.store = store
@@ -82,6 +87,7 @@ public actor SyncScheduler {
         self.accountId = accountId
         self.drainer = drainer
         self.mirror = mirror
+        self.serverState = serverState
         self.configuration = configuration
     }
 

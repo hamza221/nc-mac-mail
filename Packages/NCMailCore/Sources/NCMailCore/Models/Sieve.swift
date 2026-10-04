@@ -3,12 +3,11 @@
 
 internal import Foundation
 
-/// `GET /api/sieve/active/{id}`, inside the `JSONEnvelope`.
-///
-/// Unverified live: the test server has ManageSieve disabled and answers
-/// `400 {"status":"fail","data":{"message":"ManageSieve is disabled"}}`.
-/// The shape comes from `SieveController::getActiveScript`, which returns
-/// `scriptName` and `script`; both stay optional until a recording pins them.
+/// `GET /api/sieve/active/{id}` — a **bare** object, no `JSONEnvelope`
+/// (verified live with ManageSieve enabled, Mail 5.x):
+/// `{"scriptName":null,"script":""}` when no script is active. With
+/// ManageSieve disabled the route is a 400 fail envelope instead, which
+/// `MailClient` surfaces as `MailError` before decoding.
 public struct SieveScript: Decodable, Sendable, Hashable {
     public let scriptName: String?
     public let script: String?
@@ -19,12 +18,12 @@ public struct SieveScript: Decodable, Sendable, Hashable {
     }
 }
 
-/// One mail filter from `GET /api/filter/{accountId}`, inside the `JSONEnvelope`.
-///
-/// Unverified live: with ManageSieve disabled the route answers **HTTP 500 with
-/// an empty body** (observed, Mail 5.12 — not the documented error envelope; see
-/// the WS-16 report). The field list follows `plan/API.md`'s PUT contract, which
-/// is also what GET returns, parsed back out of the managed Sieve section.
+/// One mail filter from `GET /api/filter/{accountId}`, which answers a **bare**
+/// JSON array (verified live with ManageSieve enabled: `[]` on an account
+/// without filters). With ManageSieve disabled the route answers **HTTP 500
+/// with an empty body** (observed, Mail 5.12). The field list follows
+/// `plan/API.md`'s PUT contract, which is also what GET returns, parsed back
+/// out of the managed Sieve section.
 public struct MailFilter: Decodable, Sendable, Hashable {
     public let id: Int?
     public let name: String?
@@ -81,11 +80,9 @@ public struct FilterTest: Decodable, Sendable, Hashable {
     }
 }
 
-/// `GET /api/out-of-office/{accountId}`, inside the `JSONEnvelope`.
-///
-/// Unverified live for the same reason as ``SieveScript`` (ManageSieve
-/// disabled → the same 400). Fields follow the POST contract: `enabled`,
-/// nullable ISO dates, `subject`, `message`.
+/// The `state` of ``OutOfOfficeFetch``. Fields follow the POST contract:
+/// `enabled`, nullable ISO dates, `subject`, `message`. Not yet seen non-null
+/// live (the recording account has no out-of-office set).
 public struct OutOfOfficeState: Decodable, Sendable, Hashable {
     public let enabled: Bool
     public let start: String?
@@ -108,5 +105,29 @@ public struct OutOfOfficeState: Decodable, Sendable, Hashable {
         end = try container.decodeIfPresent(String.self, forKey: .end)
         subject = try container.decodeIfPresent(String.self, forKey: .subject)
         message = try container.decodeIfPresent(String.self, forKey: .message)
+    }
+}
+
+/// `GET /api/out-of-office/{accountId}`, inside the `JSONEnvelope` (verified
+/// live with ManageSieve enabled):
+/// `{"status":"success","data":{"state":null,"script":"","untouchedScript":""}}`.
+/// With ManageSieve disabled the route is the same 400 as the Sieve script.
+public struct OutOfOfficeFetch: Decodable, Sendable, Hashable {
+    /// Null until an out-of-office has been configured.
+    public let state: OutOfOfficeState?
+    public let script: String
+    public let untouchedScript: String
+
+    private enum CodingKeys: String, CodingKey {
+        case state
+        case script
+        case untouchedScript
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        state = try container.decodeIfPresent(OutOfOfficeState.self, forKey: .state)
+        script = try container.decodeIfPresent(String.self, forKey: .script) ?? ""
+        untouchedScript = try container.decodeIfPresent(String.self, forKey: .untouchedScript) ?? ""
     }
 }

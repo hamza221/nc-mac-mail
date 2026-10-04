@@ -27,19 +27,24 @@ public struct MutationQueueConfiguration: Sendable {
     public var forceSync: (@Sendable (Int64) async -> Void)?
     /// Asks for one account to be re-read, for the 403 branch.
     public var refreshAccount: (@Sendable (Int64) async -> Void)?
+    /// Applies, sends and reverts the contact and calendar kinds — the contacts sync
+    /// (WS-24). Without one, those kinds cannot be queued.
+    public var dav: (any DAVWriteHandling)?
 
     public init(
         backoffSeconds: [Int64] = [2, 8, 30, 120, 600],
         visibleAfterAttempts: Int = 5,
         now: @escaping @Sendable () -> Int64 = { Int64(Date().timeIntervalSince1970) },
         forceSync: (@Sendable (Int64) async -> Void)? = nil,
-        refreshAccount: (@Sendable (Int64) async -> Void)? = nil
+        refreshAccount: (@Sendable (Int64) async -> Void)? = nil,
+        dav: (any DAVWriteHandling)? = nil
     ) {
         self.backoffSeconds = backoffSeconds
         self.visibleAfterAttempts = max(1, visibleAfterAttempts)
         self.now = now
         self.forceSync = forceSync
         self.refreshAccount = refreshAccount
+        self.dav = dav
     }
 
     /// Seconds to wait after `attempts` consecutive failures.
@@ -100,11 +105,23 @@ public enum OperationError: Error, Sendable, CustomStringConvertible {
     /// Every message id in the action had already gone from the mirror. Nothing was queued,
     /// because there is nothing left to describe.
     case noSuchMessages
+    /// A login-scoped operation named a login with no mail account to queue it under.
+    case noAccountForLogin(loginId: Int64)
+    /// A contact or calendar kind was queued with no ``DAVWriteHandling`` configured.
+    case noDAVHandler
+    /// A snooze on an account whose snooze mailbox is not set or not mirrored.
+    case noSnoozeMailbox
+    /// The mailbox the operation names is not in the mirror.
+    case noSuchMailbox
 
     public var description: String {
         switch self {
         case .accountNotMirrored(let accountId): "accountNotMirrored(account: \(accountId))"
         case .noSuchMessages: "noSuchMessages"
+        case .noAccountForLogin(let loginId): "noAccountForLogin(login: \(loginId))"
+        case .noDAVHandler: "noDAVHandler"
+        case .noSnoozeMailbox: "noSnoozeMailbox"
+        case .noSuchMailbox: "noSuchMailbox"
         }
     }
 }

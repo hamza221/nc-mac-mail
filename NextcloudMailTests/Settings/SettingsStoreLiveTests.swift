@@ -64,7 +64,7 @@ struct SettingsStoreLiveTests {
         )
         let account = try #require(accounts.first)
 
-        let session = AccountSession(server: server, loginName: user, client: mailClient)
+        let session = AccountSession(server: server, credentials: realCredentials)
         let settingsStore = SettingsStore(store: store, sessions: [session])
 
         // A full backfill, the same one `MirrorCoordinator` runs at sign-in, so there is a

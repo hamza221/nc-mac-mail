@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<d:multistatus xmlns:d="DAV:" xmlns:s="http://sabredav.org/ns" xmlns:card="urn:ietf:params:xml:ns:carddav" xmlns:oc="http://owncloud.org/ns" xmlns:nc="http://nextcloud.org/ns">
+ <d:response>
+  <d:href>/remote.php/dav/addressbooks/users/user/ws24-temp-merge/ws24-merge.vcf</d:href>
+  <d:propstat>
+   <d:prop>
+    <d:getetag>&quot;d403a525ad57a51b970f4d01e8ee290e&quot;</d:getetag>
+   </d:prop>
+   <d:status>HTTP/1.1 200 OK</d:status>
+  </d:propstat>
+ </d:response>
+ <d:sync-token>http://sabre.io/ns/sync/4</d:sync-token>
+</d:multistatus>

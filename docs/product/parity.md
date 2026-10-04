@@ -19,9 +19,9 @@ the end by WS-44; rows marked `Excluded (ADR-0064)` are out of scope by decision
 | § | Area | Owner | Native mapping / note | Status |
 | --- | --- | --- | --- | --- |
 | 1.1–1.5 | Setup page, account form (Auto/Manual), OAuth, error feedback | WS-40 | Native setup window; Google/Microsoft OAuth through `ASWebAuthenticationSession` | Planned |
-| 2.1 | Start-up and routes | WS-25 | Start mailbox restore; deep links become `ncmail://open/<Message-ID>` (WS-42); browser history → native window/selection restoration; Ctrl+click new tab → "Open in New Window" | Planned |
+| 2.1 | Start-up and routes | WS-25 | Start mailbox restore: the selection this Mac saved wins, else the server's `start-mailbox-id`; a mailbox / Unified / Priority the user stays on 5 s is queued as that preference, as the web saves it (`NavigationStateTests.startMailboxIsTheFallback`, `localSelectionWins`, `settleSavesOnlyTheLastCandidate`, `nonCandidatesNeverSettle`; `StartMailboxTests`). Browser history → native selection restoration: every `SidebarSelection`, contacts scopes included, survives a relaunch (`NavigationStateTests.selectionRoundTrips` × 11, `legacyMailboxMigrates`). Deep links `ncmail://open/<Message-ID>` are WS-42's; "Open in New Window" is WS-29's | Done |
 | 2.1 | Session expiry | v1 | 401 modal already exists | v1 |
-| 2.2 | Background sync | v1 + WS-21 | Outbox refresh in WS-21; cadence is v1's | v1 |
+| 2.2 | Background sync | v1 + WS-21 | Cadence is v1's. WS-21: outbox re-read every 60 s while non-empty (`ServerStateMirrorTests.outboxPollsWhileNonEmpty`, `outboxPollSurvivesAFailure`) and every other piece of server state mirrored at launch, deep reconcile and Settings-open (`refreshMirrorsEveryKind`, `failingKindKeepsRows` × 11 kinds, `everythingFailingKeepsEverything`, `deepReconcileRefreshesServerState`); envelope tags (`EnvelopeTagTests`); ADR-0067 results (`ServerResultFetcherTests`); live `ServerStateLiveTests` 2026-10-04: all 11 kinds refreshed, 2.6–3.1 s / 25 requests | Done |
 | 2.3 | Desktop notifications | WS-41 | Notification Center; suppressed while the window is key (fixes the web ⚠) | Planned |
 | 2.4 | Layout and appearance preferences | WS-29 (behaviour), WS-38 (settings UI) | Vertical, horizontal and list layouts; compact mode; sort order; favorites up | Planned |
 | 2.5 | Responsive, dark mode, RTL | DoD | Responsive → native window resizing (excluded as browser mechanics); dark mode and RTL are definition-of-done gates; composer RTL in WS-20 | Planned |
@@ -37,7 +37,7 @@ the end by WS-44; rows marked `Excluded (ADR-0064)` are out of scope by decision
 | 4.6 | Search | WS-32 | Local FTS; server body search unnecessary | Planned |
 | 4.7 | Folder pickers | WS-31 | — | Planned |
 | 4.8 | Tags | WS-31 | — | Planned |
-| 4.9 | Outbox | WS-23 (engine), WS-27 (view) | — | Planned |
+| 4.9 | Outbox | WS-23 (engine), WS-27 (view) | `OutboxSender` (ADR-0066, ADR-0083): undo window, scheduled send, send now, copy to Sent, delete; `OutboxSenderTests`, live `OutboxLiveTests` (send → Sent, undo leaves no trace, scheduled send in the mirrored outbox, quit-in-window resumes). The view is WS-27 | Engine done; view Planned (WS-27) |
 | 5.1–5.4 | Thread container, header content, action bar, message menu | WS-30 | — | Planned |
 | 5.5 | Reply area, smart replies, follow-up | WS-30 | Prefill through WS-27 | Planned |
 | 5.6 | Unsubscribe | WS-30 | — | Planned |
@@ -61,7 +61,7 @@ the end by WS-44; rows marked `Excluded (ADR-0064)` are out of scope by decision
 | 10 | Notifications app | WS-41 | Quota and delegation notices via the notifications OCS API | Planned |
 | 10 | mailto handler, error template | WS-42, WS-30 | — | Planned |
 | 10 | OCP Mail Provider, junk reports, user migration, AI listeners | Excluded (ADR-0064) | Server-only; their visible output is covered by WS-29 and WS-30 | Excluded (ADR-0064) |
-| 10 | Contacts interaction, drafts cleanup | WS-23 | Verify the server does it on send | Planned |
+| 10 | Contacts interaction, drafts cleanup | WS-23 | Server behaviour, verified live and recorded in api-payloads.md: each user-initiated send updates the recipient's card in the "Recently contacted" book (not for job-sent scheduled messages); the converted server draft is gone after send, and an IMAP Drafts copy is expunged when passed as `draftId` (`OutboxLiveTests.composeSendAppearsInSent`, `sendingADraftFromTheDraftsFolderExpungesIt`) | Done |
 | 10 | Context Chat | WS-38 | Preference toggle | Planned |
 | 10 | Provisioning middleware | WS-28, WS-39 | Disabled provisioned accounts; locked sections | Planned |
 | — | "Not present in the code" list | WS-29, WS-41 | Native adds select-all and a dock badge; the right-click menu and offline indicator are v1 | Planned |
@@ -86,4 +86,4 @@ Nextcloud Contacts app.
 | C10 | Teams: create, members, roles, options | WS-37 | Gated on the Circles app being present | Planned |
 | C11 | Shared items | WS-37 | — | Planned |
 | C12 | Organisation chart | WS-37 | — | Planned |
-| C13 | Mail↔Contacts integration (autocomplete, sender cards, add to contact, recent mail with a contact, contact photos as avatars) | WS-26 and WS-24 | — | Planned |
+| C13 | Mail↔Contacts integration (autocomplete, sender cards, add to contact, recent mail with a contact, contact photos as avatars) | WS-26 and WS-24 | WS-24's part is done: contact photos are written into `avatar` ahead of server avatars (`initialRoundWritesCardsEmailsAndContactPhotos`, live `twoThousandContactsMirrorInUnderAMinute`), and the contacts mirror that autocomplete joins against is there. WS-26 still owes autocomplete, sender cards, add to contact and recent mail | Planned |

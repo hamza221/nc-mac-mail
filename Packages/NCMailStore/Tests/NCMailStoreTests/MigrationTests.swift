@@ -28,6 +28,7 @@ struct MigrationTests {
         #expect(reference.count == 66)
         #expect(reference["message"]?.contains("bodyState TEXT NOT NULL DEFAULT 'missing'") == true)
         #expect(reference["login"]?.contains("UNIQUE (serverURL, loginName)") == true)
+        #expect(reference["draft"]?.contains("sendRequestedAt INTEGER") == true)
     }
 
     @Test func migratingAnAlreadyMigratedDatabaseChangesNothing() async throws {
@@ -67,6 +68,56 @@ struct MigrationTests {
             try String?.fetchAll(db, sql: "SELECT editorMode FROM account")
         }
         #expect(modes == [nil, nil, nil])
+    }
+
+    /// v1 → v2 → v3 → v4, one step at a time: a draft written under v2 survives v3 with no
+    /// send intent recorded, and an address book and calendar written under v3 survive v4.
+    @Test func upgradingStepByStepAddsTheDraftSendColumns() async throws {
+        let queue = try DatabaseQueue()
+        try MailStoreMigrations.migrator.migrate(queue, upTo: "v1")
+        try MailStoreMigrations.migrator.migrate(queue, upTo: "v2")
+        try await queue.write { db in
+            try db.execute(
+                sql: """
+                    INSERT INTO account (serverURL, loginName, remoteId, name, emailAddress, rawJSON)
+                    VALUES ('https://one.example.invalid/', 'ada', 1, 'Test', 't@example.invalid', '{}');
+                    INSERT INTO draft (accountId, subject, createdAt, updatedAt) VALUES (1, 'kept', 1, 1);
+                    """
+            )
+        }
+
+        try MailStoreMigrations.migrator.migrate(queue, upTo: "v3")
+        try await queue.write { db in
+            try db.execute(
+                // v2 backfills logins only from pre-v2 accounts, so this one is written by hand.
+                sql: """
+                    INSERT INTO login (serverURL, loginName) VALUES ('https://one.example.invalid/', 'ada');
+                    INSERT INTO addressBook (loginId, url, displayName, isEnabled) VALUES (1, 'https://one.example.invalid/ab/', 'Book', 0);
+                    INSERT INTO calendar (loginId, url, displayName, fetchedAt) VALUES (1, 'https://one.example.invalid/cal/', 'Cal', 7);
+                    """
+            )
+        }
+
+        try MailStoreMigrations.migrator.migrate(queue, upTo: "v4")
+
+        let applied = try await queue.read { db in try MailStoreMigrations.migrator.appliedMigrations(db) }
+        #expect(applied == ["v1", "v2", "v3", "v4"])
+        #expect(MailStoreMigrations.currentVersion == "v4")
+        let book = try await queue.read { db in try AddressBookRecord.fetchOne(db) }
+        #expect(book?.displayName == "Book")
+        #expect(book?.isEnabled == false)
+        #expect(book?.sharedBy == nil)
+        let calendar = try await queue.read { db in try CalendarRecord.fetchOne(db) }
+        #expect(calendar?.displayName == "Cal")
+        #expect(calendar?.fetchedAt == 7)
+        #expect(calendar?.isDefaultSchedule == false)
+        let draft = try await queue.read { db in
+            try DraftRecord.fetchOne(db, sql: "SELECT * FROM draft")
+        }
+        #expect(draft?.subject == "kept")
+        #expect(draft?.sendState == nil)
+        #expect(draft?.sendRequestedAt == nil)
+        #expect(draft?.replacesMessageId == nil)
     }
 
     @Test func foreignKeysAreEnforced() async throws {

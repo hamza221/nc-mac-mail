@@ -5,9 +5,9 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 # ADR-0067: Server-computed results are cached rows
 
-**Status:** Proposed
-**Date:** 2026-10-03
-**Decided by:** v2 roadmap, to be confirmed by the owning workstream
+**Status:** Accepted
+**Date:** 2026-10-03, confirmed 2026-10-04
+**Decided by:** v2 roadmap; confirmed by WS-21, which implements it (`ServerResultFetcher`)
 
 ## Context
 
@@ -27,6 +27,23 @@ Server-computed results are cached rows.
   view observes the table and shows a pending state until the row exists.
 - This keeps "the network only writes to the database" without exceptions.
 
+### As built (WS-21)
+
+- `ServerResultFetcher` (one actor per login) is the mechanism. `request(kind:key:)` returns
+  as soon as the request is registered; the network answer is written, never returned.
+- Scalar answers — thread summary, smart replies, translation, itineraries, event data,
+  quota, follow-up check, and the bookkeeping row of an autocomplete term — share
+  `serverResult`, keyed `(loginId, kind, key)`. List-shaped answers keep their own typed
+  tables (`recipientSuggestion`, `filesListing`, `smartPickerResult`, `sieveState`).
+- The payload is always `{"status": "ready", "data": …}`, `{"status": "empty"}` (the server
+  answered and had nothing — the 204 of an instance without an LLM provider) or
+  `{"status": "failed", "error": …}` with a short error name. Three states, because a view
+  has to stop its pending indicator on "nothing" and on failure, and tell those apart.
+- **A failure never overwrites a `ready` row.** A stale answer beats an error, and offline
+  is not the moment to lose one. Offline, nothing is sent and nothing is touched.
+- Expiry per kind lives in `ServerResultKind.expiry`; a `failed` row allows one retry per
+  five minutes. The same `(kind, key)` in flight is joined, not repeated.
+
 ## Consequences
 
 - Every view keeps the same shape: observe a table, render rows, show pending until a row
@@ -40,8 +57,10 @@ Server-computed results are cached rows.
 database", loses the result on relaunch, and gives each feature its own loading and error
 plumbing.
 
-**One generic key–value cache table.** Rows lose their types and their observability;
-per-kind tables keep queries and expiry honest.
+**One generic key–value cache table for everything.** Rows lose their types and their
+observability. As built this is half-taken, deliberately: the scalar kinds share
+`serverResult`, because each is one JSON value a view decodes whole, while anything a view
+queries into — suggestions, listings, Sieve state — keeps a typed table.
 
 ## Revisit when
 

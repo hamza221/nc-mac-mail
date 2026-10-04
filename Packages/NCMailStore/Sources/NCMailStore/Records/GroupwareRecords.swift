@@ -16,6 +16,8 @@ public struct CalendarRecord: Codable, FetchableRecord, MutablePersistableRecord
     public var isWritable: Bool
     public var supportsEvents: Bool
     public var supportsTasks: Bool
+    /// The login's default scheduling calendar. At most one per login, by convention only.
+    public var isDefaultSchedule: Bool
     public var position: Int
     public var fetchedAt: Int64
 
@@ -28,6 +30,7 @@ public struct CalendarRecord: Codable, FetchableRecord, MutablePersistableRecord
         isWritable: Bool = true,
         supportsEvents: Bool = true,
         supportsTasks: Bool = false,
+        isDefaultSchedule: Bool = false,
         position: Int = 0,
         fetchedAt: Int64
     ) {
@@ -39,6 +42,7 @@ public struct CalendarRecord: Codable, FetchableRecord, MutablePersistableRecord
         self.isWritable = isWritable
         self.supportsEvents = supportsEvents
         self.supportsTasks = supportsTasks
+        self.isDefaultSchedule = isDefaultSchedule
         self.position = position
         self.fetchedAt = fetchedAt
     }

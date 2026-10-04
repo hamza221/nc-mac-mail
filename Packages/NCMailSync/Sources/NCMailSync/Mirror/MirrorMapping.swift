@@ -5,7 +5,8 @@ internal import Foundation
 public import NCMailCore
 public import NCMailStore
 
-/// Wire models in, store writes out. Four functions, no database, no network.
+/// Wire models in, store writes out. Pure functions: no database, no network. The settings
+/// surface's half is in `MirrorMapping+ServerState.swift`.
 ///
 /// This is the whole of the translation layer ADR-0023 asks for, and it is `public` and
 /// pure so that it can be tested against recorded fixtures without a `MailStore` — a
@@ -28,6 +29,11 @@ public enum MirrorMapping {
         identity: ServerIdentity
     ) throws -> AccountWrite {
         let value = account.value
+        // The settings columns are read off the raw payload rather than the model: every
+        // `GET /api/accounts` entry carries them (recorded in `accounts.json`), and
+        // `AccountWrite` writes every column it has, so leaving one at its default would
+        // blank the value the web client set — the signature most visibly (WS-21).
+        let fields = account.json.objectValue ?? [:]
         return AccountWrite(
             identity: identity,
             remoteId: Int64(value.id),
@@ -42,11 +48,20 @@ public enum MirrorMapping {
             snoozeMailboxId: value.snoozeMailboxId.map(Int64.init),
             showSubscribedOnly: value.showSubscribedOnly,
             quotaPercentage: value.quotaPercentage,
-            // The accounts payload has no signature field; the per-account route carries one
-            // and WS-12 reads it. Writing nil here would blank a value already stored, so it
-            // is left at the column default on insert and untouched on update.
-            signature: nil,
-            rawJSON: try jsonText(account)
+            signature: fields.string("signature"),
+            rawJSON: try jsonText(account),
+            editorMode: fields.string("editorMode"),
+            signatureAboveQuote: fields.bool("signatureAboveQuote"),
+            trashRetentionDays: fields.int("trashRetentionDays"),
+            searchBody: fields.bool("searchBody"),
+            classificationEnabled: fields.bool("classificationEnabled"),
+            imipCreate: fields.bool("imipCreate"),
+            sieveEnabled: fields.bool("sieveEnabled"),
+            signatureMode: fields.int("signatureMode"),
+            smimeCertificateRemoteId: fields.int("smimeCertificateId").map(Int64.init),
+            outOfOfficeFollowsSystem: fields.bool("outOfOfficeFollowsSystem"),
+            provisioningId: fields.int("provisioningId").map(Int64.init),
+            isDelegated: value.isDelegated
         )
     }
 
@@ -134,8 +149,27 @@ public enum MirrorMapping {
             fromEmail: value.sender?.email,
             fromLabel: value.sender?.label,
             addresses: addresses(of: value),
+            tags: tagWrites(of: value),
             rawJSON: try jsonText(envelope)
         )
+    }
+
+    /// The envelope's `tags` map, keyed by IMAP label, as tag writes in a stable order.
+    ///
+    /// Always the whole map, empty included: the store replaces a message's `messageTag`
+    /// rows with exactly this list, so an envelope whose last tag was removed in the web
+    /// client loses it here on the next sync.
+    private static func tagWrites(of envelope: Envelope) -> [TagWrite] {
+        envelope.tags.values
+            .sorted { $0.id < $1.id }
+            .map { tag in
+                TagWrite(
+                    remoteId: Int64(tag.id),
+                    imapLabel: tag.imapLabel,
+                    displayName: tag.displayName,
+                    color: tag.color
+                )
+            }
     }
 
     /// `messageAddress.email` is `NOT NULL`, so an entry with no address is dropped rather
@@ -245,11 +279,11 @@ public enum MirrorMapping {
 
     /// The `rawJSON` column's contents: everything the server sent for this object,
     /// including the fields no model names (ADR-0020).
-    private static func jsonText<Value>(_ raw: RawBacked<Value>) throws -> String {
+    static func jsonText<Value>(_ raw: RawBacked<Value>) throws -> String {
         String(decoding: try raw.rawJSON(), as: UTF8.self)
     }
 
-    private static func jsonText(_ value: some Encodable) throws -> String {
+    static func jsonText(_ value: some Encodable) throws -> String {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
         return String(decoding: try encoder.encode(value), as: UTF8.self)
@@ -257,7 +291,7 @@ public enum MirrorMapping {
 
     /// Nil for both "the key was absent" and "the key was `null`", so the column reads the
     /// same either way rather than holding the four characters `null`.
-    private static func jsonText(optional value: AnyJSON?) throws -> String? {
+    static func jsonText(optional value: AnyJSON?) throws -> String? {
         guard let value, value != .null else { return nil }
         return try jsonText(value)
     }

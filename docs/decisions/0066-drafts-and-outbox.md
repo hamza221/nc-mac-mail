@@ -5,9 +5,10 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 # ADR-0066: Drafts are local rows synced to the server's draft API; sending goes through the server outbox, driven by its own actor, not the mutation queue
 
-**Status:** Proposed
-**Date:** 2026-10-03
-**Decided by:** v2 roadmap, to be confirmed by the owning workstream
+**Status:** Accepted — the send sequence in the third bullet is refined by
+[ADR-0083](0083-send-converts-the-server-draft-in-place.md)
+**Date:** 2026-10-03 (accepted 2026-10-04)
+**Decided by:** v2 roadmap; confirmed by WS-23 against the live server (`OutboxLiveTests`)
 
 ## Context
 

@@ -36,8 +36,46 @@ has no binding that reports back what a drag resized a column to, so WS-13 track
 column's rendered width with a `GeometryReader` and feeds it back in as the next launch's
 `ideal`. It is a measurement, not a restoration the framework promises, and it was not
 verified against a live drag in this environment (no GUI). Collapsing the sidebar is the
-system's behaviour, not ours. Window size and the selected mailbox restore on launch — state
+system's behaviour, not ours. Window size and the sidebar selection restore on launch — state
 restoration, not a preference.
+
+### What the sidebar can select (WS-25)
+
+One selection drives the content and detail columns. It is a `SidebarSelection`:
+
+| Selection | Content column | Detail column | Built by |
+| --- | --- | --- | --- |
+| `.mailbox(id)` | that mailbox's messages | the message | v1 |
+| `.unifiedInbox` | every account's Inbox, merged | the message | WS-28 / WS-29 |
+| `.priorityInbox` | Important, follow-ups, then the rest | the message | WS-28 / WS-29 |
+| `.favorites(inboxId:)` | the starred messages of that Inbox | the message | WS-28 / WS-29 |
+| `.outbox` | the server outbox: scheduled and failed sends | the outbox message | WS-27 |
+| `.contacts(sessionId:, scope:)` | the contact list of one login, `scope` = All, Favorites, one address book, one group, one team, Recently contacted ([ADR-0070](../decisions/0070-contacts-sidebar-section.md)) | the contact card | WS-35 |
+
+Until the workstream in the last column lands, a selection it owns shows the content column's
+placeholder (`ContentUnavailableView` naming what was picked) and an empty detail column; the
+shell routes it, and the sync engine keeps running underneath.
+
+**Restoring.** The selection is saved locally the moment it changes and comes back exactly on
+the next launch — a contacts scope included. With nothing saved locally (a new Mac, a wiped
+mirror), the window opens on the server's `start-mailbox-id` preference, the same one the web
+client opens on; failing that, on nothing selected.
+
+**The start mailbox.** After 5 seconds on a mailbox, Unified inbox or Priority inbox, that
+choice becomes the server's `start-mailbox-id` (a mailbox's server id, or `unified` /
+`priority`, as the web client writes it). It is a queued preference change, so it works
+offline and is not written when the value is already the server's. Moving on within 5 seconds
+writes nothing. Favorites, the outbox and contacts are never a start mailbox.
+
+**Compose.** Every way of starting a message — New, Reply / Reply all / Follow up, Forward,
+Edit as new, open a draft, open an outbox message, a smart reply, the Share extension — is a
+`ComposeRequest` passed to `openComposer`, which opens one composer window for it (WS-27 builds
+the window).
+
+**Signing out** an account stops everything running for its login — mail sync, sending,
+contacts, the calendar list, server state — before the Keychain item is gone from the session.
+Choosing to remove local copies also deletes the login's contacts and settings mirror. The last
+account signed out returns the window to the sign-in screen.
 
 ## Sidebar
 

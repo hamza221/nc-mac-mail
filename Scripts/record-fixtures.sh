@@ -57,7 +57,8 @@ scrub_identity() {
     host="$(printf '%s' "$SERVER" | sed -E 's#^https?://##; s#/.*##')"
     args=(-E
         -e "s#$host#cloud.example.com#g"
-        -e "s#/(addressbooks/users|calendars|files|principals/users)/$LOGIN([/<])#/\1/user\2#g")
+        -e "s#/(addressbooks/users|calendars|files|principals/users)/$LOGIN([/<])#/\1/user\2#g"
+        -e "s#>principals/users/$LOGIN<#>principals/users/user<#g")
     [ -n "$MAIL_DOMAIN" ] && args+=(
         -e "s#[A-Za-z0-9._%+-]+@([A-Za-z0-9.-]+\.)?$MAIL_DOMAIN#user@example.com#g"
         -e "s#([A-Za-z0-9-]+\.)*$MAIL_DOMAIN#example.com#g")
@@ -398,6 +399,12 @@ fetch aliases.json "$API/accounts/$ACCOUNT_ID/aliases"
 if [ -n "$ALIAS_ID" ]; then
     req PUT alias-updated.json "$API/accounts/$ACCOUNT_ID/aliases/$ALIAS_ID" "{\"alias\":\"fixture-alias@$MAIL_DOMAIN\",\"aliasName\":\"Fixture Alias Renamed\"}"
     req PUT alias-signature.json "$API/accounts/$ACCOUNT_ID/aliases/$ALIAS_ID/signature" '{"signature":"Alias signature"}'
+    # WS-21: the accounts index with an account signature and an alias signature both
+    # set, so the mirror's "signatures come from the payload, never a blank" has a real
+    # payload to be tested against. Restored to no signature straight after.
+    quiet PUT "$API/accounts/$ACCOUNT_ID/signature" '{"signature":"Recorded fixture signature"}'
+    fetch accounts-signatures.json "$API/accounts"
+    quiet PUT "$API/accounts/$ACCOUNT_ID/signature" '{"signature":null}'
     req DELETE alias-deleted.json "$API/accounts/$ACCOUNT_ID/aliases/$ALIAS_ID"
 else
     echo "  (alias lifecycle skipped — create returned no id)"
@@ -537,6 +544,9 @@ fi
 if [ -n "$OB1" ]; then
     req DELETE outbox-deleted.json "$API/outbox/$OB1"
 fi
+# WS-21: the outbox once this run's scratch messages are gone — what the 60 s poll reads
+# when it is about to stop.
+fetch outbox-drained.json "$API/outbox"
 if [ -n "$DRAFT_ID" ]; then
     req DELETE draft-deleted.json "$API/drafts/$DRAFT_ID"
 fi
@@ -675,14 +685,41 @@ fi
 echo "-- preferences, trusted senders, internal addresses"
 req PUT preference-saved.json "$API/preferences/sort-order" '{"key":"sort-order","value":"newest"}'
 req PUT trusted-sender-added.json "$API/trustedsenders/example.org?type=domain"
+# WS-21: the list with one domain and one individual entry, so both kinds the mirror
+# keeps apart are in a recording. The individual is in another domain on purpose: the
+# server leaves an address out of the listing while its domain is trusted (measured).
+# Scratch entries, removed straight after.
+quiet PUT "$API/trustedsenders/$(urlencode "fixture-sender@example.net")?type=individual"
+fetch trustedsenders-populated.json "$API/trustedsenders"
+quiet DELETE "$API/trustedsenders/$(urlencode "fixture-sender@example.net")?type=individual"
 req DELETE trusted-sender-removed.json "$API/trustedsenders/example.org?type=domain"
 fetch internal-addresses.json "$API/internalAddress"
 req PUT internal-address-created.json "$API/internalAddress/example.org?type=domain"
+fetch internal-addresses-populated.json "$API/internalAddress"
 req DELETE internal-address-deleted.json "$API/internalAddress/example.org?type=domain"
 
 echo "-- sieve, filters, out of office (ManageSieve is off on the test server; errors are the honest shape)"
 req PUT sieve-account-updated.json "$API/sieve/account/$ACCOUNT_ID" '{"sieveEnabled":false,"sieveHost":"","sievePort":4190,"sieveUser":"","sievePassword":"","sieveSslMode":"none"}'
 fetch sieve-active.json "$API/sieve/active/$ACCOUNT_ID"
+# A 422 needs ManageSieve on, which the test server's account is not. Scratch
+# lifecycle (ADR-0080): enable it against the account's own IMAP host with
+# an empty sieveUser (the server then reuses the IMAP credentials), send one
+# script that does not parse, and switch it off again whatever happened.
+SIEVE_HOST="$(rawget "$API/accounts" | jq -r --argjson id "$ACCOUNT_ID" '.[] | select(.id == $id) | .imapHost // empty' 2>/dev/null || true)"
+if [ -n "$SIEVE_HOST" ] && nc -z -G 5 "$SIEVE_HOST" 4190 >/dev/null 2>&1; then
+    quiet PUT "$API/sieve/account/$ACCOUNT_ID" "{\"sieveEnabled\":true,\"sieveHost\":\"$SIEVE_HOST\",\"sievePort\":4190,\"sieveUser\":\"\",\"sievePassword\":\"\",\"sieveSslMode\":\"tls\"}"
+    req PUT error-sieve-script-422.json "$API/sieve/active/$ACCOUNT_ID" '{"script":"require [\"fileinto\"];\nthis is not sieve;\n"}'
+    # WS-21: what the server-state mirror reads from an account with Sieve on — the
+    # account entry carrying the Sieve settings, the active script, the parsed filters and
+    # the out-of-office state.
+    fetch accounts-sieve-enabled.json "$API/accounts"
+    fetch sieve-active-enabled.json "$API/sieve/active/$ACCOUNT_ID"
+    fetch filters-enabled.json "$API/filter/$ACCOUNT_ID"
+    fetch out-of-office-enabled.json "$API/out-of-office/$ACCOUNT_ID"
+    quiet PUT "$API/sieve/account/$ACCOUNT_ID" '{"sieveEnabled":false,"sieveHost":"","sievePort":4190,"sieveUser":"","sievePassword":"","sieveSslMode":"none"}'
+else
+    echo "  (no ManageSieve on the account's IMAP host — error-sieve-script-422.json not recorded)"
+fi
 # Both filter routes answer an HTTP 500 HTML page on this server (uncaught
 # exception when ManageSieve is disabled) — recorded under names that say so.
 fetch error-filter-500.html "$API/filter/$ACCOUNT_ID" raw
@@ -816,6 +853,54 @@ echo "-- DAV: calendars"
 CAL_HOME="$DAVROOT/calendars/$LOGIN"
 dav dav-calendars-depth1.xml PROPFIND "$CAL_HOME/" 1 \
     '<?xml version="1.0"?><d:propfind xmlns:d="DAV:" xmlns:cs="http://calendarserver.org/ns/" xmlns:cal="urn:ietf:params:xml:ns:caldav"><d:prop><d:resourcetype/><d:displayname/><cs:getctag/><d:sync-token/><cal:supported-calendar-component-set/></d:prop></d:propfind>'
+
+echo "-- DAV: WS-24 listings (the properties ContactsSync and CalendarListSync request)"
+# Exactly the PROPFIND bodies NCMailSync sends, so a parse test reads what the
+# sync reads. A scratch book is created first and disabled (oc:enabled=0), so
+# the listing carries a disabled book next to the read-only, system-owned
+# "Accounts" book; deleted right after.
+WS24_AB_PROPS='<d:prop><d:resourcetype/><d:displayname/><d:sync-token/><d:current-user-privilege-set/><o:enabled/><o:read-only/><o:owner-principal/></d:prop>'
+WS24_TMP_AB="$DAVROOT/addressbooks/users/$LOGIN/ws24-temp-disabled"
+rawdav MKCOL "$WS24_TMP_AB/" '' '<?xml version="1.0"?><d:mkcol xmlns:d="DAV:" xmlns:card="urn:ietf:params:xml:ns:carddav"><d:set><d:prop><d:resourcetype><d:collection/><card:addressbook/></d:resourcetype><d:displayname>WS24 Temp Disabled</d:displayname></d:prop></d:set></d:mkcol>' >/dev/null
+rawdav PROPPATCH "$WS24_TMP_AB/" '' '<?xml version="1.0"?><d:propertyupdate xmlns:d="DAV:" xmlns:o="http://owncloud.org/ns"><d:set><d:prop><o:enabled>0</o:enabled></d:prop></d:set></d:propertyupdate>' >/dev/null
+dav dav-addressbooks-ws24.xml PROPFIND "$DAVROOT/addressbooks/users/$LOGIN/" 1 \
+    '<?xml version="1.0"?><d:propfind xmlns:d="DAV:" xmlns:o="http://owncloud.org/ns">'"$WS24_AB_PROPS"'</d:propfind>'
+rawdav DELETE "$WS24_TMP_AB/" >/dev/null
+dav dav-calendars-ws24.xml PROPFIND "$CAL_HOME/" 1 \
+    '<?xml version="1.0"?><d:propfind xmlns:d="DAV:" xmlns:o="http://owncloud.org/ns" xmlns:cal="urn:ietf:params:xml:ns:caldav" xmlns:a="http://apple.com/ns/ical/"><d:prop><d:resourcetype/><d:displayname/><d:current-user-privilege-set/><cal:supported-calendar-component-set/><a:calendar-color/><a:calendar-order/><o:read-only/><o:owner-principal/></d:prop></d:propfind>'
+# Nextcloud answers schedule-default-calendar-URL on the principal, not on the
+# schedule inbox where RFC 6638 puts it (measured: the inbox answers 404).
+dav dav-principal-schedule-default.xml PROPFIND "$DAVROOT/principals/users/$LOGIN/" 0 \
+    '<?xml version="1.0"?><d:propfind xmlns:d="DAV:" xmlns:cal="urn:ietf:params:xml:ns:caldav"><d:prop><cal:schedule-default-calendar-URL/></d:prop></d:propfind>'
+
+echo "-- DAV: WS-24 concurrent-edit lifecycle (scratch book ws24-temp-merge, deleted after)"
+# One card PUT three times, as a second client would: the base, then a different-field edit
+# (TEL), then a same-field edit (EMAIL). Each version is captured by a one-href multiget —
+# the request the 412 recovery sends — so the merge tests run on server-normalised text.
+# The empty book's first sync-collection is the "nothing in here" answer.
+WS24_MERGE_AB="$DAVROOT/addressbooks/users/$LOGIN/ws24-temp-merge"
+WS24_CARD="$WS24_MERGE_AB/ws24-merge.vcf"
+WS24_CARD_HREF="${WS24_CARD#$SERVER}"
+WS24_MULTIGET='<?xml version="1.0"?><card:addressbook-multiget xmlns:d="DAV:" xmlns:card="urn:ietf:params:xml:ns:carddav"><d:prop><d:getetag/><card:address-data/></d:prop><d:href>'"$WS24_CARD_HREF"'</d:href></card:addressbook-multiget>'
+rawdav MKCOL "$WS24_MERGE_AB/" '' '<?xml version="1.0"?><d:mkcol xmlns:d="DAV:" xmlns:card="urn:ietf:params:xml:ns:carddav"><d:set><d:prop><d:resourcetype><d:collection/><card:addressbook/></d:resourcetype><d:displayname>WS24 Temp Merge</d:displayname></d:prop></d:set></d:mkcol>' >/dev/null
+dav dav-sync-empty.xml REPORT "$WS24_MERGE_AB/" 0 \
+    '<?xml version="1.0"?><d:sync-collection xmlns:d="DAV:"><d:sync-token/>'"$SYNC_PROPS"'</d:sync-collection>'
+rawdav PUT "$WS24_CARD" '' "$(printf 'BEGIN:VCARD\r\nVERSION:3.0\r\nUID:ws24-merge\r\nFN:WS24 Merge\r\nN:Merge;WS24;;;\r\nEMAIL;TYPE=WORK:merge-base@example.org\r\nTEL;TYPE=CELL:+1 555 0100\r\nNOTE:base\r\nEND:VCARD\r\n')" 'text/vcard; charset=utf-8' >/dev/null
+dav dav-ws24-merge-base.xml REPORT "$WS24_MERGE_AB/" 1 "$WS24_MULTIGET"
+# A book without a sync-token ("Recently contacted" answers sync-collection with 415
+# ReportNotSupported) is mirrored from a Depth-1 ETag listing; this is that listing's shape.
+dav dav-ws24-merge-etags.xml PROPFIND "$WS24_MERGE_AB/" 1 \
+    '<?xml version="1.0"?><d:propfind xmlns:d="DAV:"><d:prop><d:getetag/></d:prop></d:propfind>'
+rawdav PUT "$WS24_CARD" '' "$(printf 'BEGIN:VCARD\r\nVERSION:3.0\r\nUID:ws24-merge\r\nFN:WS24 Merge\r\nN:Merge;WS24;;;\r\nEMAIL;TYPE=WORK:merge-base@example.org\r\nTEL;TYPE=CELL:+1 555 0199\r\nNOTE:base\r\nEND:VCARD\r\n')" 'text/vcard; charset=utf-8' >/dev/null
+dav dav-ws24-merge-server-tel.xml REPORT "$WS24_MERGE_AB/" 1 "$WS24_MULTIGET"
+rawdav PUT "$WS24_CARD" '' "$(printf 'BEGIN:VCARD\r\nVERSION:3.0\r\nUID:ws24-merge\r\nFN:WS24 Merge\r\nN:Merge;WS24;;;\r\nEMAIL;TYPE=WORK:merge-web@example.org\r\nTEL;TYPE=CELL:+1 555 0199\r\nNOTE:base\r\nEND:VCARD\r\n')" 'text/vcard; charset=utf-8' >/dev/null
+dav dav-ws24-merge-server-email.xml REPORT "$WS24_MERGE_AB/" 1 "$WS24_MULTIGET"
+dav dav-ws24-merge-sync.xml REPORT "$WS24_MERGE_AB/" 0 \
+    '<?xml version="1.0"?><d:sync-collection xmlns:d="DAV:"><d:sync-token/>'"$SYNC_PROPS"'</d:sync-collection>'
+# A token the server never issued: 403 + Sabre\DAV\Exception\InvalidSyncToken (measured).
+dav dav-error-invalid-sync-token.xml REPORT "$WS24_MERGE_AB/" 0 \
+    '<?xml version="1.0"?><d:sync-collection xmlns:d="DAV:"><d:sync-token>ws24-not-a-token</d:sync-token>'"$SYNC_PROPS"'</d:sync-collection>'
+rawdav DELETE "$WS24_MERGE_AB/" >/dev/null
 CAL_URL="$CAL_HOME/personal"
 ICS_HREFS="$(rawdav PROPFIND "$CAL_URL/" 1 '<d:propfind xmlns:d="DAV:"><d:prop><d:getetag/></d:prop></d:propfind>' | grep -o '<d:href>[^<]*\.ics</d:href>' | sed -E 's#</?d:href>##g' || true)"
 STANDUP_HREF="$(printf '%s\n' "$ICS_HREFS" | grep -i standup | head -1 || true)"

@@ -96,6 +96,27 @@ struct DAVClientTests {
         #expect(calendars.contains { $0.supportedCalendarComponents.contains("VTODO") })
     }
 
+    /// `current-user-privilege-set` nests each privilege one level down; the parser
+    /// lifts the names so writability is a lookup. The birthday calendar is the case
+    /// `oc:read-only` misses (WS-24, measured).
+    @Test func privilegesComeBackFlatFromTheNestedSet() async throws {
+        await transport.stub(.propfind, with: try .fixture("dav-calendars-ws24.xml", status: 207))
+
+        let resources = try await client.propfind(
+            try url("/remote.php/dav/calendars/user/"),
+            depth: .one,
+            properties: [.resourcetype, .currentUserPrivilegeSet]
+        )
+        let writeContent = DAVQualifiedName(DAVQualifiedName.dav, "write-content")
+        let personal = try #require(resources.first { $0.href.hasSuffix("/personal/") })
+        let birthdays = try #require(resources.first { $0.href.hasSuffix("/contact_birthdays/") })
+        #expect(personal.privileges.contains(writeContent))
+        #expect(personal.privileges.contains(DAVQualifiedName(DAVQualifiedName.dav, "read")))
+        #expect(!personal.privileges.contains(DAVQualifiedName(DAVQualifiedName.dav, "privilege")))
+        #expect(!birthdays.privileges.contains(writeContent))
+        #expect(birthdays.privileges.contains(DAVQualifiedName(DAVQualifiedName.dav, "read")))
+    }
+
     // MARK: - sync-collection
 
     @Test func initialSyncListsEveryMemberAndAToken() async throws {
