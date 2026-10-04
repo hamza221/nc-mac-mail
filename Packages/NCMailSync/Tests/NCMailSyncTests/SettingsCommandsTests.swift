@@ -160,6 +160,127 @@ struct SettingsCommandsTests {
         }
         #expect(await fixture.transport.requests.isEmpty)
     }
+
+    private func row(_ fixture: QueueTest.Fixture, kind: String, key: String) async throws -> ServerResultPayload? {
+        let loginId = try #require(try await fixture.store.ensureLogin(MailStoreFixtures.identity).id)
+        guard let row = try await fixture.store.serverResult(kind: kind, key: key, loginId: loginId) else { return nil }
+        return try ServerResultPayload(payloadJSON: row.payloadJSON)
+    }
+
+    @Test func anISPDBAnswerIsARowWithBothServers() async throws {
+        let (fixture, commands) = try await make()
+        await fixture.transport.stub(
+            Self.route("GET") { $0.contains("/autoconfig/ispdb/") }, with: try .fixture("autoconfig-ispdb.json"))
+
+        #expect(await commands.run(.lookupISPDB(host: "gmail.com", email: "user@gmail.com")).isSuccess)
+
+        let key = SettingsCommands.autoconfigISPDBKey(host: "gmail.com", email: "user@gmail.com")
+        guard case .ready(let data) = try await row(fixture, kind: SettingsCommands.autoconfigISPDBKind, key: key)
+        else {
+            Issue.record("expected a ready row")
+            return
+        }
+        let imap = data.objectValue?["imapConfig"]?.objectValue
+        #expect(imap?.string("host") == "imap.gmail.com")
+        #expect(imap?["port"] == .int(993))
+        #expect(imap?.string("security") == "ssl")
+        #expect(data.objectValue?["smtpConfig"]?.objectValue?["port"] == .int(465))
+    }
+
+    @Test func anMXAnswerAndAPortProbeAreRows() async throws {
+        let (fixture, commands) = try await make()
+        await fixture.transport.stub(
+            Self.route("GET") { $0.contains("/autoconfig/mx/") }, with: try .fixture("autoconfig-mx.json"))
+        await fixture.transport.stub(
+            Self.route("GET") { $0.hasSuffix("/autoconfig/test") }, with: try .fixture("autoconfig-test.json"))
+
+        #expect(await commands.run(.lookupMX(email: "user@example.com")).isSuccess)
+        #expect(await commands.run(.testConnectivity(host: "mail.example.com", port: 993)).isSuccess)
+
+        let mx = try await row(fixture, kind: SettingsCommands.autoconfigMXKind, key: "user@example.com")
+        #expect(mx == .ready(.object(["hosts": .array([.string("mail.example.com"), .string("mail.example.com")])])))
+        let probe = try await row(
+            fixture, kind: SettingsCommands.autoconfigTestKind,
+            key: SettingsCommands.autoconfigTestKey(host: "mail.example.com", port: 993))
+        #expect(probe == .ready(.object(["ok": .bool(true)])))
+    }
+
+    @Test func aFailedLookupIsAFailureAndWritesNoRow() async throws {
+        let (fixture, commands) = try await make()
+        await fixture.transport.stub(Self.route("GET") { $0.contains("/autoconfig/mx/") }, with: .status(404))
+
+        guard case .failure(.notFound) = await commands.run(.lookupMX(email: "user@example.com")) else {
+            Issue.record("expected notFound")
+            return
+        }
+        #expect(try await row(fixture, kind: SettingsCommands.autoconfigMXKind, key: "user@example.com") == nil)
+    }
+
+    @Test func aRefusedCreateIsConnectFailedAndWritesNoAccount() async throws {
+        let (fixture, commands) = try await make()
+        await fixture.transport.stub(
+            Self.route("POST") { $0.hasSuffix("/accounts") },
+            with: try .fixture("error-account-create-wrong-password.json", status: 400))
+        let before = try await fixture.store.accounts().count
+
+        let outcome = await commands.run(
+            .createAccount(
+                AccountRequest(
+                    accountName: "Probe", emailAddress: "probe@example.com",
+                    imapHost: "mail.example.com", imapPort: 993, imapSslMode: "ssl", imapUser: "probe@example.com",
+                    smtpHost: "mail.example.com", smtpPort: 587, smtpSslMode: "tls", smtpUser: "probe@example.com",
+                    imapPassword: "wrong", smtpPassword: "wrong")))
+
+        guard case .failure(.connectFailed("IMAP", "AUTHENTICATION_WRONG_PASSWORD")) = outcome else {
+            Issue.record("expected connectFailed, got \(outcome)")
+            return
+        }
+        #expect(try await fixture.store.accounts().count == before)
+    }
+
+    private static let mailServerRequest = AccountRequest(
+        accountName: "admin", emailAddress: "user@example.com",
+        imapHost: "mail.example.com", imapPort: 993, imapSslMode: "ssl", imapUser: "user@example.com",
+        smtpHost: "mail.example.com", smtpPort: 465, smtpSslMode: "ssl", smtpUser: "user@example.com")
+
+    /// Recorded live: the PUT answers `order`, `editorMode` and every special-mailbox id as
+    /// null while the server keeps them. The mirror must end up with the GET's full row.
+    @Test func aMailServerUpdateWritesTheReReadAccountNotThePartialAnswer() async throws {
+        let (fixture, commands) = try await make()
+        await fixture.transport.stub(
+            Self.route("PUT") { $0.hasSuffix("/api/accounts/1") }, with: try .fixture("account-updated.json"))
+        await fixture.transport.stub(
+            Self.route("GET") { $0.hasSuffix("/api/accounts/1") }, with: try .fixture("account.json"))
+
+        #expect(
+            await commands.run(.updateMailServer(accountId: fixture.accountId, Self.mailServerRequest)).isSuccess)
+
+        let account = try #require(try await fixture.store.account(id: fixture.accountId))
+        #expect(account.editorMode == "plaintext")
+        #expect(account.draftsMailboxId == 2)
+        #expect(account.sentMailboxId == 5)
+        #expect(account.trashMailboxId == 1)
+        #expect(account.junkMailboxId == 4)
+        let paths = await fixture.transport.requests.map { "\($0.httpMethod ?? "") \($0.url?.path ?? "")" }
+        #expect(paths.last?.hasPrefix("GET") == true)
+    }
+
+    /// The create's success answer comes from the same serializer as the update's; it is not
+    /// recorded on its own because recording it creates a real account. Only its id is used.
+    @Test func aCreatedAccountIsReReadBeforeItIsWritten() async throws {
+        let (fixture, commands) = try await make()
+        try await fixture.store.deleteAccount(id: fixture.accountId)
+        await fixture.transport.stub(
+            Self.route("POST") { $0.hasSuffix("/api/accounts") }, with: try .fixture("account-updated.json"))
+        await fixture.transport.stub(
+            Self.route("GET") { $0.hasSuffix("/api/accounts/1") }, with: try .fixture("account.json"))
+
+        #expect(await commands.run(.createAccount(Self.mailServerRequest)).isSuccess)
+
+        let account = try #require(try await fixture.store.accounts().first { $0.remoteId == 1 })
+        #expect(account.editorMode == "plaintext")
+        #expect(account.draftsMailboxId == 2)
+    }
 }
 
 /// The 422 from the acceptance, against the real server. Off by default — it switches

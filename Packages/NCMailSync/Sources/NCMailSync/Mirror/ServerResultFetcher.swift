@@ -171,6 +171,15 @@ public actor ServerResultFetcher {
         case .messageSource:
             let message = try await remoteMessageId(key)
             return .ready(.object(["source": .string(try await client.get(.messageSource(id: message)).source)]))
+
+        case .sharees:
+            return shareesPayload(try await client.get(.sharees(search: key)).data)
+
+        case .teams:
+            return try await refreshTeams(loginId: loginId)
+
+        case .sharedItems:
+            return try await sharedItems(with: key)
         }
     }
 

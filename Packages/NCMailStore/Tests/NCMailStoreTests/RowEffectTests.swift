@@ -291,6 +291,52 @@ struct RowEffectTests {
         #expect(try await store.quickAction(accountId: 1, remoteId: 3) == nil)
     }
 
+    @Test("quick action steps observation: keyed by action, sorted, fires on effects and replace")
+    func observeQuickActionSteps() async throws {
+        let (store, _) = try await Self.seeded()
+        try await store.upsert(accounts: [Seed.account(remoteId: 2)])
+        let otherAccountId = try #require(
+            try await store.write { db in try Int64.fetchOne(db, sql: "SELECT id FROM account WHERE remoteId = 2") })
+        let actions = try await store.replaceQuickActions(
+            [
+                QuickActionRecord(accountId: 1, remoteId: 3, name: "Triage"),
+                QuickActionRecord(accountId: 1, remoteId: 5, name: "Sort"),
+            ], accountId: 1)
+        let other = try await store.replaceQuickActions(
+            [QuickActionRecord(accountId: otherAccountId, remoteId: 3, name: "Other")], accountId: otherAccountId)
+        let triage = try #require(actions[0].id)
+        let sort = try #require(actions[1].id)
+        let otherId = try #require(other[0].id)
+        try await store.replaceQuickActionSteps(
+            [QuickActionStepRecord(quickActionId: 0, remoteId: 9, name: "x", position: 1)], quickActionId: otherId)
+
+        var iterator = store.observeQuickActionSteps(accountId: 1).makeAsyncIterator()
+        #expect(try await iterator.next()?.isEmpty == true)
+
+        try await store.replaceQuickActionSteps(
+            [
+                QuickActionStepRecord(quickActionId: 0, remoteId: 2, name: "b", position: 2),
+                QuickActionStepRecord(quickActionId: 0, remoteId: 1, name: "a", position: 1),
+            ], quickActionId: triage)
+        var map = try #require(try await iterator.next())
+        #expect(map.keys.sorted() == [triage])
+        #expect(map[triage]?.map(\.remoteId) == [1, 2])
+
+        let step = QuickActionStepRecord(quickActionId: 0, remoteId: 7, name: "c", position: 0)
+        try await Self.enqueue(store, [.upsertQuickActionStep(accountId: 1, quickActionRemoteId: 5, step: step)])
+        map = try #require(try await iterator.next())
+        #expect(map[sort]?.map(\.remoteId) == [7])
+        #expect(map[triage]?.map(\.remoteId) == [1, 2])
+
+        try await Self.enqueue(store, [.deleteQuickActionStep(accountId: 1, quickActionRemoteId: 3, stepRemoteId: 1)])
+        map = try #require(try await iterator.next())
+        #expect(map[triage]?.map(\.remoteId) == [2])
+        #expect(map[otherId] == nil)
+
+        #expect(try await store.quickActionSteps(accountId: 1) == map)
+        #expect(try await store.quickActionSteps(accountId: otherAccountId)[otherId]?.map(\.remoteId) == [9])
+    }
+
     @Test("preferences, internal addresses, trusted senders, meta")
     func loginSettings() async throws {
         let (store, loginId) = try await Self.seeded()

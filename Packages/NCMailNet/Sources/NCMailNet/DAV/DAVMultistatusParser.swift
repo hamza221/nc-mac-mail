@@ -177,21 +177,28 @@ final class DAVMultistatusParser: NSObject, XMLParserDelegate {
 }
 
 /// Parses sabre's `d:error` body: the exception class and its message, which
-/// are the only diagnostics the server gives for a 4xx on a DAV route.
+/// are the only diagnostics the server gives for a 4xx on a DAV route — and
+/// the CalDAV `no-uid-conflict` precondition's href (RFC 4791 §5.3.2.1), which
+/// names the object that already holds the UID.
 final class DAVErrorBodyParser: NSObject, XMLParserDelegate {
+    struct Parsed: Equatable {
+        var exception: String?
+        var message: String?
+        var uidConflictHref: String?
+    }
+
     private var stack: [DAVQualifiedName] = []
     private var text = ""
-    private(set) var exception: String?
-    private(set) var message: String?
+    private var parsed = Parsed()
 
-    static func parse(_ data: Data) -> (exception: String?, message: String?) {
-        guard !data.isEmpty else { return (nil, nil) }
+    static func parse(_ data: Data) -> Parsed {
+        guard !data.isEmpty else { return Parsed() }
         let delegate = DAVErrorBodyParser()
         let parser = XMLParser(data: data)
         parser.shouldProcessNamespaces = true
         parser.delegate = delegate
         _ = parser.parse()
-        return (delegate.exception, delegate.message)
+        return delegate.parsed
     }
 
     func parser(
@@ -216,9 +223,14 @@ final class DAVErrorBodyParser: NSObject, XMLParserDelegate {
         qualifiedName: String?
     ) {
         defer { stack.removeLast() }
-        guard namespaceURI == DAVQualifiedName.sabre else { return }
         let value = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        if elementName == "exception" { exception = value }
-        if elementName == "message" { message = value }
+        if namespaceURI == DAVQualifiedName.dav, elementName == "href",
+            stack.dropLast().last == DAVQualifiedName(DAVQualifiedName.caldav, "no-uid-conflict")
+        {
+            parsed.uidConflictHref = value
+        }
+        guard namespaceURI == DAVQualifiedName.sabre else { return }
+        if elementName == "exception" { parsed.exception = value }
+        if elementName == "message" { parsed.message = value }
     }
 }

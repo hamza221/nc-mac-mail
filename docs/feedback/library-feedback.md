@@ -1340,3 +1340,182 @@ collapsed row; the expanded state and its disclosure affordance are app-built, a
 "expand on click, collapse on header click" behaviour. An `NCDisclosureListItem` with an
 expanded content slot would make the web's `ThreadEnvelope` pattern a component.
 
+
+## WS-35 — Contacts
+
+### `NCProfileCard`'s avatar takes no action
+**Workstream:** WS-35 · **Component:** `NCProfileCard`, `NCAvatar` · **Severity:** friction
+**Where:** NextcloudMail/Views/Contacts/ContactDetailView.swift
+Web Contacts opens the picture menu (upload, full size, download, social, remove) from the
+avatar itself. The card's avatar is not interactive and has no menu or `onTap` slot, so the
+picture actions sit in the card's ⋯ menu instead, one level further from where users look.
+An `avatarMenu:` (or `onAvatarTap`) slot would let every app put "change picture" where the
+picture is.
+
+### No wrapping chip group
+**Workstream:** WS-35 · **Component:** `NCChip` · **Severity:** gap
+**Where:** ContactDetailView.swift (`ContactFlowLayout`), ContactEditor.swift
+Contact groups are chips that wrap across lines. `NCChip` is a single chip; the wrapping
+`Layout` is app-built. Recipient fields (WS-27) and tag rows want the same: an `NCChipGroup`
+that wraps with the theme's spacing would make one implementation of this.
+
+### No labelled property row
+**Workstream:** WS-35 · **Component:** — · **Severity:** gap
+**Where:** ContactDetailView.swift (`ContactPropertiesView`)
+A contact card is "Email · Work — lorelai@…" rows with an action (mailto, tel, link). The
+library has list items and navigation items but no label/value property row, so the card is
+a hand-built `Grid`. An `NCPropertyRow(label:value:action:)` fits Contacts, Calendar event
+details and Mail's message details alike.
+
+### No square image cropper
+**Workstream:** WS-35 · **Component:** — · **Severity:** gap
+**Where:** ContactPhoto.swift (`ContactPhotoCropSheet`)
+Web Contacts and the Nextcloud profile settings both crop pictures square before upload. The
+app built a drag-and-zoom crop sheet; a library `NCImageCropper(aspectRatio:)` would give every
+Nextcloud app the same behaviour and output size.
+
+## WS-40 — Mail account setup
+
+### No button with an in-progress label
+**Workstream:** WS-40 · **Component:** — (button styles) · **Severity:** friction
+**Where:** NextcloudMail/Views/AccountSetup/AccountSetupSheet.swift (`buttons`)
+The web's account form shows progress *on* the submit button: a spinner and a label that
+walks "Looking up configuration" → "Checking mail host connectivity" → "Testing
+authentication" → "Loading account". The library has no button state for that, so the
+sheet hand-builds an `HStack` of `ProgressView` + `Text` inside a plain `Button`, and the
+button resizes as the label changes. An `NCButton(isLoading:label:)` with a stable minimum
+width would serve every long-running submit (account setup, S/MIME import, filter save).
+
+### No inline form-feedback line
+**Workstream:** WS-40 · **Component:** `NCNoteCard` · **Severity:** gap
+**Where:** AccountSetupSheet.swift (`feedbackSection`)
+The form's one-line error/instruction ("IMAP username or password is wrong", "Account
+created. Please follow the pop-up instructions…") is too light for an `NCNoteCard` and
+changes as the flow runs. It is a coloured `Text` with `.updatesFrequently`; an
+`NCFormMessage(kind:)` with the error/info colours and a VoiceOver announcement on change
+would make the pattern uniform with Settings' status lines (WS-38/39).
+
+### Things that worked
+`NCNoteCard(.info)` for the provider hints and the "contact your administrator" state;
+`Form` + `.formStyle(.grouped)` gives the web dialog's IMAP/SMTP groups without custom
+layout.
+
+## WS-38 — App settings
+
+### No icon-only row button
+**Workstream:** WS-38 · **Component:** `NCIcon` / buttons · **Severity:** friction
+**Where:** NextcloudMail/Views/Settings/App/AppSettingsComponents.swift (`SettingsIconButton`)
+Every settings list (trusted senders, internal addresses, text blocks, shares, S/MIME
+certificates) ends rows in a remove/edit icon. The library has no borderless icon button
+that carries its own accessibility label and tooltip, so the app wraps `Button` +
+`MailSymbol.view` + `.help` + `.accessibilityLabel`. WS-39 built the same thing for quick
+actions. An `NCIconButton(symbol:label:action:)` would make one.
+
+### No inline dismissible error
+**Workstream:** WS-38 · **Component:** `NCNoteCard` · **Severity:** gap
+**Where:** AppSettingsComponents.swift (`SettingsErrorCard`)
+The web shows "Could not update preference" as a toast. Settings shows it inline under the
+controls, and it has to go away once read. `NCNoteCard` has no close action, so the card
+carries a hand-placed "Dismiss" button. An `onDismiss:` parameter would fix that, and
+WS-40's form message would use it too.
+
+### No settings-window tab metadata
+**Workstream:** WS-38 · **Component:** — · **Severity:** friction
+**Where:** NextcloudMail/Views/Settings/SettingsScene.swift
+The Settings window has eleven tabs. A macOS settings toolbar wants an icon on each tab,
+but `MailSymbol` returns a view, not an `Image`, and `tabItem` only takes `Label(_:image:)`.
+So the tabs are text-only. If the catalogue exposed an `Image` (or an `NCSymbol` →
+`Label` helper), the window could look like a native preferences window.
+
+### Things that worked
+`Form` + `.formStyle(.grouped)` covered every tab without custom layout. `NCNoteCard(.error)`
+and `(.success)` gave the S/MIME import and text-block share feedback the web's toast
+wording. The composer's `ComposerEditor` dropped into the text block sheet as-is.
+
+## WS-34 — Calendar in the message view
+
+### No calendar choice or colour swatch
+**Workstream:** WS-34 · **Component:** — · **Severity:** gap
+**Where:** NextcloudMail/Views/Calendar/MessageCalendarCards.swift (`CalendarPicker`)
+"Save to", "Import into" and the two sheets choose a calendar. The web shows each one with
+its colour dot (`CalendarPickerOption.vue`). The library has no picker row with a leading
+swatch, so the app shows names only. An `NCColorSwatch(hex:)` (the colour comes as `#RRGGBB`
+from CalDAV), or a picker option view, would make this parity.
+
+### A note card with actions
+**Workstream:** WS-34 · **Component:** `NCNoteCard` · **Severity:** friction
+**Where:** NextcloudMail/Views/Calendar/CalendarCards.swift (`InvitationCard`, `ItineraryCards`)
+The invitation card's Accept/Decline/Tentatively accept, and each itinerary's "Import into
+calendar" menu, sit beside the card, because the card combines its children for VoiceOver
+(already filed by WS-09). Two workstreams now build the same card-plus-row-of-buttons by hand.
+An `actions:` slot that stays outside the combined element would cover both.
+
+### Things that worked
+`NCNoteCard`'s roles map straight onto the web's iMIP states (`.info` invited, `.success`
+accepted, `.warning` declined, `.error` cancelled), and its `title:` takes the web's sentences
+as written. `.buttonStyle(.secondary)`/`.tertiary` matched the web's button order.
+
+## WS-36 — Address books, import, merge
+
+### A sidebar section caption has no accessory slot
+**Workstream:** WS-36 · **Component:** `NCNavigationCaption` · **Severity:** friction
+**Where:** NextcloudMail/Views/Contacts/AddressBooks/AddressBooksSectionHeader.swift
+Web Contacts puts its "Contacts settings" and "Import" entries in the navigation footer, and
+its add-book "+" next to the section. The caption takes only a title, so the ⋯ menu is a
+hand-built `HStack` (caption, `Spacer`, a borderless `Menu` with `.menuIndicator(.hidden)`),
+and the spacing, hover and hit area are whatever SwiftUI gives. An `NCNavigationCaption(_:accessory:)`
+(or a `trailing` menu slot) would match the web's section actions.
+
+### No list row with a leading switch and trailing actions
+**Workstream:** WS-36 · **Component:** — · **Severity:** gap
+**Where:** NextcloudMail/Views/Contacts/AddressBooks/AddressBooksSheet.swift
+Each address book row is a hand-built switch + name/caption + ⋯ menu (web Contacts'
+`AddressBook.vue` row: checkbox, name, actions). The calendar list will need the same row,
+with a colour dot as well (WS-34 filed the swatch). An `NCListItem` with `leading:`/`actions:`
+slots would cover both.
+
+### A two-way choice row for merge
+**Workstream:** WS-36 · **Component:** — · **Severity:** gap
+**Where:** NextcloudMail/Views/Contacts/AddressBooks/ContactMergeSheet.swift
+Merge is a stack of "this card's value / that card's value" radio groups and per-value
+checkboxes. Plain `Picker(.radioGroup)` and `Toggle(.checkbox)` in a grouped `Form` work, but
+they do not show which card a value comes from the way the web's merge dialog columns do. A
+library comparison row would help, as would a documented pattern for one.
+
+### Things that worked
+`Form` + `.formStyle(.grouped)` laid out the merge choices and the settings sheet without
+custom spacing. `MailSymbol.more`/`.group`/`.account` covered every icon, so no new
+`MailSymbol` cases were needed.
+
+## WS-37 — Teams, shared items, org chart
+
+### `NCUserPicker` cannot search a server
+**Workstream:** WS-37 · **Component:** `NCUserPicker` · **Severity:** gap
+**Where:** NextcloudMail/Views/Contacts/Teams/TeamDetailView.swift (`AddTeamMemberSheet`)
+The picker filters a candidate list it is given. Adding team members needs a search the server
+answers (the sharees route, users and groups, a third of a second per term), arriving after
+the keystroke. So the sheet is a plain `TextField` over a `List` of `NCListItem`s that the
+`sharees` row fills. A picker that takes candidates as a changing binding and shows a pending
+state while they are fetched would cover this, the delegation picker (WS-39) and text-block
+sharing (WS-38).
+
+### A sidebar row that is an action, not a selection
+**Workstream:** WS-37 · **Component:** `NCNavigationItem` · **Severity:** friction
+**Where:** NextcloudMail/Views/Contacts/Teams/TeamsSidebarRows.swift
+"New team…" sits among selectable rows (web Contacts' `+ Create team` in the navigation). It is
+an `NCNavigationItem` inside a `Button` with `.buttonStyle(.plain)` and no tag, so the
+`List(selection:)` leaves it alone; the hover and focus look are whatever that combination
+gives. An action variant of `NCNavigationItem` would match the web.
+
+### No tree or indented list for a hierarchy
+**Workstream:** WS-37 · **Component:** — · **Severity:** gap
+**Where:** NextcloudMail/Views/Contacts/Teams/ContactTeamsExtras.swift (`OrgChartSheet`)
+The organisation chart is a `List` of `NCListItem`s with leading padding of
+`spacing.loose × depth`. That reads, but it draws no connectors and does not collapse. Web
+Contacts uses d3-org-chart. A library outline row (depth, disclosure, connector lines) would
+also serve nested mailboxes.
+
+### Things that worked
+`NCNavigationItem`'s count drew the member count for each team row, and `NCListItem` with an
+`NCAvatar` leading slot was right for members, sharees, shared items and the chart. Three
+`MailSymbol` cases were appended (`team`, `orgChart`, `leaveTeam`).

@@ -131,6 +131,16 @@ null against a server that has been in use for months. Triage actions that
 depend on one (archive, junk) must be disabled rather than crash — and that state is worth
 a decent empty-state message, not a greyed button with no explanation.
 
+**Create/update refused by IMAP or SMTP** (`POST /api/accounts`, `PUT /api/accounts/{id}`;
+`CouldNotConnectException`, recorded live 2026-10-04 as
+`error-account-create-wrong-password.json` / `error-account-create-unreachable.json`):
+HTTP 400, `{"status":"fail","data":{"error":"AUTHENTICATION_WRONG_PASSWORD","service":"IMAP","host":"…","port":993}}`.
+`error` is one of `CONNECTION_ERROR`, `AUTHENTICATION`, `AUTHENTICATION_WRONG_PASSWORD`,
+`AUTHENTICATION_DENIED`, `OTHER`; `service` is `IMAP` or `SMTP`. `MailClient` maps it to
+`MailError.connectFailed(service:reason:)`; the setup sheet's §1.5 strings key off both.
+An `authMethod: "xoauth2"` create is not connection-tested: it succeeds, and
+`GET /api/accounts/{id}/test` answers `{"data":false}` until the OAuth token lands.
+
 ## Mailbox
 
 `GET /api/mailboxes?accountId=` →
@@ -621,4 +631,68 @@ OCS envelope `{"ocs": {"meta": {status, statuscode, message}, "data": …}}`.*
 - `GET /ocs/v2.php/apps/circles/circles` → 200, array of
   `{id, name, displayName, sanitizedName, source, population, populationInherited, config,
   description, url, creation, initiator, owner, settings, invitationCode}`. `id` is the
-  circle's string id.
+  circle's string id. `initiator` is the asking user's own membership (`level`, `singleId`);
+  the list holds only teams the user belongs to (alice saw none of admin's).
+- Confirmed live by WS-37 (Nextcloud 36; fixtures `circle-*-ws37.json`), each answering the
+  OCS wrapper with the changed circle or member under `data` (`[]` for a member removal):
+  - `POST …/circles` `{name, personal, local}` → the new circle (`creation` 0 until listed).
+  - `PUT …/circles/{id}/name|description|config` `{value}`; `config` is the whole bit field
+    (8 visible, 16 open, 32 invite, 64 request, 128 friend, 8192 root, 32768 federated).
+  - `DELETE …/circles/{id}`; `PUT …/circles/{id}/leave` (refused for the owner).
+  - `GET …/circles/{id}/members` → `[{id, singleId, userId, userType, level, status,
+    displayName, basedOn: {source, …}, …}]`. A **group** member comes back with `userType`
+    16 and `basedOn.source` 2; an address with `userType` 4 and `userId` = the address.
+  - `POST …/circles/{id}/members` `{userId, type}` (1 user, 2 group, 4 email, 8 contact,
+    16 team — the team's id).
+  - `PUT …/circles/{id}/members/{memberId}/level` `{level}` — **`level`**, not `value`
+    (1 member, 4 moderator, 8 admin, 9 owner).
+  - `PUT …/circles/{id}/members/{memberId}` (no body) accepts a join request (a member at
+    level 0, status `Requesting`); `DELETE` the same path removes or rejects.
+- Circles is present when `GET /ocs/v2.php/cloud/capabilities` lists `circles` (with
+  `settings.frontendEnabled`, `allowedCircles` …). That is how the client gates Teams
+  (ADR-0097).
+
+### Files shares (Shared items, WS-37)
+
+- `GET /ocs/v2.php/apps/files_sharing/api/v1/shares` → the login's shares;
+  `?shared_with_me=true` → shares it received. Each `{id: "18" (string), share_type (0 user),
+  uid_owner, share_with, path, file_target, item_type, mimetype, file_source, stime, …}`.
+  Fixtures `shares-mine-ws37.json`, `shares-with-me-ws37.json`.
+
+## Contacts app extras: favourites and social avatars (WS-35)
+
+*Measured against the dev server on 2026-10-04 with the scratch book `ws35-temp-fav`
+(`Scripts/record-fixtures.sh`, "DAV: WS-35 favourites and social avatar"), and again by
+`ContactsLiveTests` through the queue.*
+
+### The favourite star is a DAV property, not vCard
+
+- Web Contacts' star is the dead property **`{http://nextcloud.com/ns}favorite`** on the card
+  resource — the `.com` namespace, unlike every other Nextcloud DAV property (`.org`). It is
+  not in the vCard at all.
+- Set: `PROPPATCH <card>` with `<d:set><d:prop><nc:favorite>1</nc:favorite>…` → 207, the
+  property echoed in a 200 propstat (`dav-ws35-favorite-proppatch.xml`). Unset:
+  `<d:remove><d:prop><nc:favorite/>…` → 207 with a **204** propstat
+  (`dav-ws35-favorite-unproppatch.xml`).
+- Read: a Depth-1 `PROPFIND {getetag, nc:favorite}` on the book answers `1` for a starred card
+  and a **404 propstat** for every other (`dav-ws35-favorites.xml`); `addressbook-multiget`
+  answers it beside `address-data` the same way (`dav-ws35-multiget-favorite.xml`).
+- The PROPPATCH moves **neither the card's ETag nor the book's sync-token** (live:
+  `favouriteRoundTripsBothWays` — "sync-token moved false, ETag moved false"), so
+  `sync-collection` never reports a toggle. The mirror lists favourites each pass
+  ([ADR-0092](../decisions/0092-contact-favourites-are-a-dav-dead-property-refreshed-each-pass.md)).
+
+### Social avatar
+
+- `PUT /index.php/apps/contacts/api/v1/social/avatar/{network}/{addressBookURI}/{UID}` with
+  Basic auth and `OCS-APIRequest: true` (which passes the CSRF check) → **200 `[]`**
+  (`contacts-social-avatar.json`). The route was "unverified" in the plan; this settles it.
+  `{addressBookURI}` is the book's last path segment (`contacts`), `{UID}` the vCard `UID`.
+- The server downloads the picture itself and rewrites the card's `PHOTO`; the change moves
+  the ETag and the token like any edit, so the next pass brings it in (live: "PHOTO present
+  after next pass: true" for `gravatar`). The web client treats 304 as "Avatar already up to
+  date".
+- Networks: the Contacts page's `supportedNetworks` initial state on this server is
+  `["instagram","mastodon","tumblr","diaspora","xing","telegram","gravatar"]`; web Contacts
+  offers those the card has an `X-SOCIALPROFILE`/`IMPP` of that type for, plus `gravatar`
+  when it has an `EMAIL`. There is no API for the list, so the app carries it.

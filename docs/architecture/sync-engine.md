@@ -352,6 +352,11 @@ the stored one:
    (measured: "Recently contacted" answers 415 `ReportNotSupported`). It is mirrored every
    pass from a `PROPFIND Depth: 1` of ETags instead: differing ETags are multigot, missing
    members deleted.
+7. **Favourites** (web Contacts' star, the `{http://nextcloud.com/ns}favorite` DAV property)
+   move neither the ETag nor the token, so every token book — skipped or not — also gets one
+   `PROPFIND Depth: 1` of `{getetag, nc:favorite}` per pass, applied whole to the book's
+   `isFavorite` flags; the multiget and the token-less listing ask for it too
+   ([ADR-0092](../decisions/0092-contact-favourites-are-a-dav-dead-property-refreshed-each-pass.md)).
 
 A card with a queued `contactPut`/`contactDelete` is never overwritten or deleted by a
 sync: the local edit is in flight, and its drain resolves the difference (below).
@@ -382,6 +387,10 @@ fetched (ADR-0061's rule: no request to a host the server did not vouch for).
   reapply again. ADR-0082.
 - `DELETE` with `If-Match`; a 412 refetches the ETag and deletes once more (the user's delete
   wins over an edit elsewhere, and is logged as a conflict); 404 is already done.
+- `calendarPut` refused with 409 CalDAV `no-uid-conflict` (the calendar already holds the
+  UID — scheduling's own copy of an invitation, or an itinerary imported before) → the same
+  body is PUT once at the href the 409 names, without `If-Match`; a second 409 parks the row
+  as a conflict. ADR-0093.
 
 **Calendar list.** `CalendarListSync` runs at the same cadence and on `wake()`: one
 `PROPFIND Depth: 1` on the calendar home (`resourcetype`, `displayname`,

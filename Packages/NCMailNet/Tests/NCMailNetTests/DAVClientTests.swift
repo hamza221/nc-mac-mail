@@ -281,6 +281,36 @@ struct DAVClientTests {
         }
     }
 
+    @Test("a PUT whose UID the calendar already holds names the existing object (recorded 409)")
+    func uidConflictSurfacesTheExistingHref() async throws {
+        await transport.stub(.method("PUT"), with: try .fixture("dav-error-uid-conflict-ws34.xml", status: 409))
+        do {
+            _ = try await client.put(
+                try url("/remote.php/dav/calendars/user/personal/ws34-second.ics"),
+                data: Data(),
+                contentType: "text/calendar; charset=utf-8"
+            )
+            Issue.record("expected a uidConflict")
+        } catch DAVError.uidConflict(let href) {
+            #expect(href == "/remote.php/dav/calendars/user/personal/ws34-first.ics")
+        }
+    }
+
+    @Test("a 409 without the CalDAV precondition stays a collection conflict")
+    func plainConflictStaysACollectionConflict() async throws {
+        await transport.stub(.method("PUT"), with: .status(409))
+        do {
+            _ = try await client.put(
+                try url("/remote.php/dav/calendars/user/personal/x.ics"),
+                data: Data(),
+                contentType: "text/calendar; charset=utf-8"
+            )
+            Issue.record("expected a collectionConflict")
+        } catch DAVError.collectionConflict(let status, _) {
+            #expect(status == 409)
+        }
+    }
+
     @Test func deleteSendsIfMatch() async throws {
         await transport.stub(.method("DELETE"), with: .status(204))
         try await client.delete(
@@ -349,6 +379,65 @@ struct DAVClientTests {
         #expect(body.contains("<d:href>principal:principals/users/colleague</d:href>"))
         #expect(body.contains("<o:read/>"))
         #expect(!body.contains("read-write"))
+    }
+
+    // MARK: - Favourites and social avatars (WS-35)
+
+    /// The recorded Depth-1 listing: the favourited card answers `"1"`, the other comes back
+    /// in a 404 propstat — false, not "unknown" — and the collection itself is neither.
+    @Test func favoriteListingReadsTheDeadProperty() async throws {
+        await transport.stub(.propfind, with: try .fixture("dav-ws35-favorites.xml", status: 207))
+        let resources = try await client.propfind(
+            try url("/remote.php/dav/addressbooks/users/user/ws35-temp-fav/"), depth: .one,
+            properties: [.getetag, .favorite])
+        let favourite = try #require(resources.first { $0.href.hasSuffix("/ws35-fav.vcf") })
+        let plain = try #require(resources.first { $0.href.hasSuffix("/ws35-social.vcf") })
+        #expect(favourite.isFavorite == true)
+        #expect(plain.isFavorite == false)
+
+        let request = try #require(await transport.requests.first)
+        let body = String(decoding: try #require(request.httpBody), as: UTF8.self)
+        #expect(body.contains(#"xmlns:nc="http://nextcloud.com/ns""#))
+        #expect(body.contains("<nc:favorite/>"))
+    }
+
+    @Test func multigetAsksForAndReadsTheFavourite() async throws {
+        await transport.stub(.report, with: try .fixture("dav-ws35-multiget-favorite.xml", status: 207))
+        let resources = try await client.addressbookMultiget(
+            try url("/remote.php/dav/addressbooks/users/user/ws35-temp-fav/"),
+            hrefs: ["/remote.php/dav/addressbooks/users/user/ws35-temp-fav/ws35-fav.vcf"])
+        #expect(resources.first { $0.href.hasSuffix("/ws35-fav.vcf") }?.isFavorite == true)
+        #expect(resources.first { $0.href.hasSuffix("/ws35-social.vcf") }?.isFavorite == false)
+        #expect(resources.allSatisfy { $0.addressData != nil })
+        let body = String(decoding: try #require(await transport.requests.first?.httpBody), as: UTF8.self)
+        #expect(body.contains("<card:address-data/><nc:favorite/>"))
+    }
+
+    @Test func setFavoriteSetsAndRemovesTheProperty() async throws {
+        await transport.stubSequence(
+            .proppatch,
+            [
+                try .fixture("dav-ws35-favorite-proppatch.xml", status: 207),
+                try .fixture("dav-ws35-favorite-unproppatch.xml", status: 207),
+            ])
+        let card = try url("/remote.php/dav/addressbooks/users/user/ws35-temp-fav/ws35-fav.vcf")
+        try await client.setFavorite(card, true)
+        try await client.setFavorite(card, false)
+        let bodies = await transport.requests.map { String(decoding: $0.httpBody ?? Data(), as: UTF8.self) }
+        #expect(bodies.count == 2)
+        #expect(bodies.first?.contains("<d:set><d:prop><nc:favorite>1</nc:favorite></d:prop></d:set>") == true)
+        #expect(bodies.last?.contains("<d:remove><d:prop><nc:favorite/></d:prop></d:remove>") == true)
+        #expect(bodies.last?.contains("<d:set>") == false)
+    }
+
+    @Test func socialAvatarPutsTheContactsAppRoute() async throws {
+        await transport.stub(.method("PUT"), with: try .fixture("contacts-social-avatar.json", status: 200))
+        try await client.fetchSocialAvatar(network: "gravatar", addressBookURI: "contacts", contactUID: "abc-123")
+        let request = try #require(await transport.requests.first)
+        #expect(request.httpMethod == "PUT")
+        #expect(request.url?.path() == "/index.php/apps/contacts/api/v1/social/avatar/gravatar/contacts/abc-123")
+        #expect(request.value(forHTTPHeaderField: "OCS-APIRequest") == "true")
+        #expect(request.value(forHTTPHeaderField: "Authorization")?.hasPrefix("Basic ") == true)
     }
 
     // MARK: - Errors

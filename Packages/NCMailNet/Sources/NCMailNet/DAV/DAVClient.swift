@@ -192,6 +192,32 @@ public struct DAVClient: Sendable {
         )
     }
 
+    // MARK: - Contacts app extras (WS-35)
+
+    /// Web Contacts' favourite toggle on one card: PROPPATCH `nc:favorite` to `"1"`, or
+    /// remove it. The vCard and its ETag are untouched (measured).
+    public func setFavorite(_ url: URL, _ favorite: Bool) async throws {
+        if favorite {
+            try await proppatch(url, set: [DAVProposedProperty(.favorite, "1")])
+        } else {
+            try await proppatch(url, set: [], remove: [.favorite])
+        }
+    }
+
+    /// The Contacts app's social-avatar route: the *server* downloads the picture from
+    /// `network` (`gravatar`, `mastodon`, … — the card's `X-SOCIALPROFILE` type) and writes it
+    /// into the card's `PHOTO`, which the next `sync-collection` brings into the mirror.
+    /// Verified live 2026-10-04: basic auth plus `OCS-APIRequest` passes the CSRF check, the
+    /// answer is 200 `[]` (fixture `contacts-social-avatar.json`).
+    public func fetchSocialAvatar(network: String, addressBookURI: String, contactUID: String) async throws {
+        let url = server.appending(path: "index.php/apps/contacts/api/v1/social/avatar")
+            .appending(path: network)
+            .appending(path: addressBookURI)
+            .appending(path: contactUID)
+        _ = try await send(
+            method: "PUT", url: url, headers: ["OCS-APIRequest": "true", "Accept": "application/json"], body: nil)
+    }
+
     // MARK: - Principal discovery
 
     /// RFC 5397: who am I, as a principal URL.

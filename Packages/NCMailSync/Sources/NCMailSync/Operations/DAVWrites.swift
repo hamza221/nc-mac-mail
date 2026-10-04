@@ -7,7 +7,7 @@ public import NCMailStore
 
 /// A queued CardDAV/CalDAV write: what to send, and what it overwrote.
 ///
-/// One shape for the seven DAV kinds. Which fields matter is the kind's business:
+/// One shape for the nine DAV kinds. Which fields matter is the kind's business:
 ///
 /// | Kind | Uses |
 /// | --- | --- |
@@ -18,6 +18,8 @@ public import NCMailStore
 /// | `addressBookDelete` | `href` |
 /// | `addressBookShare` | `href`, `sharee`, `shareReadOnly` |
 /// | `calendarPut` | `href`, `body` (the iCalendar object), `etag` |
+/// | `contactFavorite` | `contactId`, `href`, `enabled` (the new favourite state), `before.isFavorite` |
+/// | `contactSocialAvatar` | `href`, `collectionHref`, `contactUID`, `socialNetwork` |
 ///
 /// Every `href` is the server's host-relative path, as a multistatus spells it.
 public struct DAVWritePayload: Codable, Sendable, Equatable {
@@ -42,6 +44,11 @@ public struct DAVWritePayload: Codable, Sendable, Equatable {
     /// The address book's on/off toggle, stored server-side as `oc:enabled` ("1"/"0";
     /// absent means enabled — measured by WS-24 against web Contacts).
     public var enabled: Bool?
+    /// The `X-SOCIALPROFILE` type a `contactSocialAvatar` asks the server to fetch from
+    /// (`gravatar`, `mastodon`, …), lowercased as the Contacts app's route wants it.
+    public var socialNetwork: String?
+    /// The card's vCard `UID`, which the Contacts app's social route names a card by.
+    public var contactUID: String?
     public var before: DAVWriteSnapshot
 
     public init(
@@ -59,6 +66,8 @@ public struct DAVWritePayload: Codable, Sendable, Equatable {
         sharee: String? = nil,
         shareReadOnly: Bool? = nil,
         enabled: Bool? = nil,
+        socialNetwork: String? = nil,
+        contactUID: String? = nil,
         before: DAVWriteSnapshot = DAVWriteSnapshot()
     ) {
         self.loginId = loginId
@@ -75,6 +84,8 @@ public struct DAVWritePayload: Codable, Sendable, Equatable {
         self.sharee = sharee
         self.shareReadOnly = shareReadOnly
         self.enabled = enabled
+        self.socialNetwork = socialNetwork
+        self.contactUID = contactUID
         self.before = before
     }
 
@@ -88,6 +99,12 @@ public struct DAVWritePayload: Codable, Sendable, Equatable {
         // The first write's precondition is the one the server can check: the later write's
         // etag, if it had one, was read from the same unchanged server copy.
         merged.etag = etag ?? later.etag
+        // Collection updates carry only the fields they change (a rename has no `enabled`, a
+        // toggle no `displayName`): a field the later write leaves out is still this one's,
+        // or a rename followed by a toggle would PROPPATCH the toggle alone (WS-36, measured).
+        merged.displayName = later.displayName ?? displayName
+        merged.enabled = later.enabled ?? enabled
+        merged.color = later.color ?? color
         return merged
     }
 }
@@ -100,19 +117,24 @@ public struct DAVWriteSnapshot: Codable, Sendable, Equatable {
     public var etag: String?
     public var displayName: String?
     public var color: String?
+    /// The card's favourite flag before a `contactFavorite`, so Discard of two folded toggles
+    /// goes back to where the user started rather than inverting the last one.
+    public var isFavorite: Bool?
 
     public init(
         existed: Bool = true,
         body: String? = nil,
         etag: String? = nil,
         displayName: String? = nil,
-        color: String? = nil
+        color: String? = nil,
+        isFavorite: Bool? = nil
     ) {
         self.existed = existed
         self.body = body
         self.etag = etag
         self.displayName = displayName
         self.color = color
+        self.isFavorite = isFavorite
     }
 }
 

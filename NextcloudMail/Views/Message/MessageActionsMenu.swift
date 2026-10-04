@@ -29,6 +29,7 @@ struct MessageActionsMenu: View {
                     openComposer(.forward(messageIds: [header.messageId], asAttachment: true))
                 }
                 Button("Edit as new message") { openComposer(.editAsNew(messageId: header.messageId)) }
+                CalendarMenuItems(messageId: header.messageId)
                 Divider()
                 Button(header.isFlagged ? "Unstar" : "Star") { Task { await model.toggle(flag: .star) } }
                 Button(header.isImportant ? "Mark unimportant" : "Mark important") {

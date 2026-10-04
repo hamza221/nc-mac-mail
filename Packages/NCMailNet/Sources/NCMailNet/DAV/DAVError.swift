@@ -19,6 +19,11 @@ public enum DAVError: Error, Sendable {
     case preconditionFailed
     /// 405/409 on MKCOL: the collection exists already or the parent is missing.
     case collectionConflict(status: Int, message: String?)
+    /// 409 on a PUT: the calendar already holds an object with this UID, at `href` (the
+    /// CalDAV `no-uid-conflict` precondition). Nextcloud's scheduling delivers an
+    /// invitation into the attendee's default calendar under a name of its own, so an
+    /// answer written under ours lands here (ADR-0093).
+    case uidConflict(href: String)
     /// A PROPPATCH the server accepted but did not apply for some property.
     case propertyUpdateFailed(status: Int, property: String)
     case server(status: Int, exception: String?, message: String?)
@@ -41,7 +46,10 @@ public enum DAVError: Error, Sendable {
             return .notFound
         case 412:
             return .preconditionFailed
-        case 405, 409:
+        case 409:
+            if let href = parsed.uidConflictHref { return .uidConflict(href: href) }
+            return .collectionConflict(status: status, message: parsed.message)
+        case 405:
             return .collectionConflict(status: status, message: parsed.message)
         default:
             return .server(status: status, exception: parsed.exception, message: parsed.message)

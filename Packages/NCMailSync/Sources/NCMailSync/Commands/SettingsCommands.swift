@@ -31,6 +31,20 @@ public actor SettingsCommands {
     /// `serverResult.kind` of a minted OAuth state, keyed by local account id. The payload
     /// is `ServerResultPayload.ready({"state": "…"})`.
     public static let oauthStateKind = "oauthState"
+    /// `serverResult.kind` of an ISPDB lookup, keyed by ``autoconfigISPDBKey(host:email:)``.
+    /// The payload is `ready({"imapConfig": {…}|null, "smtpConfig": {…}|null})`, or `empty`
+    /// when the database does not know the host.
+    public static let autoconfigISPDBKind = "autoconfigIspdb"
+    /// `serverResult.kind` of an MX lookup, keyed by the address. `ready({"hosts": […]})`,
+    /// or `empty` when the domain has no MX record.
+    public static let autoconfigMXKind = "autoconfigMx"
+    /// `serverResult.kind` of a port probe, keyed by ``autoconfigTestKey(host:port:)``.
+    /// `ready({"ok": Bool})`.
+    public static let autoconfigTestKind = "autoconfigTest"
+
+    public static func autoconfigISPDBKey(host: String, email: String) -> String { "\(host) \(email)" }
+
+    public static func autoconfigTestKey(host: String, port: Int) -> String { "\(host):\(port)" }
 
     public init(
         store: MailStore,
@@ -70,8 +84,11 @@ public actor SettingsCommands {
         switch command {
         case .updateMailServer(let accountId, let request):
             let account = try await account(accountId)
-            let answer = try await client.put(Endpoint.updateAccount(id: Int(account.remoteId)), body: request)
-            try await store.upsert(accounts: [try MirrorMapping.accountWrite(answer.data, identity: identity)])
+            // The PUT answers a partial account (live, Mail 5.12: `order`, `editorMode` and
+            // the special-mailbox ids come back null while the server keeps them), so the
+            // mirror is written from a fresh GET, not from the answer.
+            _ = try await client.put(Endpoint.updateAccount(id: Int(account.remoteId)), body: request)
+            _ = try await refreshAccount(account)
 
         case .testConnection(let accountId):
             let account = try await account(accountId)
@@ -170,8 +187,10 @@ public actor SettingsCommands {
             try await refreshDelegations(account)
 
         case .createAccount(let request):
+            // Same serializer as the update's partial answer: only its id is trusted.
             let answer = try await client.post(Endpoint.createAccount, body: request)
-            try await store.upsert(accounts: [try MirrorMapping.accountWrite(answer.data, identity: identity)])
+            let created = try await client.get(Endpoint.account(id: answer.data.value.id))
+            try await store.upsert(accounts: [try MirrorMapping.accountWrite(created, identity: identity)])
 
         case .deleteAccount(let accountId):
             let account = try await account(accountId)
@@ -195,7 +214,43 @@ public actor SettingsCommands {
                 Endpoint.oauthState, body: OAuthStateRequest(accountId: Int(account.remoteId)))
             try await writeResult(
                 kind: Self.oauthStateKind, accountId: accountId, payload: ["state": .string(answer.data.state)])
+
+        case .lookupISPDB(let host, let email):
+            let answer = try await client.get(Endpoint.autoconfigISPDB(host: host, email: email))
+            let payload: ServerResultPayload =
+                if let result = answer.data, result.imapConfig != nil || result.smtpConfig != nil {
+                    .ready(
+                        .object([
+                            "imapConfig": result.imapConfig.map(Self.json) ?? .null,
+                            "smtpConfig": result.smtpConfig.map(Self.json) ?? .null,
+                        ]))
+                } else {
+                    .empty
+                }
+            try await writeResult(
+                kind: Self.autoconfigISPDBKind, key: Self.autoconfigISPDBKey(host: host, email: email), payload)
+
+        case .lookupMX(let email):
+            let hosts = try await client.get(Endpoint.autoconfigMX(email: email)).data ?? []
+            try await writeResult(
+                kind: Self.autoconfigMXKind, key: email,
+                hosts.isEmpty ? .empty : .ready(.object(["hosts": .array(hosts.map(AnyJSON.string))])))
+
+        case .testConnectivity(let host, let port):
+            let answer = try await client.get(Endpoint.autoconfigTest(host: host, port: port))
+            try await writeResult(
+                kind: Self.autoconfigTestKind, key: Self.autoconfigTestKey(host: host, port: port),
+                .ready(.object(["ok": .bool(answer.data ?? false)])))
         }
+    }
+
+    private static func json(_ server: AutoconfigServer) -> AnyJSON {
+        .object([
+            "username": server.username.map(AnyJSON.string) ?? .null,
+            "host": .string(server.host),
+            "port": .int(server.port),
+            "security": server.security.map(AnyJSON.string) ?? .null,
+        ])
     }
 
     // MARK: - Writing what the server now holds
@@ -268,13 +323,16 @@ public actor SettingsCommands {
     /// Written in ADR-0067's shape (`{"status":"ready","data":…}`), so `ServerResultPayload`
     /// decodes it like every other server-result row.
     private func writeResult(kind: String, accountId: Int64, payload: [String: AnyJSON]) async throws {
-        let json = try ServerResultPayload.ready(.object(payload)).jsonText()
+        try await writeResult(kind: kind, key: String(accountId), .ready(.object(payload)))
+    }
+
+    private func writeResult(kind: String, key: String, _ payload: ServerResultPayload) async throws {
         try await store.upsert(
             serverResult: ServerResultRecord(
                 loginId: try await loginId(),
                 kind: kind,
-                key: String(accountId),
-                payloadJSON: json,
+                key: key,
+                payloadJSON: try payload.jsonText(),
                 fetchedAt: now()
             )
         )
@@ -310,6 +368,9 @@ public actor SettingsCommands {
         case .deleteAccount: "deleteAccount"
         case .repairMailbox: "repairMailbox"
         case .startOAuth: "startOAuth"
+        case .lookupISPDB: "lookupISPDB"
+        case .lookupMX: "lookupMX"
+        case .testConnectivity: "testConnectivity"
         }
     }
 }

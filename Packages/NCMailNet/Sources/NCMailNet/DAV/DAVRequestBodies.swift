@@ -24,8 +24,10 @@ enum DAVRequestBody {
             """)
     }
 
+    /// `nc:favorite` rides along so a card fetched this round arrives with its favourite
+    /// state (WS-35); the per-pass listing catches toggles that moved no ETag.
     static func addressbookMultiget(hrefs: [String]) -> Data {
-        multiget(root: "card:addressbook-multiget", data: "<card:address-data/>", hrefs: hrefs)
+        multiget(root: "card:addressbook-multiget", data: "<card:address-data/><nc:favorite/>", hrefs: hrefs)
     }
 
     static func calendarMultiget(hrefs: [String]) -> Data {
@@ -83,7 +85,8 @@ enum DAVRequestBody {
     private static let namespaceDeclarations =
         """
         xmlns:d="DAV:" xmlns:card="\(DAVQualifiedName.carddav)" xmlns:cal="\(DAVQualifiedName.caldav)" \
-        xmlns:cs="\(DAVQualifiedName.calendarserver)" xmlns:oc="\(DAVQualifiedName.owncloud)"
+        xmlns:cs="\(DAVQualifiedName.calendarserver)" xmlns:oc="\(DAVQualifiedName.owncloud)" \
+        xmlns:nc="\(DAVQualifiedName.nextcloudCom)"
         """
 
     private static func body(_ xml: String) -> Data {
@@ -99,6 +102,7 @@ enum DAVRequestBody {
         case DAVQualifiedName.caldav: prefix = "cal"
         case DAVQualifiedName.calendarserver: prefix = "cs"
         case DAVQualifiedName.owncloud: prefix = "oc"
+        case DAVQualifiedName.nextcloudCom: prefix = "nc"
         default: prefix = "d"
         }
         return "\(prefix):\(name.name)"

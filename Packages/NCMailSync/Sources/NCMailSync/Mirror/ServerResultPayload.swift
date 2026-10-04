@@ -31,6 +31,20 @@ public enum ServerResultKind: String, Sendable, CaseIterable {
     case followUp
     /// `GET /api/messages/{id}/source`. Key: local message id; data `{"source": String}`.
     case messageSource
+    /// `GET /ocs/v2.php/apps/files_sharing/api/v1/sharees` for users and groups. Key: the
+    /// search term; data `[{"shareWith", "type": "user"|"group", "displayName"}]`, exact
+    /// matches first.
+    case sharees
+    /// The login's Teams (Circles): `GET /ocs/v2.php/cloud/capabilities`, then
+    /// `GET /ocs/v2.php/apps/circles/circles` and each team's `…/members`, written into
+    /// `team` / `teamMember`. Key: ``teamsKey``; data `{"count": Int}`. `empty` means the
+    /// server has no `circles` capability — every Teams surface stays hidden (ADR-0097).
+    case teams
+    /// The files shared between the login and one user of the system address book (web
+    /// Contacts' "Shared items"), from the two files_sharing listings. Key: the user id (the
+    /// system card's UID); data `[{"id", "name", "path", "itemType", "mimeType",
+    /// "fileId", "time", "direction": "incoming"|"outgoing"}]`, newest first.
+    case sharedItems
 
     /// How long a `ready` or `empty` row answers a request without asking again, in
     /// seconds. Each kind's owner set it from how often the answer can change.
@@ -40,7 +54,10 @@ public enum ServerResultKind: String, Sendable, CaseIterable {
         case .smartReply: 86_400
         // A body never changes once delivered, so neither does what it says.
         case .translation, .itinerary, .messageSource: 30 * 86_400
-        case .autoComplete, .quota: 3_600
+        case .autoComplete, .quota, .sharees: 3_600
+        // A team or a share changed in the web client should show up the next time the
+        // section is opened, not an hour later.
+        case .teams, .sharedItems: 300
         // Asked only while the follow-up section is on screen, and the whole point is to
         // notice a reply as soon as it lands.
         case .followUp: 0
@@ -54,6 +71,9 @@ public enum ServerResultKind: String, Sendable, CaseIterable {
     public static func messageKey(_ messageId: Int64) -> String { String(messageId) }
 
     public static func accountKey(_ accountId: Int64) -> String { String(accountId) }
+
+    /// The one `teams` row of a login.
+    public static let teamsKey = "all"
 
     /// `<local message id>:<target language>`, plus the source language in the middle when
     /// the user picked one rather than letting the server detect it.

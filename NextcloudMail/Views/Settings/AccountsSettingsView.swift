@@ -5,39 +5,41 @@ import NCMailStore
 import NextcloudUI
 import SwiftUI
 
-/// The Accounts tab: one row per mirrored account, and the two-question sign-out flow
+/// The Accounts tab: one row per mirrored account on the left with "Add mail account" under
+/// them, WS-39's `AccountSettingsView` for the selected one on the right, and the
+/// two-question sign-out flow
 /// [offline-queue.md](../../../docs/architecture/offline-queue.md#sign-out-and-pending-work)
 /// asks for.
-///
-/// Account creation is out of scope
-/// ([WS-12-settings.md](../../../docs/delivery/briefs/WS-12-settings.md#out-of-scope)); the
-/// footer explains that and opens the web client instead of leaving a blank space.
 struct AccountsSettingsView: View {
+    @Environment(AppSession.self) private var session
     @Environment(SettingsStore.self) private var settingsStore
     @Environment(\.ncTheme) private var theme
     @Environment(\.openURL) private var openURL
 
     @State private var queuePrompt: QueuePrompt?
     @State private var keepOrRemovePrompt: KeepOrRemovePrompt?
+    /// The account whose settings show on the right. Bound to the key the sidebar's
+    /// "Account settings…" writes, so a request lands even with the window already open.
+    /// Hosting added by WS-39 (agreed layout in ux-spec's WS-38 section); WS-38 may restyle.
+    @AppStorage(SettingsTab.preferredAccountIDKey) private var preferredAccountID: Int?
+
+    private var selectedAccount: AccountRecord? {
+        settingsStore.accounts.first { Int($0.id) == preferredAccountID } ?? settingsStore.accounts.first
+    }
 
     var body: some View {
-        Form {
-            Section {
-                if settingsStore.accounts.isEmpty {
-                    Text("No accounts are mirrored yet.")
-                        .foregroundStyle(.secondary)
-                } else {
-                    ForEach(settingsStore.accounts) { account in
-                        row(for: account)
-                    }
-                }
-            } header: {
-                Text("Accounts")
-            } footer: {
-                Text("Accounts are added and removed in the Nextcloud web client.")
+        HStack(spacing: 0) {
+            accountList
+                .frame(width: 320)
+            Divider()
+            if let account = selectedAccount {
+                AccountSettingsView(accountId: account.id)
+                    .id(account.id)
+            } else {
+                ContentUnavailableView { Text("No accounts are mirrored yet.") }
             }
         }
-        .formStyle(.grouped)
+        .frame(minWidth: 960, minHeight: 600)
         .confirmationDialog(
             String(localized: "Some actions have not reached the server yet."),
             isPresented: Binding(get: { queuePrompt != nil }, set: { if !$0 { queuePrompt = nil } }),
@@ -67,6 +69,49 @@ struct AccountsSettingsView: View {
                     + "them to reclaim the space."
             )
         }
+    }
+
+    private var accountList: some View {
+        Form {
+            Section {
+                if settingsStore.accounts.isEmpty {
+                    Text("No accounts are mirrored yet.")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(settingsStore.accounts) { account in
+                        selectableRow(for: account)
+                    }
+                }
+            } header: {
+                Text("Accounts")
+            }
+            Section {
+                ForEach(session.accounts) { login in
+                    HStack {
+                        if session.accounts.count > 1 {
+                            Text(
+                                String(
+                                    format: String(localized: "%@ on %@"), login.loginName, login.server.host() ?? "")
+                            )
+                            .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        AddMailAccountButton(sessionId: login.id)
+                    }
+                }
+            }
+        }
+        .formStyle(.grouped)
+    }
+
+    private func selectableRow(for account: AccountRecord) -> some View {
+        let isSelected = account.id == selectedAccount?.id
+        let fill = isSelected ? AnyShapeStyle(theme.colors.primarySurface) : AnyShapeStyle(.clear)
+        return row(for: account)
+            .contentShape(Rectangle())
+            .onTapGesture { preferredAccountID = Int(account.id) }
+            .listRowBackground(Rectangle().fill(fill))
+            .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     @ViewBuilder

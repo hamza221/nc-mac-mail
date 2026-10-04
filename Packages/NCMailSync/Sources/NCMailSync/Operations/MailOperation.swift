@@ -115,6 +115,10 @@ public enum MailOperation: Sendable, Equatable {
     case addressBookDelete(DAVWritePayload)
     case addressBookShare(DAVWritePayload)
     case calendarPut(DAVWritePayload)
+    /// Web Contacts' favourite marker: PROPPATCH `nc:favorite` on the card (ADR-0092).
+    case contactFavorite(DAVWritePayload)
+    /// The Contacts app's server-side social-avatar fetch for one card (WS-35).
+    case contactSocialAvatar(DAVWritePayload)
 }
 
 /// What one queue row does, which is not quite the same list as ``MailOperation``.
@@ -176,6 +180,8 @@ public enum OperationKind: String, Sendable, Codable, CaseIterable {
     case addressBookDelete
     case addressBookShare
     case calendarPut
+    case contactFavorite
+    case contactSocialAvatar
 
     /// Whether this kind ends its subject's life, which is what makes it absorb everything
     /// queued before it for the same subject.
@@ -195,7 +201,7 @@ public enum OperationKind: String, Sendable, Codable, CaseIterable {
         case .setFlags, .move, .moveThread, .trustSender, .updateTag, .renameMailbox, .moveMailbox,
             .setMailboxSubscribed, .setMailboxSyncInBackground, .setPreference, .patchAccount,
             .setSignature, .updateAlias, .setAliasSignature, .updateTextBlock, .updateQuickAction,
-            .upsertActionStep, .trustDomain, .contactPut, .addressBookUpdate, .calendarPut:
+            .upsertActionStep, .trustDomain, .contactPut, .addressBookUpdate, .calendarPut, .contactFavorite:
             true
         default:
             false
@@ -206,7 +212,7 @@ public enum OperationKind: String, Sendable, Codable, CaseIterable {
     public var isDAV: Bool {
         switch self {
         case .contactPut, .contactDelete, .addressBookCreate, .addressBookUpdate, .addressBookDelete,
-            .addressBookShare, .calendarPut:
+            .addressBookShare, .calendarPut, .contactFavorite, .contactSocialAvatar:
             true
         default:
             false

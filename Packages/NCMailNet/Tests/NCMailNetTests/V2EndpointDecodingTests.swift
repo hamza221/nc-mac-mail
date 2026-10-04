@@ -101,6 +101,30 @@ struct AccountEndpointReplayTests {
         }
     }
 
+    @Test(
+        "a refused account create is connectFailed with the service and reason",
+        arguments: [
+            ("error-account-create-wrong-password.json", "AUTHENTICATION_WRONG_PASSWORD"),
+            ("error-account-create-unreachable.json", "CONNECTION_ERROR"),
+        ]
+    )
+    func accountCreateRefused(fixture: String, reason: String) async throws {
+        let client = try await replaying(fixture, status: 400)
+        let request = AccountRequest(
+            accountName: "Probe", emailAddress: "probe@example.com",
+            imapHost: "mail.example.com", imapPort: 993, imapSslMode: "ssl", imapUser: "probe@example.com",
+            smtpHost: "mail.example.com", smtpPort: 587, smtpSslMode: "tls", smtpUser: "probe@example.com",
+            imapPassword: "wrong", smtpPassword: "wrong"
+        )
+        do {
+            _ = try await client.post(.createAccount, body: request)
+            Issue.record("expected a throw")
+        } catch MailError.connectFailed(let service, let actual) {
+            #expect(service == "IMAP")
+            #expect(actual == reason)
+        }
+    }
+
     @Test("the OAuth state mint and the OCS account list")
     func oauthAndOCSList() async throws {
         let state = try await replaying("oauth-state.json")

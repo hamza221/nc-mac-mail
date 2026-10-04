@@ -1,0 +1,103 @@
+{
+  "uid": 115,
+  "messageId": "<ws34-imip-1791118152@example.net>",
+  "from": [
+    {
+      "label": "Alice",
+      "email": "alice@example.net"
+    }
+  ],
+  "to": [
+    {
+      "label": "Self",
+      "email": "user@example.com"
+    }
+  ],
+  "replyTo": [
+    {
+      "label": "Alice",
+      "email": "alice@example.net"
+    }
+  ],
+  "cc": [],
+  "bcc": [],
+  "subject": "Invitation: WS34 seeded invitation",
+  "dateInt": 1791118166,
+  "flags": {
+    "seen": false,
+    "flagged": false,
+    "answered": false,
+    "deleted": false,
+    "draft": false,
+    "forwarded": false,
+    "hasAttachments": true,
+    "$mdnsent": false,
+    "important": false
+  },
+  "hasHtmlBody": false,
+  "dispositionNotificationTo": "",
+  "hasDkimSignature": false,
+  "phishingDetails": {
+    "checks": [
+      {
+        "type": "Contacts",
+        "isPhishing": false,
+        "message": "",
+        "additionalData": []
+      },
+      {
+        "type": "Date",
+        "isPhishing": false,
+        "message": "",
+        "additionalData": []
+      },
+      {
+        "type": "IMAP Flag",
+        "isPhishing": false,
+        "message": "",
+        "additionalData": []
+      }
+    ],
+    "warning": false
+  },
+  "unsubscribeUrl": null,
+  "isOneClickUnsubscribe": false,
+  "unsubscribeMailto": null,
+  "scheduling": [
+    {
+      "id": "1.2",
+      "messageId": 115,
+      "method": "REQUEST",
+      "contents": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Sabre//Sabre VObject 4.5.6//EN\r\nMETHOD:REQUEST\r\nBEGIN:VEVENT\r\nUID:ws34-imip-1791118152\r\nDTSTAMP:20261004T100000Z\r\nDTSTART:20261112T090000Z\r\nDTEND:20261112T093000Z\r\nSUMMARY:WS34 seeded invitation\r\nLOCATION:Room 1\r\nORGANIZER;CN=Alice:mailto:alice@example.net\r\nATTENDEE;CN=Alice;PARTSTAT=ACCEPTED;ROLE=CHAIR:mailto:alice@example.net\r\nATTENDEE;CN=Self;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT:mailto:user@example.com\r\nSEQUENCE:0\r\nEND:VEVENT\r\nEND:VCALENDAR"
+    }
+  ],
+  "isPgpMimeEncrypted": false,
+  "hasAiGeneratedHeader": false,
+  "signature": null,
+  "attachments": [
+    {
+      "id": "2",
+      "messageId": 115,
+      "fileName": "invite.ics",
+      "mime": "application/ics",
+      "size": 505,
+      "cid": null,
+      "disposition": "attachment",
+      "downloadUrl": "http://cloud.example.com/index.php/apps/mail/api/messages/263/attachment/2",
+      "mimeUrl": "/index.php/apps/theming/img/core/filetypes/application.svg?v=30fdf852",
+      "isImage": false,
+      "isCalendarEvent": true
+    }
+  ],
+  "inlineAttachments": [],
+  "body": "You are invited to WS34 seeded invitation.",
+  "accountId": 1,
+  "mailboxId": 3,
+  "databaseId": 263,
+  "isSenderTrusted": false,
+  "smime": {
+    "isSigned": false,
+    "signatureIsValid": null,
+    "isEncrypted": false
+  }
+}

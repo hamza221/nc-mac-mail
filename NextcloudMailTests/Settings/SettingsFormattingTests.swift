@@ -69,10 +69,10 @@ struct SettingsFormattingTests {
         #expect(SettingsFormatting.mirrorStatus(state: .complete, progress: progress, isPaused: true) == "Paused")
     }
 
-    @Test("the mark-as-read delay round-trips through its meta encoding")
+    @Test("every server mark-as-read choice round-trips through the local meta encoding")
     func markAsReadRoundTrip() {
-        for delay in MarkAsReadDelay.offeredDelays {
-            #expect(MarkAsReadDelay(metaValue: delay.metaValue) == delay)
+        for value in AutoMarkAsRead.allCases {
+            #expect(MarkAsReadDelay(metaValue: value.localDelay.metaValue) == value.localDelay)
         }
     }
 

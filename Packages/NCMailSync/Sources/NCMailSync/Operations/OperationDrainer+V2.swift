@@ -343,6 +343,9 @@ extension OperationDrainer {
         case .notFound: MailError.notFound
         case .preconditionFailed: DAVConflict()
         case .collectionConflict(let status, let message): MailError.server(status: status, message: message)
+        // Still conflicting after the handler's one re-PUT at the server's href: park it
+        // for the user like a 412 (ADR-0093).
+        case .uidConflict: DAVConflict()
         case .propertyUpdateFailed(let status, _): MailError.server(status: status, message: nil)
         case .server(let status, _, let message): MailError.server(status: status, message: message)
         case .transport(let underlying): MailError.transport(underlying)

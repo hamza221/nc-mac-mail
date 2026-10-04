@@ -52,9 +52,9 @@ One selection drives the content and detail columns. It is a `SidebarSelection`:
 | `.outbox` | the server outbox: scheduled and failed sends | the outbox message | WS-27 |
 | `.contacts(sessionId:, scope:)` | the contact list of one login, `scope` = All, Favorites, one address book, one group, one team, Recently contacted ([ADR-0070](../decisions/0070-contacts-sidebar-section.md)) | the contact card | WS-35 |
 
-Until the workstream in the last column lands, a selection it owns shows the content column's
-placeholder (`ContentUnavailableView` naming what was picked) and an empty detail column; the
-shell routes it, and the sync engine keeps running underneath.
+Every selection now has its view — Contacts last, with WS-35 ([Contacts](#contacts-ws-35)); the
+placeholder the shell showed until then is gone. The sync engine keeps running underneath
+whichever is shown.
 
 **Restoring.** The selection is saved locally the moment it changes and comes back exactly on
 the next launch — a contacts scope included. With nothing saved locally (a new Mac, a wiped
@@ -155,7 +155,7 @@ appears at once; remove account, repair and delegation are online-only commands
      "Provisioned account is disabled"; its account menu holds only the explanation "Please
      login using a password to enable this account. The current session is using passwordless
      authentication, e.g. SSO or WebAuthn."
-3. *(Contacts section slot — WS-35.)*
+3. **Contacts**, one section per signed-in login — see [Contacts](#contacts-ws-35).
 4. **Outbox** with its count, only while `outboxMessage` has rows (`.outbox`).
 5. **Mail settings** opens the Settings window.
 
@@ -701,8 +701,8 @@ small, the preview line and the adornment line, leaving sender, subject, date an
 two lines. All three preferences are written to the server through the queue's
 `setPreference` kind (offline-safe), and read back from the mirrored preference rows of the
 first signed-in login (lowest login id) — one window, one layout. Writing a preference
-writes it to every signed-in login. The settings UI is WS-38's; the list carries a View
-menu in its toolbar (Layout, Compact, Sort, Favorites on top) until it lands.
+writes it to every signed-in login. Settings ▸ Appearance (WS-38) holds the same controls;
+the list's toolbar View menu (Layout, Compact, Sort, Favorites on top) stays as a shortcut.
 
 **Sort order.** `sort-order` `newest` (default) or `oldest`, queued as a preference like the
 web client does — never kept locally. The list queries order by it; the mirror's cursor
@@ -878,6 +878,73 @@ A message whose body is not mirrored prints its header and "This message has not
 downloaded yet."; a PGP message prints its header only. **Print message** in the ⋯ menu
 prints only that message. A second `⌘P` while a print is up is ignored.
 
+## Calendar in the message view (WS-34)
+
+Parity with the web client's §5.9 (`Imip.vue`, `Itinerary.vue`, `EventModal.vue`,
+`TaskModal.vue`, the attachment's "Import into calendar"). `MessageCalendarCards` sits under
+the banners of the expanded message; the ⋯ menu gains **Reply with meeting** and **Create
+task** right after "Edit as new message", as on the web. Everything reads the mirror — the
+body row's `schedulingJSON` and attachments, the login's `calendar` rows, the account's
+`imipCreate`, the login's account and alias addresses, and the `itinerary`/`eventData`
+server results — and every write is a queued `calendarPut`, so answering, importing and
+creating work offline and say so ("Your answer will be sent to the organizer.").
+
+**Calendar choices.** "Save to" and "Import into" offer writable calendars that take
+events, preselecting the schedule-default calendar; "Create task" offers writable calendars
+that take tasks. Calendars are listed by name in mirror order.
+
+**iMIP card** — one per iMIP object in the message, an `NCNoteCard` with the event's title,
+time (in the reader's zone; an all-day event by date), location, organiser, attendee count
+and description; buttons sit beside the card, not in it.
+
+| Method / situation | Card title | Below the card |
+| --- | --- | --- |
+| REQUEST, the user is an attendee, no answer, ahead | You have been invited to an event | **Accept** · Decline · Tentatively accept · More options |
+| REQUEST, answered here (queued or sent) or already answered in the attached copy | You accepted / tentatively accepted / declined this invitation (else "You already reacted to this invitation") | — |
+| REQUEST, dates behind us (a series: its `UNTIL`) | You have been invited to an event | "This message has an attached invitation but the invitation dates are in the past" |
+| REQUEST, no ORGANIZER/ATTENDEE matches an account or alias address | Calendar event | "…does not contain a participant that matches any configured mail account address" |
+| REPLY from one attendee | {name} accepted / tentatively accepted / declined / reacted to your invitation | — |
+| REPLY with zero or several attendees | This event was updated | — |
+| CANCEL | This event was cancelled (error card) | — |
+
+**More options** opens "Save to" (only when more than one calendar can take it; hidden when
+the account's "create tentative appointments" `imipCreate` is on — the server puts the event
+in the default calendar itself, so the answer has to update that copy, and a caption says so)
+and a **Comment** field. The answer is the attached object without METHOD, with PARTSTAT on
+the user's own ATTENDEE line in every VEVENT, RSVP cleared, and the comment as
+`X-RESPONSE-COMMENT` and COMMENT. Nextcloud's scheduling sends the organiser the REPLY;
+when the calendar already holds the UID the write lands on that copy (ADR-0093). A reopened
+card shows an answer still waiting in the queue; once sent, it shows the buttons again.
+
+**Itinerary cards** — the `itinerary` server result for the message (kept 30 days), one card
+per reservation, de-duplicated by UID: flights ("Flight LH123 from TXL to MUC", times,
+reservation number), trains (by times, or by travel day as an all-day event), events (start,
+two hours when there is no end, place and GEO). Other types read "Itinerary for {type} is not
+supported yet". **Import into calendar** is a menu of calendars; afterwards it reads
+"Imported into {calendar}". The UID is the web's `md5(messageId + …)`, so importing again
+— here or from the web — updates the same event.
+
+**`.ics` attachments** — one row per calendar attachment (`isCalendarEvent`, a calendar MIME
+type, or `.ics`), not shown when the message carries an iMIP object: name and **Import into
+calendar**. The file is split into one object per UID with its VTIMEZONEs, as the web does;
+the bytes come from the mirror or the one-shot exporter.
+
+**Reply with meeting** (sheet): Title, All day, From, To (not before From), Calendar,
+Attendees (the sender and the To recipients minus the user's own addresses; remove each, add
+by address), Description (the body's opening, 255 characters). It opens on the next full hour
+for an hour — the web opens on "now". When the instance has an LLM (`llmSummariesAvailable`
+not false), "Generating event details…" shows while the `eventData` result is asked for, and
+its title and description (plus "This description was generated by AI.") replace the
+prefilled ones unless the reader has typed. With attendees, ORGANIZER is the account the
+message arrived in. **Create** queues the event and closes; "Event created".
+
+**Create task** (sheet): Title, Task list, All day (on), optional Start and Due, Note. A
+VTODO with CREATED, DESCRIPTION, DTSTART/DUE and `X-OC-HIDESUBTASKS:0`. With no task list
+the sheet says "No task lists". "Task created".
+
+Failures show one sentence under the cards ("That calendar is read-only.", "The file is not
+a calendar file this app can read.", "Could not save to the calendar.").
+
 ## Files picker and Files actions (WS-33)
 
 Everything that touches Nextcloud Files goes through one sheet and one engine
@@ -1051,3 +1118,532 @@ cancel waits for the draft's first server save, which re-links the uploads to th
 message. Closing without sending re-schedules the draft at its original time when that is
 still in the future (restoring the send time, as the web does); otherwise it is filed in
 Drafts.
+
+## Account settings (WS-39)
+
+§8 of the web client's checklist, per account. Hosted by the Settings window's **Accounts**
+tab (WS-38 owns the tab and its account list): selecting an account shows
+`AccountSettingsView(accountId:)`, a two-pane view — a section list on the left, the
+selected section's grouped `Form` on the right. The sidebar's *Account settings…* and the
+"cannot connect" row open the Settings window on that account
+(`SettingsTab.preferredAccountID`). Opening Settings re-reads server state
+(`.settingsOpened`), so every section shows the mirror first and fresher rows a moment later.
+
+Every section reads the store. Writes go one of two ways (ADR-0068):
+
+- **Queued** (offline-safe, applied locally at once): writing mode, signatures, the six
+  default folders, trash retention, body search, classification, calendar, aliases, quick
+  actions. No toast, as the web; a refused replay surfaces later in the status footer.
+- **Commands** (online only, spinner on the button, inline error under it — "Oh Snap!
+  {message}" with the server's text): alias certificate, autoresponder, mail server,
+  connection test, Sieve server, Sieve script, filters, delegation.
+
+**Section list and visibility.**
+
+| Section | Shown |
+| --- | --- |
+| Aliases, Alias certificates, Writing mode, Signature, Default folders, Automatic trash deletion, Folder search, Autoresponder, Classification, Quick actions | always |
+| Calendar | when the server's account payload carries `imipCreate` (Mail on NC ≥ 33) |
+| Filters | always: the list when Sieve is on, otherwise the hint card |
+| Mail server | not delegated; provisioned → locked |
+| Sieve server | provisioned → locked |
+| Sieve script | Sieve on |
+| Delegation | not delegated, not provisioned |
+
+A **locked** section (provisioned account, `provisioningId != nil`) keeps its title and shows
+only: "This account is managed by your administrator. Its server settings come from the
+provisioning configuration and cannot be changed here." Nothing else is editable there.
+
+**Aliases (§8.1).** First row is the primary identity, "**Name** <email>", not deletable;
+for an unprovisioned account its *Edit* button selects Mail server. Each alias row: name and
+address, *Rename alias* (inline name + email fields, *Update alias*; the email field is
+disabled for a provisioned alias), *Delete alias* (hidden for provisioned aliases). *Add
+alias* (not on a provisioned account): Name (prefilled with the account name) + Email, both
+required, *Create alias* / *Cancel*. All queued: a created alias shows at once under a
+placeholder id (ADR-0081) and may be renamed or deleted before it reaches the server.
+
+**Alias certificates (§8.2).** *Select an alias* (primary + aliases) → certificate pop-up
+"{commonName} - Valid until {date}" plus "No certificate", filtered to certificates with a
+private key, the identity's email, still valid tomorrow, and able to sign and encrypt.
+*Update Certificate* disabled until a choice differs from the current link; outcome inline:
+"Certificate updated" / "Could not update certificate". An unverified chain shows the
+warning "The selected certificate is not trusted by the server. Recipients might not be able
+to verify your signature."
+
+**Writing mode (§8.3).** Radio Plain text / Rich text, saves on change (`editorMode`
+`plaintext`/`richtext`); the radio follows the store, so a refused patch rolls back with it.
+
+**Signature (§8.3).** Switch "Place signature above quoted text" (queued patch). Identity
+pop-up when the account has ≥ 1 alias. The editor is the composer's (`ComposerEditor`):
+plain when the writing mode is plain and the loaded signature has no image, otherwise rich.
+Warnings (note cards, live with the content): over 2 MB — "This signature is larger than
+2 MB, usually because an image is embedded in it. It is added to every message you send and
+may slow down the editor."; images on a plain account — "This signature contains images. New
+messages will use rich text, even though your writing mode is set to plain text." *Save
+signature* (queued, no toast) and *Delete* (only when one exists).
+
+**Default folders (§8.3).** Six `InlineMailboxPicker`s — Drafts, Sent, Deleted (trash),
+Archived, Snoozed, Junk — each saves on change as one `patchAccount` field.
+
+**Automatic trash deletion (§8.3).** "Days after which messages in Trash will automatically
+be deleted:" number ≥ 0, saved 1 s after the last keystroke; 0 or empty disables it.
+
+**Folder search, Classification, Calendar (§8.3, §8).** One switch each: "Enable mail body
+search", "Enable mark as important classification", "Automatically create tentative
+appointments in calendar"; each saves on change.
+
+**Autoresponder (§8.4).** Without Sieve: the hint card (below). With Sieve: "The
+autoresponder replies at most once every 4 days per sender." Radios Off / On / "Follow
+system settings" (only when the login's `enableSystemOutOfOffice` is not false), the last
+with *Edit absence settings* opening `/settings/user/availability` in the browser. Form:
+First day; "Last day (optional)" checkbox (on → first day + 6, and moving the first day keeps
+the gap); Subject with the hint "${subject} will be replaced with the subject of the message
+you are responding to"; Message. Fields are disabled unless On. *Save autoresponder* is
+enabled for Off and Follow system, and for On once first day, subject and message are set
+and the last day is not before the first. Values are re-read from the store after save.
+
+**Sieve server (§8.5).** Intro: "Sieve is a powerful language for writing filters for your
+mailbox. You can manage the sieve scripts in Mail if your email service supports it. Sieve
+is also required to use Autoresponder and Filters." Switch "Enable sieve filter" reveals Host
+(defaults to the IMAP host), Security None / SSL/TLS / STARTTLS (default STARTTLS), Port
+4190, Credentials "IMAP credentials" / "Custom" (User + Password). *Save sieve settings*.
+After enabling, Autoresponder, Filters and Sieve script switch from the hint to their form.
+
+**Sieve hint.** "Your mail server does not support Sieve or Sieve is not enabled. Autoresponder
+and filters require it." with *Go to Sieve settings* selecting Sieve server.
+
+**Sieve script (§8.5).** A monospaced 20-line editor (`TextEditor`), disabled until the
+script row has arrived; *Save sieve script*. A 422 shows, under the editor, "Oh Snap! The
+syntax seems to be incorrect: {server message}" — the parser's own line and column.
+
+**Filters (§8.6).** "Hang tight while the filters load" until the Sieve row has its filters.
+Rows: name and "Filter is active" / "Filter is not active"; click opens the editor sheet;
+row *Delete filter* → "Delete mail filter {name}?" / "Are you sure to delete the mail
+filter?" → inline "Filter deleted" / "Could not delete filter". *New filter* opens the editor
+with: name "New filter", enabled, all conditions, one Subject + "is exactly" condition, one
+Move into folder action, priority max + 10. The sheet does not close on an outside click;
+its title is the filter's name.
+Editor: Name; operator pop-up "If all the conditions are met" / "If any of the conditions
+are met"; a help popover ("contains" matches part of the text, "matches" takes `*` and `?`);
+condition rows Subject / Sender / Recipient × is exactly / contains / matches × values
+(comma-separated tokens); *Add condition*. Actions: Mark message as (Answered, Deleted,
+Draft, Flagged, Seen), Add flag (text), Move into folder (`InlineMailboxPicker`; the server
+wants the folder's path), Stop ("Stop ends all processing", always kept last); *Add action*
+inserts before a Stop. Priority (required) and "Enable filter". *Save filter* → the whole
+list goes up as one `saveFilters` command; "Filter saved" / "Could not save filter"; the
+Sieve script refreshes with it. The web's "Redirect to" is not offered: the Mail 5.12 server
+this was built against does not compile it into Sieve.
+
+**Quick actions (§8.7).** Empty: "No quick actions yet." Rows with *Edit* / *Delete*
+("Quick action deleted" / "Failed to delete quick action"). *Add quick action* / *Edit*
+opens a sheet: Name; "Do the following actions" — the steps in order; *Add another action*
+menu: Mark as spam, Tag, Move thread, Delete thread, Mark as read, Mark as unread, Mark as
+important, Mark as favorite. **Terminal steps** (spam, move, delete) end the run, so: at most
+one, always last; once present the menu offers only non-terminal steps and inserts them
+before it; it cannot be moved. Reorder with ↑/↓ (never past the terminal step). Remove (✕)
+deletes a saved step at once (queued). Tag step: tags except Important and the hidden system
+tags; Move step: folders with the `i` right. *Save* disabled until a name, ≥ 1 step, and
+every tag/folder chosen. All queued, including a new action's steps against its placeholder
+id.
+
+**Delegation (§8.8).** "Allow users to send, receive, and delete mail on your behalf" and
+the delegate list. *Add delegate*: a search field (300 ms debounce, user sharees, excluding
+yourself and existing delegates); *Delegate access* disabled until a user is picked; outcome
+"Delegated access to {name}" / "Could not delegate access". Row ✕ *Revoke access* →
+"Revoke access?" / "{user} will no longer be able to act on your behalf" → "Revoked access
+for {name}" / "Could not revoke delegation".
+
+**Mail server (§8).** IMAP and SMTP: host, port, security (None / SSL/TLS / STARTTLS), user,
+password (blank keeps the stored one; no password fields on an OAuth account); prefilled from
+the account. *Save* runs `updateMailServer` → "Mail server saved" or "Oh Snap! {message}";
+the command re-reads the account after the PUT, whose answer is partial (server-findings 33).
+*Test connection* runs `testConnection` and shows "Connection successful" / "Could not
+connect" from its `serverResult` row.
+
+## Mail account setup (WS-40)
+
+Parity with the web client's `AccountForm.vue` (checklist §1.1–§1.5). A sheet,
+`AccountSetupSheet`, presented by `AddMailAccountButton(sessionId:)` — the "Add mail
+account" control WS-38 places in Settings, one per login. Account creation, discovery and
+the connection test are online-only `SettingsCommands` (ADR-0068); the sheet awaits only
+outcomes and reads discovered values back from `serverResult` rows.
+
+**Hidden** when the login's `allowNewAccounts` is `false`: the button disappears (and
+reappears if the admin re-allows); a sheet already open shows only "To add a mail account,
+please contact your administrator." nil — not yet discovered — counts as allowed; the
+server's own refusal then arrives as "There was an error while setting up your account".
+
+**Mode.** Segmented "Auto" / "Manual", Auto by default, disabled while running.
+
+**Auto mode.** Name (focused), Mail address, Password, "Enable mark as important
+classification" (default from `importanceClassificationDefault`, else on). An address that
+fails the web client's regex shows "Please enter an email of the format name@example.com"
+live. Connect is disabled until the address is valid and a password is entered — the
+password becomes optional only when *both* Google and Microsoft OAuth URLs are known (the
+web client's rule).
+
+**Button label sequence** while running, on the Connect button itself:
+"Looking up configuration" (ISPDB for the address's domain; then MX; then ISPDB for the
+first MX host's last two labels — the known `.co.uk` limitation is kept) → "Checking mail
+host connectivity" (first MX host, ports 993/143/465/587 in parallel; IMAP needs 993,
+SMTP 465 or 587) → "Testing authentication" (`createAccount`) → ["Awaiting user consent"
+for OAuth] → "Loading account" (until the new account's mailboxes are mirrored, at most
+30 s). Every field is disabled and a spinner shows while it runs. Whatever discovery found
+is written into the Manual fields, so switching to Manual after a failure shows it.
+
+**Manual mode.** IMAP group (Host, Security None / SSL/TLS / STARTTLS, Port, User,
+Password) and the same for SMTP. Defaults IMAP 993 SSL/TLS, SMTP 587 STARTTLS. Picking a
+security sets the port: IMAP none/STARTTLS → 143, SSL/TLS → 993; SMTP none/STARTTLS → 587,
+SSL/TLS → 465. Entering Manual fills empty users with the address and empty passwords with
+the Auto password. Editing IMAP host, user or password mirrors into SMTP until any SMTP
+field is edited; from then on the two are independent. Save is disabled until every field
+is filled; hosts are trimmed when sent.
+
+**Google / Microsoft.** `imap.gmail.com`/`smtp.gmail.com` and `outlook.office365.com` are
+detected. Without the provider's OAuth URL on the login row a hint shows (Google: app
+password; Microsoft: ask the admin) — also after Auto discovery found such a host. With it,
+password fields are hidden and the button reads "Sign in with Google" / "Sign in with
+Microsoft". Flow: create (authMethod `xoauth2`) → "Account created. Please follow the pop-up
+instructions to link your Google account" → `startOAuth` → the URL (`_state_`, `_email_`
+filled) opens in an `ASWebAuthenticationSession` window; completion is observed by polling
+the connection test every 2 s for up to 10 min (ADR-0094). If the session cannot start, the
+default browser opens instead and the same poll runs, with a Cancel button. Closing the
+window, Cancel, or the 10 min limit → "Authorization pop-up closed" and the temporary
+account is deleted (`deleteAccount`).
+
+**Errors (§1.5)**, one line under the form, cleared by editing any field:
+"IMAP/SMTP username or password is wrong", "IMAP/SMTP server is not reachable",
+"IMAP/SMTP server denied authentication", "IMAP/SMTP authentication error", "IMAP/SMTP
+connection failed", "Configuration discovery failed. Please use the manual settings",
+"Configuration discovery temporarily not available. Please try again later." (any 429),
+"Authorization pop-up closed", "Password required", "There was an error while setting up
+your account" (anything else).
+
+**Done.** The sheet closes and the sidebar selects the new account's inbox.
+
+
+## App settings (WS-38)
+
+Web client §7 (`AppSettingsMenu.vue`) mapped onto the `Settings` scene. It supersedes the
+three-tab layout in [Settings](#settings) above; Storage keeps its panel unchanged. One
+`TabView`, `Form` + `.formStyle(.grouped)` in every tab. Tabs, in order: **General,
+Accounts, Appearance, Messages, Privacy, Security, Assistance, Context Chat, Shortcuts,
+Storage, About**.
+
+**Which login.** Preferences are per Nextcloud login on the server but one window has one
+setting, so a switch is read from the first login (lowest id) and written through the
+queue's `setPreference` to **every** login, exactly as WS-29's list preferences do
+(ADR-0088, reusing `MessageListPreferenceStore.write`). Lists that belong to one server —
+trusted senders, internal addresses, text blocks, S/MIME certificates — show a
+"Nextcloud account" picker above them when more than one login is signed in, and act on the
+picked login ([ADR-0091](../decisions/0091-app-settings-scope.md)).
+
+**Saving.** Switches and pickers apply immediately: the queue applies the row in the same
+transaction, so the control reflects the mirrored value at once and offline changes drain
+later. A failure to queue shows the web's message inline under the control ("Could not
+update preference", "Could not remove trusted sender {sender}", "Could not remove internal
+address {sender}", "Could not add internal address {address}"). S/MIME import and delete are
+ADR-0068 commands: a spinner while running, the server's verdict after.
+
+**General** — "Set as default mail app" button. It calls
+`NSWorkspace.shared.setDefaultApplication(at: Bundle.main.bundleURL,
+toOpenURLsWithScheme: "mailto")`; the label reads "Default mail app" (disabled) whenever
+`NSWorkspace.shared.urlForApplication(toOpen: mailto:)` resolves to this bundle, re-checked
+when the tab appears, after the call completes, and when the app becomes active (the user
+may change it in Mail.app's settings meanwhile). Then "Account settings": one row per mail
+account (`{email}`, or `{email} (delegated)` for a delegated account); clicking a row opens
+the Accounts tab on that account (`SettingsTab.preferredAccountID`). Then WS-40's
+`AddMailAccountButton` ("Add mail account", presenting `AccountSetupSheet`) once per login,
+captioned "{login} on {host}" when several logins are signed in; it hides itself while the
+login's server disallows new accounts (`login.allowNewAccounts == false`). A declined
+Launch Services prompt shows "Could not set this app as the default mail app.".
+
+**Accounts** — the account list on the left with the same "Add mail account" buttons under
+it, WS-39's `AccountSettingsView(accountId:)` for the selected account on the right;
+sign-out and "Open Web Client" stay on each row.
+
+**Appearance** — the web's §2.4 controls over the same preferences WS-29 reads
+(`MessageListPreferenceStore`): "Show all messages in thread" (`layout-message-view`,
+`threaded`/`singleton`, default off), "Sort favorites up", Layout (Vertical split /
+Horizontal split / List), "Use compact mode", Sorting (Newest first / Oldest first). The
+local Threaded/Flat picker that lived in General moves here as "Group messages" ("Kept on
+this Mac only."); it groups list rows and is not the server preference.
+
+**Messages** — "Avatars from Gravatar and favicons" (`external-avatars`, default on),
+"Search the body of messages in priority Inbox" (`search-priority-body`, default off),
+"Mark messages as read" Immediately / After 3 seconds / After 30 seconds / Manually
+(`auto-mark-as-read` = `0`/`3000`/`30000`/`-1`, default 3 s on the server; the reader's
+local delay is written in the same action so opening a message follows it at once),
+"Reply position" Top / Bottom (`reply-mode`), then **Text blocks**:
+
+- List of own blocks with title and a one-line plain-text preview, a share glyph on blocks
+  that have shares, Edit (pencil, "Edit {title}") and Delete (trash, no confirmation). Empty:
+  "No text blocks available". Below, "Shared with me" with blocks others shared, opening a
+  read-only view.
+- "New text block" sheet: title field + `RichTextEditor` (with the composer's toolbar);
+  Ok disabled until both are non-empty; Cancel discards. Queued as `createTextBlock`.
+- Edit sheet: the same fields plus **Shares** — a search field over the server's sharees
+  (users then groups, excluding the signed-in user and existing sharees), the share list
+  (users then groups) with a remove button each. Share/unshare are queued
+  (`shareTextBlock`/`unshareTextBlock`) and show "Text block shared with {sharee}" / "Share
+  deleted for {name}"; Ok queues `updateTextBlock`.
+
+**Privacy** — "Data collection" (`collect-data`, default on, "Allow the app to collect and
+process data locally to adapt to your preferences"). "Always show images from": the
+`trustedSender` rows, domain glyph for domains, person glyph for addresses, Remove on each
+(queued `trustDomain`/`trustSender` with `trusted: false`). Empty: "No senders are trusted at
+the moment."
+
+**Security** — "Highlight external addresses" (`internal-addresses`, default off). The
+internal-address list, domains first, Remove on each; "Add internal address" sheet with one
+field: `@example.com` → domain `example.com`, `a@b` → address; Cancel / Add. Queued
+`addInternalAddress`/`removeInternalAddress`. Then **S/MIME** → "Manage certificates…" sheet:
+
+- Table Certificate name / E-mail address / Valid until, delete button per row (no
+  confirmation). Empty: "No certificate imported yet". Opening the sheet asks the server
+  state mirror for a fresh pass (`settingsOpened`).
+- "Import certificate": PKCS #12 (default) or PEM. PKCS #12: one `.p12`/`.pfx` file and a
+  password field; PEM: a certificate file (`.crt`/`.pem`) and an optional private key
+  (`.key`/`.pem`) with the hint that the key must not be passphrase protected. Import is
+  disabled until a file is chosen; Back returns to the table.
+- PKCS #12 is converted **on this Mac** (`SecPKCS12Import` in memory only, then
+  `SecKeyCopyExternalRepresentation` / `SecCertificateCopyData` to PEM) and only the PEM
+  reaches `SettingsCommands.importSMIME`. The password is used for the import call and
+  dropped; it is never logged, stored or sent.
+- Errors, verbatim from the web: "Failed to import the certificate. Please check the
+  password." (wrong password / not PKCS #12), "The provided PKCS #12 certificate must contain
+  at least one certificate and exactly one private key.", "Failed to import the certificate.
+  Please make sure that the private key matches the certificate and is not protected by a
+  passphrase." (any failed upload that carried a key — the web's rule; the server answers a
+  mismatched key with a 500 like any other failure), "Failed to import the certificate"
+  (otherwise). Success: "Certificate imported successfully". Mailvelope is excluded
+  (ADR-0064).
+
+**Assistance** — "Remind about messages that require a reply but received none"
+(`follow-up-reminders`, default on). **Context Chat** — "Make mails available to Context
+Chat" (`index-context-chat`, default on). Each control is enabled when at least one login's
+server reports the feature (`llmFollowupAvailable`, `contextChatAvailable`); otherwise the
+tab explains that the server does not offer it (ADR-0091: a tab that vanishes reads as a
+bug in a native settings window).
+
+**Shortcuts** — the Help ▸ Keyboard Shortcuts content (`KeyboardShortcutsView`), embedded.
+
+**About** — app version, then "Acknowledgements": this build includes no CKEditor (the
+native editor is `RichTextEditor`), so the web's GPLv2 CKEditor line is replaced by the
+NextcloudUI and GRDB acknowledgements.
+
+## Contacts (WS-35)
+
+Browse, view and edit every contact of every signed-in login, offline included. Everything
+here reads the mirror ([ADR-0069](../decisions/0069-contacts-same-database.md)); every write
+is a queued operation that lands in the mirror at once and reaches the server when the
+drainer runs. Address books, import/export, merge and batch actions are WS-36's; Teams are
+WS-37's.
+
+**Sidebar** ([ADR-0070](../decisions/0070-contacts-sidebar-section.md)), one section per login,
+captioned "Contacts" (or "Contacts · *login*" when several logins are signed in), between the
+accounts and the Outbox. Rows, each with its count: **All contacts**, **Favorites**, each
+enabled address book except Recently contacted, the **contact groups** (every `CATEGORIES`
+value of the login's cards, natural case-insensitive order), and **Recently contacted** while
+the server's `contactsinteraction` book exists and is enabled. The Teams rows follow the
+groups ([Teams, shared items and the organisation chart](#teams-shared-items-and-the-organisation-chart-ws-37)). Web Contacts' "Not grouped" entry has no
+`ContactsScope` case and is not offered.
+
+**List** (content column). People only — `KIND:group` cards are not listed, as in web
+Contacts. Favourites first, then by the **sort setting**: web Contacts' `orderKey` (First name,
+Last name, Phonetic first name, Phonetic last name, Display name — the default —, Last
+modified), kept per Mac like the browser keeps it, in the toolbar's sort menu and under the
+same key WS-36's Contacts settings row writes. The row's name follows the order as the web's
+`Contact.displayName` does ("Kim, Lane" by last name), with the first address (else the
+organisation) under it, the address's avatar, and a star on favourites. Ties keep a stable
+order; empty sort values go last; Last modified is newest first. **Search** filters the
+scope through `contactSearch` (every word a prefix of a name, nickname, organisation or
+address). **Multi-select** with ⌘/⇧-click; two or more selected show "*N* contacts selected"
+in the detail column, where WS-36's batch actions go. Context menu: New message, Add to /
+Remove from favorites, Delete. ⌫ deletes a single selected contact after a confirmation.
+**New contact** (toolbar) opens an empty editor in the detail column; nothing is written until
+Save.
+
+**Detail** (detail column). An `NCProfileCard` — the card's own PHOTO, else the address's
+avatar; name; title · organisation, nicknames, address book — with **New message** (to the
+preferred, else first, address, from the login's first account), the **favourite star**,
+**Edit**, and a ⋯ menu: Upload picture…, Show full size, Download picture…, Remove picture,
+Get picture from › *network*, Delete contact. Then every typed property as a labelled row
+(Name, Nickname, Organization, Title, Email, Phone, Address, Website, Instant messaging,
+Social network, Related, Birthday, Anniversary), with mailto/tel/http links; **Groups** as
+chips; **Notes**; **Other properties (*n*)** — every line this app does not model, shown as
+written, never edited; and **Recent mail** with the preferred address (WS-26's
+`RecentMailList`, ten messages, click opens the mailbox).
+
+**Edit mode** replaces the card in place: Name (display name — its placeholder is what will
+be saved if left empty —, prefix, first, additional, last, suffix, nickname), Work
+(organisation, department, title), one section per multi-valued property with a type menu
+per row (web Contacts' type choices, plus whatever type the card already had), Add/Remove
+rows, Dates (`YYYY-MM-DD`, kept as typed), Groups (chips with remove, "New group", "Existing
+group" menu), Notes, and the read-only other properties. Cancel discards; Save queues one
+`contactPut` (If-Match on the base ETag, the 412 re-apply of ADR-0069). Save rewrites only
+what changed: an untouched property keeps its original line byte for byte, a changed row
+keeps its group (`item1.`) and every parameter but `TYPE`, and `REV` is stamped like web
+Contacts does on every save. A new contact goes to `<book>/<UID>.vcf` in the shown book when
+writable, else the login's own "Contacts"; from a group list it starts in that group, from
+Favorites it is starred too.
+
+**Photo.** Upload opens a picture, then a square crop sheet (drag to move, Zoom slider —
+web Contacts' cropper is `aspectRatio: 1, dragMode: move`); the crop is scaled to at most
+512 px like the web's, and saved as JPEG (`PHOTO;ENCODING=b;TYPE=JPEG` in 3.0, a `data:` URI in
+4.0). Remove deletes PHOTO. Full size shows it in a sheet with Download…; Download writes the
+bytes as stored. **Get picture from** lists web Contacts' `supportedSocial`: of the server's
+supported networks (instagram, mastodon, tumblr, diaspora, xing, telegram, gravatar), those
+the card has an `X-SOCIALPROFILE`/`IMPP` of that type for, plus Gravatar when it has an
+address. It queues a `contactSocialAvatar`; the server fetches the picture and rewrites PHOTO,
+and the pass the send wakes brings it in. The picture actions live on the card, not in edit
+mode, and each saves at once.
+
+**Favourites** are web Contacts' star — the `{http://nextcloud.com/ns}favorite` DAV property
+on the card, not a vCard property
+([ADR-0092](../decisions/0092-contact-favourites-are-a-dav-dead-property-refreshed-each-pass.md)).
+The toggle flips the row at once and queues a `contactFavorite` (PROPPATCH); a star set in the
+browser arrives with the next contacts pass.
+
+**Read-only address books** (a share without write access): Edit, the star, Delete and the
+picture actions other than Full size/Download are disabled, and the card says why — "*Book* is
+shared read-only by *owner*, so its contacts cannot be edited." New contact never offers a
+read-only book; with none writable it is disabled with "There is no address book you can add
+contacts to."
+
+**Offline.** All of the above works without a network: the list and card read the mirror, and
+writes wait in the queue (a write refused because the login is signed out says "Sign in to
+this account to edit contacts.").
+
+## Address books, import, merge (WS-36)
+
+Everything here is a queued write ([ADR-0096](../decisions/0096-address-book-import-and-merge-are-queued-card-writes.md)).
+It shows up in the mirror at once and reaches the server when the drainer runs, so it all works
+offline. Refusals are shown as a line under the sheet's controls ("Sign in to this account to
+edit contacts.", "This address book is read-only.", "Only the owner of a shared address book
+can change it.").
+
+**Entry point.** The Contacts section's caption in the sidebar has a ⋯ menu with **Manage
+address books…**, **Import vCard…** (disabled when no book is writable) and **Contacts
+settings…**. Each one opens a sheet.
+
+**Manage address books** lists every book of the login, including disabled ones, in the
+server's order. Each row has:
+- a switch for on/off: web Contacts' `oc:enabled`, so turning a book off hides it in the
+  browser too;
+- the name;
+- a caption: "Shared by *owner*", "Read-only", "*n* contacts", or "Hidden".
+
+The ⋯ menu on each row:
+- **Rename** edits the name in place; Return saves it and Escape cancels.
+- **Share…** opens the share sheet.
+- **Export…** saves `Name.vcf` with every card in the book, read from the mirror, so it works
+  offline and for hidden books.
+- **Copy CardDAV URL** puts the collection URL on the clipboard.
+- **Delete…** asks first: "Every contact in it is deleted from the server too, as soon as this
+  Mac is online."
+
+Rename, Share and Delete are available only on the login's own books, and never on Recently
+contacted. A field and **Create** at the bottom make a new book at
+`<home>/<slug of the name>/`; a slug that is already taken gets a number (`family-2`).
+
+**Share** has a user/group search (the sharee search used by text blocks, debounced) and a
+**Read-only** switch, on by default. Clicking a result shares the book with that person or
+group and lists them under "Shared with". Sharing again with someone changes their access to
+whatever Read-only says now. Existing shares are not listed and cannot be removed; see the
+ADR.
+
+**Import vCard** opens a file picker for `.vcf` (3.0 or 4.0, any number of cards), plus an
+**Import into** picker of writable books (the default is the same book New contact uses). Once
+a file is chosen, the sheet says "*n* contacts in the file", or, when some UIDs are already in
+the book, "*n* new, *m* already in this address book (they are updated)". **Import** queues one
+write per card and shows a progress bar ("Queued *k* of *n*"). When it finishes: "*n* contacts
+imported. They reach the server as soon as this Mac is online." Cancel stops between cards;
+cards already queued stay queued.
+
+**Batch actions.** When two or more contacts are selected, the detail column shows "*N*
+contacts selected" with:
+- **Merge…**, only for exactly two people, both in writable books;
+- **Export…**, which saves the selection as one `.vcf`;
+- **Delete**, which uses the list's own confirmation ("Delete *N* contacts?") and is disabled
+  if any selected contact is read-only.
+
+**Merge** sheet:
+- **Keep**: a segmented choice of which contact survives. The default is the fuller card. The
+  other contact is deleted.
+- **Choose one**: a radio group for each single-value property the cards disagree on
+  (Display name, Name, Nickname, Organization, Title, Role, Birthday, Anniversary, Gender,
+  Notes, Picture). The kept card's value is the default; an empty field on the kept card
+  defaults to the other card's value.
+- **Keep**: a checkbox for each email, phone, address, website, IM, social profile and related
+  line. Every line is ticked by default; a line that appears on both cards (case or punctuation
+  aside) is listed once.
+- **Groups**: "Combine groups", on by default, with the resulting list.
+
+**Merge** queues one write over the kept card and one delete of the other, then selects the
+kept card. Any property the sheet does not list stays as the kept card has it.
+
+**Contacts settings**:
+- **Sort contacts by**: the same `contacts.orderKey` as the list's toolbar menu.
+- **Update avatars from social media**: when on, opening a contact in a writable book asks the
+  server to fetch its picture from the first social network the card lists, at most once a day
+  per contact.
+
+Both settings are per Mac.
+
+## Teams, shared items and the organisation chart (WS-37)
+
+Three Contacts features that depend on the server: Teams (the Circles app), the items shared
+with a Nextcloud user, and the organisation chart
+([ADR-0097](../decisions/0097-teams-are-mirrored-rows-and-online-commands.md)). Lists read
+the mirror; team edits are online-only and wait for the server's answer.
+
+**The gate.** Teams appear only when the server says it runs Circles (its capabilities list
+`circles`). On a server without it there is no Teams row, no "New team", no empty state and no
+disabled control — nothing. Until the first answer arrives nothing shows either; a team list
+from an earlier launch shows offline.
+
+**Sidebar**, after the contact groups in each login's Contacts section:
+- one row per team the login belongs to, with the team icon and its member count;
+- **New team…**, which opens a sheet: the web's one-line explanation, a name field, **Create
+  team**. The sheet closes when the server has created the team and the new row is in the
+  sidebar; a refusal shows the server's message under the field.
+
+**Team** (content column, in place of the contact list when a team row is selected):
+- the description, then "*N* members · Owned by *name*" (or "You own this team");
+- **Add members** (moderators and up, or anyone when the team lets members invite), **Team
+  settings** (owner and admins), and a ⋯ menu: Open in browser, Leave team (anyone but the
+  owner, after a confirmation), Delete team (owner only, after a confirmation);
+- **Members**, owner first, then by level, then by name: avatar, name, "*kind* · *level*"
+  (User/Group/Email/Contact/Team; Member/Moderator/Admin/Owner, or "Requesting to join" /
+  "Invited"). Each row's ⋯ (and context) menu offers what web Contacts offers for that member:
+  Accept / Reject for a join request; "Promote to …" / "Demote to …" for the levels below
+  the login's own (admins may also make admins; the owner may "Promote as sole owner"); Leave
+  team on the login's own row; Remove member otherwise.
+
+**Add members** sheet: a segmented choice of **Users and groups** (a search field over the
+server's sharee search; existing members are disabled), **Email address** (a field and Add)
+or **Team** (the login's other teams). Each pick is added at once and listed under "Added:";
+**Done** closes.
+
+**Team settings** sheet: Name, Description and web Contacts' options, grouped as it groups
+them — Invites (Anyone can request membership; Members need to accept invitation;
+Memberships must be confirmed/accepted by a Moderator; Members can also invite), Membership
+(Prevent teams from being a member of another team), Federation (Allow federated members),
+Privacy (Visible to everyone). **Save** sends only what changed.
+
+**Shared items** (contact card, after Recent mail), for a card in the system address book
+other than the login's own: the files shared between the login and that user, both
+directions, newest first — name, "Shared with you · *date*" or "You shared · *date*". A click
+opens the file in the web Files app. "No shared items with this contact" when there are none.
+Web Contacts also lists Talk, Calendar and Deck items there, through the `related_resources`
+app; that app is not part of a default server, so this list is Files only.
+
+**Organization** (contact card, after Recent mail), for a card that has a manager or reports:
+"Reports to" (the chain of managers, nearest first) and "Direct reports", each name a link
+that selects that contact, and **Show organization chart**, a sheet with the card's whole
+chart as indented levels (the card in bold; a click selects a person). The manager is web
+Contacts' `X-MANAGERSNAME;UID=` (also what the server writes from a user profile's Manager
+field), looked up in the card's own address book. A manager that is not in the book is said
+so ("Manager *name* is not in this address book") and the card heads its own chart; a
+reporting loop is cut at its alphabetically first member, which says so.

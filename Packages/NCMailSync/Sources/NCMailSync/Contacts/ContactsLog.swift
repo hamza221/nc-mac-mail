@@ -25,6 +25,7 @@ func describeDAV(_ error: any Error) -> String {
     case .notFound: return "notFound"
     case .preconditionFailed: return "preconditionFailed"
     case .collectionConflict(let status, _): return "collectionConflict(\(status))"
+    case .uidConflict: return "uidConflict"
     case .propertyUpdateFailed(let status, _): return "propertyUpdateFailed(\(status))"
     case .server(let status, let exception, _): return "server(\(status), \(exception ?? "-"))"
     case .transport: return "transport"

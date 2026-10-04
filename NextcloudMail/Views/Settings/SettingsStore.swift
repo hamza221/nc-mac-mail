@@ -164,17 +164,6 @@ final class SettingsStore {
         return (try? await store.metaValue(forKey: key)) == NCMailCore.SortOrder.oldest.rawValue
     }
 
-    // MARK: - General settings
-
-    func markAsReadDelay() async -> MarkAsReadDelay {
-        let raw = (try? await store.metaValue(forKey: MarkAsReadDelay.metaKey)) ?? nil
-        return MarkAsReadDelay(metaValue: raw)
-    }
-
-    func setMarkAsReadDelay(_ delay: MarkAsReadDelay) async {
-        try? await store.setMetaValue(delay.metaValue, forKey: MarkAsReadDelay.metaKey)
-    }
-
     // MARK: - Storage actions
 
     /// Bodies, inline image data and the search rows for this account, gone; envelopes kept.

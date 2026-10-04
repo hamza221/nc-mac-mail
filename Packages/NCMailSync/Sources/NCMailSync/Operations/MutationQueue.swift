@@ -333,6 +333,7 @@ public actor MutationQueue {
     private func trustUnit(email: String, trusted: Bool, accountId: Int64) async throws -> Unit {
         var payload = OperationPayload(senderEmail: email, trusted: trusted)
         payload.before.senderTrusted = try await store.senderTrustStates(accountId: accountId, email: email)
+        let loginId = try await loginId(accountId: accountId)
         let now = configuration.now()
         return Unit(
             record: PendingOperationRecord(
@@ -346,7 +347,8 @@ public actor MutationQueue {
             ),
             effect: LocalEffect(
                 messageIds: [],
-                senderTrust: SenderTrust(accountId: accountId, email: email, trusted: trusted)
+                senderTrust: SenderTrust(accountId: accountId, email: email, trusted: trusted),
+                rows: [.setTrustedSender(loginId: loginId, email: email, type: "individual", present: trusted)]
             )
         )
     }

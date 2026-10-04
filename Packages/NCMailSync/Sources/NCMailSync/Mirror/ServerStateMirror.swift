@@ -82,7 +82,7 @@ public struct ServerStateConfiguration: Sendable {
         "sort-order", "layout-mode", "layout-message-view", "reply-mode", "external-avatars",
         "collect-data", "search-priority-body", "start-mailbox-id", "follow-up-reminders",
         "sort-favorites", "compact-mode", "auto-mark-as-read", "internal-addresses",
-        "smime-sign-aliases", "account-settings",
+        "smime-sign-aliases", "account-settings", "index-context-chat",
     ]
 
     public init(

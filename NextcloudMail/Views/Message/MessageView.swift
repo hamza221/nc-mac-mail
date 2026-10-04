@@ -203,6 +203,7 @@ struct MessageView: View {
                         unsubscribe: { unsubscribeOffer = $0 },
                         translate: { sheet = .translation }
                     )
+                    MessageCalendarCards(model: model)
                 }
                 .padding(theme.metrics.spacing.loose)
                 Divider()

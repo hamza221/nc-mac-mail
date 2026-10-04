@@ -97,7 +97,8 @@ enum SettingsFormatting {
 /// When to mark a message read after it is opened, persisted once for the whole app rather
 /// than per mailbox. ``ListView`` in `NavigationState` is the precedent this follows.
 ///
-/// Settings writes it; `MessageActions.messageOpened(_:)` reads it.
+/// Settings ▸ Messages writes it alongside the server's `auto-mark-as-read`
+/// (``AutoMarkAsRead/localDelay``); `MessageActions.messageOpened(_:)` reads it.
 enum MarkAsReadDelay: Hashable, Sendable {
     case immediately
     case after(seconds: Int)
@@ -105,11 +106,6 @@ enum MarkAsReadDelay: Hashable, Sendable {
 
     /// The `meta` key, here so the writer and the reader cannot drift apart.
     static let metaKey = "settings.markAsReadDelay"
-
-    /// The delays offered in the picker. `ux-spec.md` names the three shapes (immediately,
-    /// after n seconds, manually) without naming n, so these are a plain-language guess at
-    /// what feels right, not a measurement.
-    static let offeredDelays: [MarkAsReadDelay] = [.immediately, .after(seconds: 2), .after(seconds: 5), .manually]
 
     var metaValue: String {
         switch self {
@@ -130,14 +126,6 @@ enum MarkAsReadDelay: Hashable, Sendable {
             self = .after(seconds: seconds)
         } else {
             self = .immediately
-        }
-    }
-
-    var label: String {
-        switch self {
-        case .immediately: String(localized: "Immediately")
-        case .manually: String(localized: "Manually")
-        case .after(let seconds): String(format: String(localized: "After %d seconds"), seconds)
         }
     }
 }

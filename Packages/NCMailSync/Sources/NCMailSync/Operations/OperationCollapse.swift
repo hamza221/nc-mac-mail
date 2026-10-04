@@ -159,7 +159,7 @@ enum OperationCollapse {
         case .trustSender:
             return OperationPayload.decode(row.payloadJSON).senderEmail.map { Subject.sender($0.lowercased()) }
         case .createTag, .createMailbox, .createAlias, .createTextBlock, .createQuickAction, .clearMailbox,
-            .markMailboxRead, .sendMDN, .unsubscribe, .saveToFiles, .addressBookShare:
+            .markMailboxRead, .sendMDN, .unsubscribe, .saveToFiles, .addressBookShare, .contactSocialAvatar:
             return unique
         default:
             let payload = OperationPayload.decode(row.payloadJSON)

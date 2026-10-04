@@ -53,6 +53,9 @@ struct ContactsHarness {
             .report && .bodyContains("sync-collection"), with: try .fixture("dav-sync-empty.xml", status: 207))
         await transport.stub(
             .propfind && .pathContains("contactsinteraction"), with: try .fixture("dav-sync-empty.xml", status: 207))
+        // Every token book's per-pass favourite listing (ADR-0092): no members, no favourites.
+        await transport.stub(
+            .propfind && .bodyContains("nc:favorite"), with: try .fixture("dav-sync-empty.xml", status: 207))
     }
 
     func sync(pending: [DAVWrite] = []) -> ContactsSync {

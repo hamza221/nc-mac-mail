@@ -557,6 +557,68 @@ this way; the live tests now treat 409 as "ask again".
 **Suggestion:** serve the cached list while a sync runs (it is consistent per transaction), or
 answer with `Retry-After`.
 
+### 33. The mail-server update answers a half-empty account
+
+**Found by:** WS-39, live 2026-10-04 (fixtures `account-updated.json` and `account.json`).
+`PUT /api/accounts/{id}` answers `order`, `editorMode` and every special-mailbox id
+(`draftsMailboxId`, `sentMailboxId`, `trashMailboxId`, `junkMailboxId`, …) as **null**, while
+the stored account keeps them — the next `GET /api/accounts/{id}` has them all.
+`AccountsController::update` returns `SetupService::createNewAccount(…, $id)`, which builds a
+fresh `MailAccount` from the request's connection fields only (`lib/Service/SetupService.php`,
+`new MailAccount([...])` then `save`) and serialises that, not the row the update produced.
+`create` returns the same serialiser's answer. A client that upserts the answer wipes the
+account's writing mode and default folders; `SettingsCommands` re-reads the account with a
+GET after both the PUT and the POST, and trusts only the POST's `id`.
+
+**Suggestion:** return `accountService->find($userId, $id)` after the save, as `show` does.
+
+### 34. A PUT refused for a UID conflict has already sent the scheduling REPLY
+
+**Found by:** WS-34, live 2026-10-04 (ADR-0093; fixture `dav-error-uid-conflict-ws34.xml`).
+Scheduling delivers a same-server invitation into the attendee's default calendar as
+`sabredav-<uuid>.ics`. An attendee client that writes its answer under its own name gets 409
+`no-uid-conflict` — but the organiser's copy has already flipped and a REPLY sits in their
+schedule inbox: Sabre's scheduling runs before `CalDavBackend` checks the UID (a TENTATIVE
+probe through a 409 moved the organiser's PARTSTAT while the attendee's copy stayed
+unchanged). The client's follow-up write onto the existing copy sends a second identical
+REPLY. So a refused request has a side effect, and organiser and attendee can disagree.
+
+**Suggestion:** check UID uniqueness before scheduling (or roll the scheduling back on the
+conflict).
+
+### 35. The REPLY drops the attendee's comment
+
+**Found by:** WS-34, live 2026-10-04. The web client (and this one) writes the participation
+comment as `X-RESPONSE-COMMENT` on the ATTENDEE line and as COMMENT. The attendee's copy keeps
+both; the REPLY in the organiser's schedule inbox, and the organiser's copy, carry PARTSTAT and
+CN only. The organiser never sees "See you there" for a same-server invitation.
+
+**Suggestion:** carry `X-RESPONSE-COMMENT` (and COMMENT, per RFC 5546 §3.2.3) into the REPLY.
+
+### 36. Circles hands back a group member as a team, and takes its level under a different key
+
+**Found by:** WS-37, live 2026-10-04 (Circles 36.0.0-dev; fixture `circle-members-ws37.json`).
+`POST /ocs/v2.php/apps/circles/circles/{id}/members {"userId":"admin","type":2}` adds the
+group; `GET …/members` then reports it as `userType` 16 (team), with the group only in
+`basedOn.source` 2. A user and a group with the same name are two members whose `userId` is
+the same string. And every Circles setter takes `{value}` (`name`, `description`, `config`)
+except `PUT …/members/{memberId}/level`, which takes `{level}` and ignores `value`.
+
+**Suggestion:** report the type the member was added as (or document `basedOn.source` as the
+one to read), and accept `value` on the level route like its siblings.
+
+### 37. "Shared items" depends on an app a default server does not have
+
+**Found by:** WS-37, live 2026-10-04. Web Contacts' contact panel "Media shares / Talk /
+Calendar / Deck with you" calls `GET /ocs/v2.php/apps/related_resources/related/account`.
+`related_resources` is not shipped with the server; on the test server the route answers OCS
+998 "Invalid query" and the web panels hide themselves, so web Contacts shows "No shared items
+with this contact" even for a user with whom files are shared. This client reads the
+files_sharing listings instead, which every server has (ADR-0097).
+
+**Suggestion:** web Contacts could fall back to the files_sharing listing when
+`related_resources` is absent, or say that the panel needs the app.
+
 ## Deliberate behaviour that looks like a bug, and should be documented as deliberate
 
 ### 14. The 1x1 tracking pixel is unrecoverable, which is right

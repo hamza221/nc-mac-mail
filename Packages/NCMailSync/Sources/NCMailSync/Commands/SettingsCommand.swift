@@ -41,6 +41,14 @@ public enum SettingsCommand: Sendable {
     /// Mints the OAuth `state` for a Google/Microsoft account; it lands in a `serverResult`
     /// row (``SettingsCommands/oauthStateKind``) for the sign-in sheet to read.
     case startOAuth(accountId: Int64)
+    /// `GET /api/autoconfig/ispdb/{host}/{email}` — the account form's first discovery step.
+    /// Lands in a `serverResult` row (``SettingsCommands/autoconfigISPDBKind``). Online-only
+    /// because the answer is only useful while the user is on the form.
+    case lookupISPDB(host: String, email: String)
+    /// `GET /api/autoconfig/mx/{email}` → ``SettingsCommands/autoconfigMXKind``.
+    case lookupMX(email: String)
+    /// `GET /api/autoconfig/test?host=&port=` → ``SettingsCommands/autoconfigTestKind``.
+    case testConnectivity(host: String, port: Int)
 }
 
 /// The only thing a settings view awaits: did it work, and if not, what did the server say.

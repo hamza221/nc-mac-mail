@@ -33,19 +33,6 @@ struct SettingsStoreTests {
         return try #require(records.first)
     }
 
-    // MARK: - General settings
-
-    @Test("mark-as-read delay defaults to immediately, and round-trips once set")
-    func markAsReadDelayPersists() async throws {
-        let store = try MailStore.inMemory()
-        let settingsStore = SettingsStore(store: store, sessions: [])
-
-        #expect(await settingsStore.markAsReadDelay() == .immediately)
-
-        await settingsStore.setMarkAsReadDelay(.after(seconds: 5))
-        #expect(await settingsStore.markAsReadDelay() == .after(seconds: 5))
-    }
-
     // MARK: - Storage actions, no live client
 
     @Test("remove local copies does not throw with nothing to remove, and refreshes the footprint")

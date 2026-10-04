@@ -39,8 +39,8 @@ struct SidebarView: View {
                     }
                 }
             }
-            // Contacts section slot: WS-35 embeds `ContactsSidebarSection` here (standing
-            // exception 1 in docs/delivery/workstreams.md). Deliberately empty until then.
+            // Contacts section: WS-35's, standing exception 1 in docs/delivery/workstreams.md.
+            ContactsSidebarSection()
             Section {
                 if let count = model.layout.outboxCount {
                     NCNavigationItem(String(localized: "Outbox"), icon: MailSymbol.outbox.symbol, count: count)

@@ -16,6 +16,10 @@ public struct ContactsSyncReport: Sendable, Equatable {
     /// Changed hrefs left alone because a queued write owns them.
     public var cardsHeldForPendingWrites = 0
     public var multigetRequests = 0
+    /// Depth-1 `nc:favorite` listings sent: one per token book per pass (ADR-0092).
+    public var favoriteListings = 0
+    /// Cards whose favourite flag the listings changed.
+    public var favoritesChanged = 0
 
     public init() {}
 }
@@ -145,6 +149,7 @@ public actor ContactsSync {
             pending.filter { $0.kind == .contactPut || $0.kind == .contactDelete }.compactMap(\.payload.href))
         let pendingBookUpdates = Set(
             pending.filter { $0.kind == .addressBookUpdate }.compactMap(\.payload.addressBookId))
+        let heldFavorites = Set(pending.filter { $0.kind == .contactFavorite }.compactMap(\.payload.href))
 
         let rows = try await store.syncAddressBooks(
             listing.enumerated().map { $1.record(loginId: loginId, position: $0) },
@@ -164,13 +169,20 @@ public actor ContactsSync {
             do {
                 if listed.syncToken == nil {
                     // No token means no sync-collection on this book (measured: "Recently
-                    // contacted" answers 415 ReportNotSupported). An ETag listing does instead.
-                    try await syncBookByListing(row, heldHrefs: heldHrefs, report: &report)
+                    // contacted" answers 415 ReportNotSupported). An ETag listing does instead,
+                    // and carries the favourites with it.
+                    try await syncBookByListing(
+                        row, heldHrefs: heldHrefs, heldFavorites: heldFavorites, report: &report)
+                    report.booksSynced += 1
                 } else {
-                    if let token = row.syncToken, token == listed.syncToken { continue }
-                    try await syncBook(row, heldHrefs: heldHrefs, report: &report)
+                    if row.syncToken == nil || row.syncToken != listed.syncToken {
+                        try await syncBook(row, heldHrefs: heldHrefs, heldFavorites: heldFavorites, report: &report)
+                        report.booksSynced += 1
+                    }
+                    // Even when the token did not move: a favourite toggled elsewhere moves
+                    // neither the token nor the ETag (measured, ADR-0092).
+                    try await refreshFavorites(row, heldFavorites: heldFavorites, report: &report)
                 }
-                report.booksSynced += 1
             } catch let error as DAVError {
                 if case .transport = error { throw error }
                 if case .unauthorized = error { throw error }
@@ -207,7 +219,8 @@ public actor ContactsSync {
     /// One book's `sync-collection` round, to completion. The token is stamped last, so an
     /// interrupted round resumes from the previous one and loses nothing.
     private func syncBook(
-        _ book: AddressBookRecord, heldHrefs: Set<String>, report: inout ContactsSyncReport
+        _ book: AddressBookRecord, heldHrefs: Set<String>, heldFavorites: Set<String>,
+        report: inout ContactsSyncReport
     ) async throws {
         guard let bookId = book.id, let url = URL(string: book.url) else { return }
         var local = Dictionary(
@@ -246,7 +259,8 @@ public actor ContactsSync {
                 toFetch.append(resource.href)
             }
 
-            try await fetchAndWrite(toFetch, collection: url, book: book, local: &local, report: &report)
+            try await fetchAndWrite(
+                toFetch, collection: url, book: book, heldFavorites: heldFavorites, local: &local, report: &report)
 
             for removedURL in changes.removed {
                 let href = removedURL.path(percentEncoded: true)
@@ -276,7 +290,8 @@ public actor ContactsSync {
     /// delete what is gone. Runs every pass, since there is no token to compare; these books
     /// are small by nature (the server's own "Recently contacted").
     private func syncBookByListing(
-        _ book: AddressBookRecord, heldHrefs: Set<String>, report: inout ContactsSyncReport
+        _ book: AddressBookRecord, heldHrefs: Set<String>, heldFavorites: Set<String>,
+        report: inout ContactsSyncReport
     ) async throws {
         guard let bookId = book.id, let url = URL(string: book.url) else { return }
         var local = Dictionary(
@@ -284,7 +299,7 @@ public actor ContactsSync {
             uniquingKeysWith: { first, _ in first }
         )
         let collectionPath = url.path(percentEncoded: true)
-        let members = try await client.propfind(url, depth: .one, properties: [.getetag])
+        let members = try await client.propfind(url, depth: .one, properties: [.getetag, .favorite])
             .filter { $0.etag != nil && $0.href != collectionPath && $0.href + "/" != collectionPath }
         let present = Set(members.map(\.href))
         var toFetch: [String] = []
@@ -295,13 +310,34 @@ public actor ContactsSync {
                 toFetch.append(member.href)
             }
         }
-        try await fetchAndWrite(toFetch, collection: url, book: book, local: &local, report: &report)
+        try await fetchAndWrite(
+            toFetch, collection: url, book: book, heldFavorites: heldFavorites, local: &local, report: &report)
         for (href, previous) in local where !present.contains(href) && !heldHrefs.contains(href) {
             try await delete(previous, bookId: bookId, isEnabled: book.isEnabled)
             report.cardsDeleted += 1
         }
+        report.favoritesChanged += try await store.syncContactFavorites(
+            addressBookId: bookId, favoriteHrefs: Set(members.filter { $0.isFavorite == true }.map(\.href)),
+            heldHrefs: heldFavorites.union(heldHrefs))
         try await store.setAddressBookSyncToken(
             nil, lastSyncAt: Int64(now().timeIntervalSince1970), addressBookId: bookId)
+    }
+
+    /// One Depth-1 `{getetag, nc:favorite}` listing of a token book, applied whole: web
+    /// Contacts' favourite is a dead property whose PROPPATCH moves neither the ETag nor the
+    /// sync-token, so `sync-collection` never reports it (measured, ADR-0092). A card a queued
+    /// favourite or content write owns keeps its local flag until that write lands.
+    private func refreshFavorites(
+        _ book: AddressBookRecord, heldFavorites: Set<String>, report: inout ContactsSyncReport
+    ) async throws {
+        guard let bookId = book.id, let url = URL(string: book.url) else { return }
+        let collectionPath = url.path(percentEncoded: true)
+        let members = try await client.propfind(url, depth: .one, properties: [.getetag, .favorite])
+            .filter { $0.href != collectionPath && $0.href + "/" != collectionPath }
+        report.favoriteListings += 1
+        report.favoritesChanged += try await store.syncContactFavorites(
+            addressBookId: bookId, favoriteHrefs: Set(members.filter { $0.isFavorite == true }.map(\.href)),
+            heldHrefs: heldFavorites)
     }
 
     /// `addressbook-multiget` in batches of ``multigetBatchSize``, one card per transaction.
@@ -311,6 +347,7 @@ public actor ContactsSync {
         _ hrefs: [String],
         collection url: URL,
         book: AddressBookRecord,
+        heldFavorites: Set<String>,
         local: inout [String: ContactRecord],
         report: inout ContactsSyncReport
     ) async throws {
@@ -326,6 +363,10 @@ public actor ContactsSync {
             for resource in fetched where requested.contains(resource.href) && (resource.status ?? 200) == 200 {
                 guard let text = resource.addressData else { continue }
                 let previous = local[resource.href]
+                // The multiget asks for `nc:favorite`; a queued toggle keeps the local flag.
+                let isFavorite =
+                    heldFavorites.contains(resource.href)
+                    ? previous?.isFavorite ?? false : resource.isFavorite ?? previous?.isFavorite ?? false
                 guard
                     let row = ContactMapping.row(
                         vcard: text,
@@ -333,7 +374,7 @@ public actor ContactsSync {
                         etag: resource.etag,
                         addressBookId: bookId,
                         syncedAt: Int64(now().timeIntervalSince1970),
-                        isFavorite: previous?.isFavorite ?? false
+                        isFavorite: isFavorite
                     )
                 else {
                     ContactsLog.contacts.error(

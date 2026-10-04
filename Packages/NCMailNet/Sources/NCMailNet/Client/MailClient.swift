@@ -228,9 +228,9 @@ public struct MailClient: Sendable {
             // and send with the *success* envelope — those calls worked.
             return failure?.status == "success" ? nil : .syncInProgress
         case 400:
-            return failure?.isMailboxNotCached == true
-                ? .mailboxNotCached
-                : .server(status: 400, message: failure?.message)
+            if failure?.isMailboxNotCached == true { return .mailboxNotCached }
+            if let connectFailure = failure?.connectFailure { return connectFailure }
+            return .server(status: 400, message: failure?.message)
         case 401:
             return .unauthorized
         case 403:

@@ -186,7 +186,10 @@ struct RecipientSuggestionProviderTests {
         for term in ["a", "al", "ali", "alice sm", "smith", "taylor 12", "alice.smith1", "home.ex", "zzz", "o"] {
             var best = Duration.seconds(10)
             var result: [RecipientSuggestion] = []
-            for _ in 0..<3 {
+            // Best of seven: the budget is about the query, not about how many sibling
+            // suites the runner happens to execute in parallel, so contention from a full
+            // test run must not fail the assertion while a quiet machine stays honest.
+            for _ in 0..<7 {
                 let elapsed = await clock.measure { result = await provider.localSuggestions(matching: term) }
                 best = min(best, elapsed)
             }

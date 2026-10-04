@@ -129,6 +129,24 @@ extension MailStore {
         }
     }
 
+    /// Every share of a login's own blocks, keyed by the block's local id, each list in
+    /// `textBlockShares(textBlockId:)` order. Blocks without shares have no entry.
+    public func observeTextBlockShares(loginId: Int64) -> StoreObservation<[Int64: [TextBlockShareRecord]]> {
+        observation { db in
+            let shares = try TextBlockShareRecord.fetchAll(
+                db,
+                sql: """
+                    SELECT textBlockShare.* FROM textBlockShare
+                    JOIN textBlock ON textBlock.id = textBlockShare.textBlockId
+                    WHERE textBlock.loginId = ?
+                    ORDER BY textBlockShare.textBlockId, textBlockShare.type, textBlockShare.shareWith
+                    """,
+                arguments: [loginId]
+            )
+            return Dictionary(grouping: shares, by: \.textBlockId)
+        }
+    }
+
     public func observeTextBlocks(loginId: Int64) -> StoreObservation<[TextBlockRecord]> {
         observation { db in
             try TextBlockRecord.fetchAll(
@@ -202,6 +220,34 @@ extension MailStore {
                 arguments: [accountId]
             )
         }
+    }
+
+    /// Every step of one account's quick actions, keyed by the action's local id, each
+    /// list in `position` order. Actions without steps have no entry.
+    public func quickActionSteps(accountId: Int64) async throws -> [Int64: [QuickActionStepRecord]] {
+        try await dbQueue.read { db in try Self.fetchQuickActionSteps(db, accountId: accountId) }
+    }
+
+    /// Tracks both `quickAction` and `quickActionStep`, so step row effects, action
+    /// deletes, and `replaceQuickActionSteps` all fire it.
+    public func observeQuickActionSteps(accountId: Int64) -> StoreObservation<[Int64: [QuickActionStepRecord]]> {
+        observation { db in try Self.fetchQuickActionSteps(db, accountId: accountId) }
+    }
+
+    private static func fetchQuickActionSteps(
+        _ db: Database, accountId: Int64
+    ) throws -> [Int64: [QuickActionStepRecord]] {
+        let steps = try QuickActionStepRecord.fetchAll(
+            db,
+            sql: """
+                SELECT quickActionStep.* FROM quickActionStep
+                JOIN quickAction ON quickAction.id = quickActionStep.quickActionId
+                WHERE quickAction.accountId = ?
+                ORDER BY quickActionStep.quickActionId, quickActionStep.position
+                """,
+            arguments: [accountId]
+        )
+        return Dictionary(grouping: steps, by: \.quickActionId)
     }
 }
 

@@ -103,6 +103,12 @@ old one stays.*
 | [0088](0088-list-layout-preferences-follow-the-first-login.md) | The list's layout preferences are read from the first login and written to every login; the selection lives in the list model | Accepted |
 | [0089](0089-composer-keeps-signature-and-quote-outside-the-editor.md) | The composer keeps the signature and the quote outside the editor, and hides its window during a send | Accepted |
 | [0090](0090-editing-an-outbox-entry-converts-it-to-a-local-draft.md) | Editing an outbox entry converts it to a local draft | Accepted |
+| [0091](0091-app-settings-scope.md) | App settings: switches are read from the first login and written to every login; server-scoped lists follow a picked login; feature-gated tabs stay visible | Accepted — extends 0088 |
+| [0092](0092-contact-favourites-are-a-dav-dead-property-refreshed-each-pass.md) | Contact favourites are web Contacts' `nc:favorite` DAV property, refreshed by a Depth-1 listing every pass | Accepted |
+| [0093](0093-a-calendar-write-whose-uid-exists-updates-the-servers-copy.md) | A `calendarPut` refused with CalDAV `no-uid-conflict` is written once more onto the server's copy of that UID, without `If-Match`; a second 409 parks | Accepted |
+| [0094](0094-oauth-account-setup-polls-the-connection-test.md) | OAuth account setup observes completion by polling the connection test; closing the window deletes the temporary account | Accepted |
+| [0096](0096-address-book-import-and-merge-are-queued-card-writes.md) | Address-book management, vCard import (one `contactPut` per card; a UID in the book updates it) and merge (one put + one delete) are queued writes; export is written from the mirror; social auto-update is a per-Mac on-view switch | Accepted |
+| [0097](0097-teams-are-mirrored-rows-and-online-commands.md) | Teams: one `teams` server-result row is the Circles capability gate and the `team`/`teamMember` refresh; team edits are online-only commands that refresh before answering; Shared items filters the files_sharing listings; the org chart is computed from `X-MANAGERSNAME` | Accepted |
 
 ## Which ones matter most
 

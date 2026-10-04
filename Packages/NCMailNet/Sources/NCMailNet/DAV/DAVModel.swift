@@ -24,6 +24,9 @@ public struct DAVQualifiedName: Sendable, Hashable, CustomStringConvertible {
     public static let owncloud = "http://owncloud.org/ns"
     public static let nextcloud = "http://nextcloud.org/ns"
     public static let sabre = "http://sabredav.org/ns"
+    /// Not ``nextcloud``: the web Contacts app's cdav-library names its own properties under
+    /// `.com`, and sabre stores them as dead properties under exactly that URI (WS-35, measured).
+    public static let nextcloudCom = "http://nextcloud.com/ns"
 
     // DAV:
     public static let resourcetype = DAVQualifiedName(dav, "resourcetype")
@@ -46,6 +49,11 @@ public struct DAVQualifiedName: Sendable, Hashable, CustomStringConvertible {
     public static let calendarData = DAVQualifiedName(caldav, "calendar-data")
     public static let supportedCalendarComponentSet = DAVQualifiedName(caldav, "supported-calendar-component-set")
     public static let getctag = DAVQualifiedName(calendarserver, "getctag")
+
+    /// Web Contacts' favourite marker: a dead property on the card resource, `"1"` when set
+    /// and absent (404 propstat) otherwise. Not in the vCard; PROPPATCHing it moves neither
+    /// the ETag nor the sync-token (ADR-0092).
+    public static let favorite = DAVQualifiedName(nextcloudCom, "favorite")
 }
 
 /// One element found inside a DAV property: its name and attributes.
@@ -121,6 +129,12 @@ public struct DAVResource: Sendable, Equatable {
     public var ctag: String? { property(.getctag)?.text }
     public var addressData: String? { property(.addressData)?.text }
     public var calendarData: String? { property(.calendarData)?.text }
+    /// `nc:favorite`: true for `"1"`, false when the server answered it empty or 404 (how an
+    /// unset dead property comes back), nil when the request did not ask for it.
+    public var isFavorite: Bool? {
+        if let value = property(.favorite) { return value.text == "1" }
+        return propstats.contains { $0.properties[.favorite] != nil } ? false : nil
+    }
 
     public var resourceTypes: [DAVQualifiedName] {
         property(.resourcetype)?.elements.map(\.name) ?? []

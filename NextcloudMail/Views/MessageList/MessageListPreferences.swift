@@ -135,8 +135,10 @@ final class MessageListPreferenceStore {
     func set(favoritesOnTop: Bool) async { await write(MessageListPreferences.favoritesKey, String(favoritesOnTop)) }
 
     /// Queues `key = value` for every login whose mirrored value differs. A login already
-    /// holding the value is left alone, as the web client does.
-    func write(_ key: String, _ value: String) async {
+    /// holding the value is left alone, as the web client does. False when a write could not
+    /// even be queued — Settings shows the web's "Could not update preference" for that.
+    @discardableResult
+    func write(_ key: String, _ value: String) async -> Bool {
         do {
             for login in try await store.logins() {
                 guard let loginId = login.id,
@@ -145,8 +147,10 @@ final class MessageListPreferenceStore {
                 guard try await store.preferenceValue(key: key, loginId: loginId) != value else { continue }
                 try await queue(accountId).perform(.setPreference(key: key, value: value), loginId: loginId)
             }
+            return true
         } catch {
             Self.logger.error("could not queue a list preference: \(String(describing: error), privacy: .public)")
+            return false
         }
     }
 

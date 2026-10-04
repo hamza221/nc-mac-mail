@@ -85,6 +85,10 @@ struct QueueV2Tests {
                 QueueV2Test.davPayload(
                     loginId, href: "/remote.php/dav/calendars/alice/personal/e.ics",
                     body: "BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n")),
+            .contactFavorite(
+                QueueV2Test.davPayload(loginId, href: "/remote.php/dav/addressbooks/users/alice/contacts/c.vcf")),
+            .contactSocialAvatar(
+                QueueV2Test.davPayload(loginId, href: "/remote.php/dav/addressbooks/users/alice/contacts/d.vcf")),
         ]
     }
 
@@ -150,7 +154,7 @@ struct QueueV2Tests {
             .setFlags, .move, .delete, .moveThread, .deleteThread, .trustSender,
         ])
         #expect(queuedKinds == v2Kinds, "missing: \(v2Kinds.subtracting(queuedKinds))")
-        #expect(await dav.applied.count == 7)
+        #expect(await dav.applied.count == 9)
 
         // Offline: the network is gone, nothing is lost and nothing is counted twice.
         await fixture.transport.fail(.any, times: 10_000, then: .status(200))

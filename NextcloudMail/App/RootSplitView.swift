@@ -22,6 +22,8 @@ struct RootSplitView: View {
     @State private var sidebar: SidebarStore
     @State private var messageList: MessageListStore
     @State private var listPreferences: MessageListPreferenceStore
+    /// The Contacts section's shared state: per-login models and the list selection (WS-35).
+    @State private var contacts: ContactsBrowser
 
     @SceneStorage("shell.sidebarWidth") private var sidebarWidth = ColumnWidth.sidebar.ideal
     @SceneStorage("shell.contentWidth") private var contentWidth = ColumnWidth.content.ideal
@@ -40,6 +42,9 @@ struct RootSplitView: View {
         _sidebar = State(initialValue: sidebar)
         _messageList = State(initialValue: MessageListWiring.makeStore(session: session))
         _listPreferences = State(initialValue: MessageListWiring.makePreferences(session: session))
+        _contacts = State(
+            initialValue: ContactsBrowser(
+                store: session.store, queue: { [weak session] in session?.engine.contactsQueue(sessionId: $0) }))
     }
 
     var body: some View {
@@ -95,11 +100,12 @@ struct RootSplitView: View {
                     // Archive, Delete, Junk, Move, Star, Mark unread, Refresh: the message
                     // pane's toolbar (ux-spec.md#message-view). Built since WS-10 and never
                     // installed, which is why there was no Refresh button.
-                    .toolbar { TriageToolbar(context: session.triage) }
+                    .toolbar { if showsMailbox { TriageToolbar(context: session.triage) } }
                     // Which actions the selection can take is a database read per account.
                     .task(id: messageList.selection) { await session.triage.refreshAvailability() }
             }
             .environment(listPreferences)
+            .environment(contacts)
             .task { listPreferences.start() }
             .undoSendBanner(session: session)
             .onChange(of: session.expiredAccount) { _, newValue in
@@ -120,8 +126,8 @@ struct RootSplitView: View {
     }
 
     /// Routes on ``SidebarSelection``: every message source is the searchable list (WS-29),
-    /// the outbox is WS-27's view, and what is left — contacts until WS-35 lands — shows
-    /// ``PendingSelectionView`` (ux-spec.md, "What the sidebar can select").
+    /// the outbox is WS-27's view, a Contacts entry is WS-35's list
+    /// (ux-spec.md, "What the sidebar can select").
     @ViewBuilder
     private var contentColumn: some View {
         switch session.navigation.selection {
@@ -135,8 +141,8 @@ struct RootSplitView: View {
             )
         case .outbox:
             OutboxView(session: session)
-        case let selection?:
-            PendingSelectionView(selection: selection)
+        case .contacts(let sessionId, let scope):
+            ContactsListView(sessionId: sessionId, scope: scope)
         }
     }
 
@@ -154,7 +160,9 @@ struct RootSplitView: View {
     @ViewBuilder
     private var detailColumn: some View {
         let accountId = messageList.focusedAccountId
-        if showsMailbox, let services = session.messageServices(accountId: accountId) {
+        if case .contacts(let sessionId, let scope) = session.navigation.selection {
+            ContactsDetailColumn(sessionId: sessionId, scope: scope)
+        } else if showsMailbox, let services = session.messageServices(accountId: accountId) {
             MessageView(
                 services: services,
                 messageId: messageList.focusedMessageId,
@@ -239,43 +247,6 @@ private struct StatusFooter: View {
             .padding(theme.metrics.spacing.tight)
         case .none:
             EmptyView()
-        }
-    }
-}
-
-/// The content column for a selection whose list a wave-3 workstream has not built yet: the
-/// same `ContentUnavailableView` surface the message list uses for its empty states, naming
-/// what was picked. Each case disappears from here when its view lands.
-private struct PendingSelectionView: View {
-    let selection: SidebarSelection
-
-    var body: some View {
-        ContentUnavailableView {
-            Label {
-                Text(title)
-            } icon: {
-                symbol.view(size: .large, label: .decorative)
-            }
-        }
-    }
-
-    private var title: String {
-        switch selection {
-        case .mailbox: "Mailbox"
-        case .unifiedInbox: "All inboxes"
-        case .priorityInbox: "Priority inbox"
-        case .favorites: "Favorites"
-        case .outbox: "Outbox"
-        case .contacts: "Contacts"
-        }
-    }
-
-    private var symbol: MailSymbol {
-        switch selection {
-        case .mailbox, .unifiedInbox, .priorityInbox: .inbox
-        case .favorites: .star
-        case .outbox: .sent
-        case .contacts: .account
         }
     }
 }

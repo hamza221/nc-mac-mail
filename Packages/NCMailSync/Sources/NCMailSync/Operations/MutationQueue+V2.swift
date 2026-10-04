@@ -565,6 +565,9 @@ extension MutationQueue {
         case .addressBookDelete(let payload): return [davUnit(.addressBookDelete, payload, accountId: accountId)]
         case .addressBookShare(let payload): return [davUnit(.addressBookShare, payload, accountId: accountId)]
         case .calendarPut(let payload): return [davUnit(.calendarPut, payload, accountId: accountId)]
+        case .contactFavorite(let payload): return [davUnit(.contactFavorite, payload, accountId: accountId)]
+        case .contactSocialAvatar(let payload):
+            return [davUnit(.contactSocialAvatar, payload, accountId: accountId)]
 
         case .setFlags, .move, .delete, .junk, .moveThread, .deleteThread, .trustSender:
             // v1 kinds are built by `units(for:accountId:)` and never reach here.

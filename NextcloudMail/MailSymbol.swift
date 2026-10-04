@@ -93,6 +93,31 @@ enum MailSymbol: CaseIterable {
     case info
     case cloudFile
     case forwardedMessage
+    // WS-38 app settings
+    case domain
+    case group
+    case shared
+    case edit
+    case remove
+    case add
+    case certificate
+    // WS-35 contacts
+    case contacts
+    case allContacts
+    case recentlyContacted
+    case favoriteOff
+    case upload
+    case fullSize
+    case socialAvatar
+    // WS-34 calendar
+    case calendar
+    case task
+    case flight
+    case train
+    // WS-37 teams, org chart
+    case team
+    case orgChart
+    case leaveTeam
 
     /// The symbol to hand a library component whose icon slot takes one directly, such as
     /// `NCNavigationItem(icon:)`. `NCIcon` already falls back to `systemFallback` for any
@@ -192,6 +217,27 @@ enum MailSymbol: CaseIterable {
         case .info: NCSymbol(asset: "information-outline", systemFallback: "info.circle")
         case .cloudFile: NCSymbol(asset: "cloud-outline", systemFallback: "icloud")
         case .forwardedMessage: NCSymbol(asset: "email-outline", systemFallback: "envelope")
+        case .domain: NCSymbol(asset: "domain", systemFallback: "globe")
+        case .group: .accountGroup
+        case .shared: .shareVariantOutline
+        case .edit: .pencilOutline
+        case .remove: .close
+        case .add: .plus
+        case .certificate: NCSymbol(asset: "certificate-outline", systemFallback: "checkmark.seal")
+        case .contacts: .contacts
+        case .allContacts: .accountMultipleOutline
+        case .recentlyContacted: .clockOutline
+        case .favoriteOff: .starOutline
+        case .upload: .upload
+        case .fullSize: .fullscreen
+        case .socialAvatar: NCSymbol(asset: "cloud-download-outline", systemFallback: "icloud.and.arrow.down")
+        case .calendar: .calendarAccountOutline
+        case .task: NCSymbol(asset: "checkbox-marked-circle-outline", systemFallback: "checklist")
+        case .flight: NCSymbol(asset: "airplane", systemFallback: "airplane")
+        case .train: NCSymbol(asset: "train", systemFallback: "tram")
+        case .team: .accountMultiple
+        case .orgChart: NCSymbol(asset: "sitemap-outline", systemFallback: "point.3.connected.trianglepath.dotted")
+        case .leaveTeam: NCSymbol(asset: "logout", systemFallback: "rectangle.portrait.and.arrow.right")
         }
     }
 
@@ -273,6 +319,27 @@ enum MailSymbol: CaseIterable {
         case .info: .text("Information")
         case .cloudFile: .text("From Files")
         case .forwardedMessage: .text("Forwarded message")
+        case .domain: .text("Domain")
+        case .group: .text("Group")
+        case .shared: .text("Shared")
+        case .edit: .text("Edit")
+        case .remove: .text("Remove")
+        case .add: .text("Add")
+        case .certificate: .text("Certificate")
+        case .contacts: .text("Address book")
+        case .allContacts: .text("All contacts")
+        case .recentlyContacted: .text("Recently contacted")
+        case .favoriteOff: .text("Not a favorite")
+        case .upload: .text("Upload")
+        case .fullSize: .text("Full size")
+        case .socialAvatar: .text("Picture from social network")
+        case .calendar: .text("Calendar")
+        case .task: .text("Task")
+        case .flight: .text("Flight")
+        case .train: .text("Train")
+        case .team: .text("Team")
+        case .orgChart: .text("Organization chart")
+        case .leaveTeam: .text("Leave team")
         }
     }
 

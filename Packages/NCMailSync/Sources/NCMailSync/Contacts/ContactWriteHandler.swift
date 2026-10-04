@@ -63,6 +63,40 @@ public struct ContactWriteHandler: DAVWriteHandling {
         )
     }
 
+    /// The payload for marking `contact` a favourite or not (ADR-0092). `before` carries the
+    /// whole card, not only the flag, because a later delete folds this row in and inherits
+    /// its snapshot as the thing Discard restores.
+    public static func favoritePayload(loginId: Int64, contact: ContactRecord, favorite: Bool) -> DAVWritePayload {
+        DAVWritePayload(
+            loginId: loginId,
+            addressBookId: contact.addressBookId,
+            contactId: contact.id,
+            href: contact.href,
+            etag: contact.etag,
+            enabled: favorite,
+            before: DAVWriteSnapshot(
+                existed: true, body: contact.vcard, etag: contact.etag, isFavorite: contact.isFavorite)
+        )
+    }
+
+    /// The payload asking the server to fetch `contact`'s picture from `network`. Nil when
+    /// the card has no `UID`, which the Contacts app's route names cards by.
+    public static func socialAvatarPayload(
+        loginId: Int64, contact: ContactRecord, bookURL: String, network: String
+    ) -> DAVWritePayload? {
+        guard let uid = contact.uid, !uid.isEmpty else { return nil }
+        return DAVWritePayload(
+            loginId: loginId,
+            addressBookId: contact.addressBookId,
+            contactId: contact.id,
+            collectionHref: bookURL,
+            href: contact.href,
+            socialNetwork: network.lowercased(),
+            contactUID: uid,
+            before: DAVWriteSnapshot(existed: true, body: contact.vcard, etag: contact.etag)
+        )
+    }
+
     // MARK: - DAVWriteHandling
 
     public func apply(_ write: DAVWrite) async throws {
@@ -94,8 +128,14 @@ public struct ContactWriteHandler: DAVWriteHandling {
             let url = collectionURLString(client.resolve(href: href))
             let books = try await store.addressBooks(loginId: payload.loginId)
             try await store.syncAddressBooks(books.filter { $0.url != url }, loginId: payload.loginId)
+        case .contactFavorite:
+            guard let favorite = payload.enabled, let contact = try await existingContact(payload),
+                let id = contact.id
+            else { return }
+            try await store.setContactFavorite(favorite, contactId: id)
         default:
-            // Shares and calendar objects have no mirrored rows; the next pass shows them.
+            // Shares, calendar objects and social-avatar requests have no optimistic row
+            // change; the next pass shows what the server made of them.
             return
         }
     }
@@ -106,10 +146,59 @@ public struct ContactWriteHandler: DAVWriteHandling {
             try await sendPut(write)
         case .contactDelete:
             try await sendDelete(write)
+        case .contactFavorite:
+            guard let href = write.payload.href, let favorite = write.payload.enabled else { throw DAVError.notFound }
+            do {
+                try await client.setFavorite(client.resolve(href: href), favorite)
+            } catch DAVError.notFound {
+                // The card is gone on the server; its delete will reach the mirror, and a
+                // favourite of nothing is nothing to retry.
+                ContactsLog.contacts.notice("favourite \(write.operationId, privacy: .public): card gone, dropped")
+            }
+        case .contactSocialAvatar:
+            let payload = write.payload
+            guard let network = payload.socialNetwork, let uid = payload.contactUID,
+                let collection = payload.collectionHref, let bookURI = Self.collectionURI(collection)
+            else { throw DAVError.notFound }
+            try await client.fetchSocialAvatar(network: network, addressBookURI: bookURI, contactUID: uid)
+            // The server rewrote PHOTO: a pass now brings the new card in.
+            await afterSend(write)
+        case .calendarPut:
+            try await sendCalendarPut(write)
+            await afterSend(write)
         default:
             try await sender.send(write)
             await afterSend(write)
         }
+    }
+
+    /// PUT the calendar object; when the calendar already holds the UID under another name,
+    /// PUT the same body once more onto that object, with no `If-Match`.
+    ///
+    /// Measured on Nextcloud: scheduling delivers a same-server invitation into the
+    /// attendee's default calendar as `sabredav-<uuid>.ics`, so the iMIP card's answer,
+    /// written under a name of ours, answers 409 `no-uid-conflict` naming that copy. Updating
+    /// the copy is what makes the server send the organiser a REPLY — the web client does the
+    /// same after a calendar-query by UID (ADR-0093). A second 409 throws and the queue parks
+    /// the row.
+    private func sendCalendarPut(_ write: DAVWrite) async throws {
+        do {
+            try await sender.send(write)
+        } catch DAVError.uidConflict(let existing) {
+            ContactsLog.calendars.info(
+                "calendar write \(write.operationId, privacy: .public): UID held elsewhere, updating it")
+            var retarget = write
+            retarget.payload.href = existing
+            retarget.payload.etag = nil
+            try await sender.send(retarget)
+        }
+    }
+
+    /// The last path segment of a collection URL or href — the address book URI the Contacts
+    /// app's routes take (`…/addressbooks/users/alice/contacts/` → `contacts`).
+    static func collectionURI(_ collection: String) -> String? {
+        let path = URL(string: collection)?.path(percentEncoded: false) ?? collection
+        return path.split(separator: "/").last.map(String.init)
     }
 
     public func revert(_ write: DAVWrite) async {
@@ -150,6 +239,11 @@ public struct ContactWriteHandler: DAVWriteHandling {
                         loginId: payload.loginId, url: collectionURLString(client.resolve(href: href)),
                         displayName: payload.before.displayName, position: books.count))
                 try await store.syncAddressBooks(books, loginId: payload.loginId)
+            case .contactFavorite:
+                guard let favorite = payload.before.isFavorite, let contact = try await existingContact(payload),
+                    let id = contact.id
+                else { return }
+                try await store.setContactFavorite(favorite, contactId: id)
             default:
                 return
             }

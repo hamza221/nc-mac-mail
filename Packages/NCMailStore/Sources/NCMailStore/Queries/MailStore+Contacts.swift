@@ -265,4 +265,61 @@ extension MailStore {
             )
         }
     }
+
+    // MARK: Favourites (WS-35, ADR-0092)
+
+    /// One card's favourite flag: the queue's local effect of a `contactFavorite`, and its
+    /// Discard. Nothing else in the row changes, so the vCard and ETag stay the server's.
+    public func setContactFavorite(_ favorite: Bool, contactId: Int64) async throws {
+        try await dbQueue.write { db in
+            try db.execute(
+                sql: "UPDATE contact SET isFavorite = ? WHERE id = ?", arguments: [favorite, contactId])
+        }
+    }
+
+    /// Applies one book's favourite listing: exactly the cards in `favoriteHrefs` are
+    /// favourites, except the `heldHrefs` a queued toggle owns. Answers how many rows moved.
+    ///
+    /// A whole-book statement rather than per-card updates, because the listing is the
+    /// truth for every card in it — the toggle moves no ETag, so there is nothing else to
+    /// compare against (measured, ADR-0092).
+    @discardableResult
+    public func syncContactFavorites(
+        addressBookId: Int64, favoriteHrefs: Set<String>, heldHrefs: Set<String> = []
+    ) async throws -> Int {
+        try await dbQueue.write { db in
+            let rows = try Row.fetchAll(
+                db, sql: "SELECT id, href, isFavorite FROM contact WHERE addressBookId = ?",
+                arguments: [addressBookId])
+            var moved = 0
+            for row in rows {
+                let href: String = row["href"]
+                guard !heldHrefs.contains(href) else { continue }
+                let wanted = favoriteHrefs.contains(href)
+                let current: Bool = row["isFavorite"]
+                guard wanted != current else { continue }
+                let id: Int64 = row["id"]
+                try db.execute(sql: "UPDATE contact SET isFavorite = ? WHERE id = ?", arguments: [wanted, id])
+                moved += 1
+            }
+            return moved
+        }
+    }
+
+    /// Every card of one login's enabled books, people and groups alike, favourites first and
+    /// then by display name — the Contacts section's "All contacts" before the list's own sort.
+    public func observeContacts(loginId: Int64) -> StoreObservation<[ContactRecord]> {
+        observation { db in
+            try ContactRecord.fetchAll(
+                db,
+                sql: """
+                    SELECT c.* FROM contact c
+                    JOIN addressBook b ON b.id = c.addressBookId
+                    WHERE b.loginId = ? AND b.isEnabled
+                    ORDER BY c.isFavorite DESC, c.displayName COLLATE NOCASE, c.id
+                    """,
+                arguments: [loginId]
+            )
+        }
+    }
 }

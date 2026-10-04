@@ -391,6 +391,13 @@ fetch account-test.json "$API/accounts/$ACCOUNT_ID/test"
 req PATCH account-patch.json "$API/accounts/$ACCOUNT_ID" '{"order":0}'
 req PUT account-signature.json "$API/accounts/$ACCOUNT_ID/signature" '{"signature":"Recorded fixture signature"}'
 quiet PUT "$API/accounts/$ACCOUNT_ID/signature" '{"signature":null}'
+# WS-39: the mail-server update, re-sending the account's own settings without passwords
+# (the server keeps the stored ones). Its answer is a PARTIAL account — order, editorMode
+# and the special-mailbox ids come back null — which is why SettingsCommands re-reads the
+# account after it.
+UPDATE_BODY="$(rawget "$API/accounts" | jq -c --argjson id "$ACCOUNT_ID" '.[] | select(.id == $id) | {accountName: .name, emailAddress, imapHost, imapPort, imapSslMode, imapUser, smtpHost, smtpPort, smtpSslMode, smtpUser}' 2>/dev/null || true)"
+[ -n "$UPDATE_BODY" ] && req PUT account-updated.json "$API/accounts/$ACCOUNT_ID" "$UPDATE_BODY"
+fetch account.json "$API/accounts/$ACCOUNT_ID"
 
 echo "-- aliases"
 post alias-created.json "$API/accounts/$ACCOUNT_ID/aliases" "{\"alias\":\"fixture-alias@$MAIL_DOMAIN\",\"aliasName\":\"Fixture Alias\"}"
@@ -767,6 +774,17 @@ else
     echo "  (text-block lifecycle skipped — create returned no id)"
 fi
 
+echo "-- account create refusals (WS-40; deliberately wrong credentials, so nothing is created)"
+# CouldNotConnectException's fail envelope: the account form's §1.5 strings key off
+# data.error and data.service. Create is rate limited, so only two are recorded.
+WS40_BODY() {
+    jq -nc --arg h "$1" --arg u "ws40-probe@$MAIL_DOMAIN" '{accountName:"WS40 probe",emailAddress:$u,
+        imapHost:$h,imapPort:993,imapSslMode:"ssl",imapUser:$u,imapPassword:"wrong-password",
+        smtpHost:$h,smtpPort:587,smtpSslMode:"tls",smtpUser:$u,smtpPassword:"wrong-password"}'
+}
+post error-account-create-wrong-password.json "$API/accounts" "$(WS40_BODY "$IMAP_HOST")"
+post error-account-create-unreachable.json "$API/accounts" "$(WS40_BODY no-such-host.invalid)"
+
 echo "-- delegation (a second server user; self-delegation for the refusal)"
 # The server refuses self-delegation — that refusal is its own fixture.
 post error-delegation-self.json "$API/delegations/$ACCOUNT_ID" "{\"userId\":\"$LOGIN\"}"
@@ -901,6 +919,30 @@ dav dav-ws24-merge-sync.xml REPORT "$WS24_MERGE_AB/" 0 \
 dav dav-error-invalid-sync-token.xml REPORT "$WS24_MERGE_AB/" 0 \
     '<?xml version="1.0"?><d:sync-collection xmlns:d="DAV:"><d:sync-token>ws24-not-a-token</d:sync-token>'"$SYNC_PROPS"'</d:sync-collection>'
 rawdav DELETE "$WS24_MERGE_AB/" >/dev/null
+
+echo "-- DAV: WS-35 favourites and social avatar (scratch book ws35-temp-fav, deleted after)"
+# Web Contacts' favourite is the WebDAV dead property {http://nextcloud.com/ns}favorite on
+# the card resource, not a vCard property (cdav-library `_exposeProperty("favorite", NEXTCLOUD)`).
+# Measured: the PROPPATCH moves neither the card ETag nor the book sync-token, so the mirror
+# lists favourites with a Depth-1 PROPFIND each pass (ADR-0092). Bodies are exactly what
+# DAVRequestBody sends. Two cards: one favourited, one plain with a Gravatar profile.
+WS35_AB="$DAVROOT/addressbooks/users/$LOGIN/ws35-temp-fav"
+WS35_NS='xmlns:d="DAV:" xmlns:card="urn:ietf:params:xml:ns:carddav" xmlns:cal="urn:ietf:params:xml:ns:caldav" xmlns:cs="http://calendarserver.org/ns/" xmlns:oc="http://owncloud.org/ns" xmlns:nc="http://nextcloud.com/ns"'
+rawdav MKCOL "$WS35_AB/" '' '<?xml version="1.0"?><d:mkcol xmlns:d="DAV:" xmlns:card="urn:ietf:params:xml:ns:carddav"><d:set><d:prop><d:resourcetype><d:collection/><card:addressbook/></d:resourcetype><d:displayname>WS35 Temp Fav</d:displayname></d:prop></d:set></d:mkcol>' >/dev/null
+rawdav PUT "$WS35_AB/ws35-fav.vcf" '' "$(printf 'BEGIN:VCARD\r\nVERSION:3.0\r\nUID:ws35-fav\r\nFN:WS35 Favourite\r\nN:Favourite;WS35;;;\r\nEMAIL;TYPE=WORK:ws35-fav@example.org\r\nEND:VCARD\r\n')" 'text/vcard; charset=utf-8' >/dev/null
+rawdav PUT "$WS35_AB/ws35-social.vcf" '' "$(printf 'BEGIN:VCARD\r\nVERSION:3.0\r\nUID:ws35-social\r\nFN:WS35 Social\r\nN:Social;WS35;;;\r\nEMAIL;TYPE=HOME:beau@dentedreality.com.au\r\nX-SOCIALPROFILE;TYPE=GRAVATAR:beau@dentedreality.com.au\r\nEND:VCARD\r\n')" 'text/vcard; charset=utf-8' >/dev/null
+dav dav-ws35-favorite-proppatch.xml PROPPATCH "$WS35_AB/ws35-fav.vcf" '' \
+    '<?xml version="1.0" encoding="utf-8" ?><d:propertyupdate '"$WS35_NS"'><d:set><d:prop><nc:favorite>1</nc:favorite></d:prop></d:set></d:propertyupdate>'
+dav dav-ws35-favorites.xml PROPFIND "$WS35_AB/" 1 \
+    '<?xml version="1.0" encoding="utf-8" ?><d:propfind '"$WS35_NS"'><d:prop><d:getetag/><nc:favorite/></d:prop></d:propfind>'
+dav dav-ws35-multiget-favorite.xml REPORT "$WS35_AB/" 1 \
+    '<?xml version="1.0" encoding="utf-8" ?><card:addressbook-multiget '"$WS35_NS"'><d:prop><d:getetag/><card:address-data/><nc:favorite/></d:prop><d:href>'"${WS35_AB#$SERVER}"'/ws35-fav.vcf</d:href><d:href>'"${WS35_AB#$SERVER}"'/ws35-social.vcf</d:href></card:addressbook-multiget>'
+dav dav-ws35-favorite-unproppatch.xml PROPPATCH "$WS35_AB/ws35-fav.vcf" '' \
+    '<?xml version="1.0" encoding="utf-8" ?><d:propertyupdate '"$WS35_NS"'><d:remove><d:prop><nc:favorite/></d:prop></d:remove></d:propertyupdate>'
+# The Contacts app's social-avatar route (was "unverified" in the plan): the server downloads
+# the picture and writes PHOTO into the card itself; the answer body is an empty list.
+req PUT contacts-social-avatar.json "$SERVER/index.php/apps/contacts/api/v1/social/avatar/gravatar/ws35-temp-fav/ws35-social"
+rawdav DELETE "$WS35_AB/" >/dev/null
 CAL_URL="$CAL_HOME/personal"
 ICS_HREFS="$(rawdav PROPFIND "$CAL_URL/" 1 '<d:propfind xmlns:d="DAV:"><d:prop><d:getetag/></d:prop></d:propfind>' | grep -o '<d:href>[^<]*\.ics</d:href>' | sed -E 's#</?d:href>##g' || true)"
 STANDUP_HREF="$(printf '%s\n' "$ICS_HREFS" | grep -i standup | head -1 || true)"
@@ -981,6 +1023,7 @@ post ocs-message-sent.json "$OCSAPI/apps/mail/message/send" \
 fetch references-providers.json "$OCSAPI/references/providers"
 fetch picker-search-files.json "$OCSAPI/search/providers/files/search?term=fixture"
 fetch search-providers.json "$OCSAPI/search/providers"
+fetch sharees.json "$OCSAPI/apps/files_sharing/api/v1/sharees?format=json&itemType=file&search=admin&shareType%5B%5D=0&shareType%5B%5D=1"
 fetch notifications.json "$OCSAPI/apps/notifications/api/v2/notifications"
 fetch translation-languages.json "$OCSAPI/translation/languages"
 post translation-translate.json "$OCSAPI/translation/translate" '{"text":"Hello","fromLanguage":null,"toLanguage":"de"}'
@@ -1006,6 +1049,121 @@ echo "-- DAV: Files listings (WS-33)"
 WS33_FILES_PROPS='<?xml version="1.0" encoding="utf-8" ?><d:propfind xmlns:d="DAV:" xmlns:card="urn:ietf:params:xml:ns:carddav" xmlns:cal="urn:ietf:params:xml:ns:caldav" xmlns:cs="http://calendarserver.org/ns/" xmlns:oc="http://owncloud.org/ns"><d:prop><d:resourcetype/><d:getcontenttype/><d:getcontentlength/><d:getlastmodified/><oc:fileid/><oc:size/></d:prop></d:propfind>'
 dav dav-files-root-ws33.xml PROPFIND "$SERVER/remote.php/dav/files/$LOGIN/" 1 "$WS33_FILES_PROPS"
 dav dav-files-missing-ws33.xml PROPFIND "$SERVER/remote.php/dav/files/$LOGIN/ws33-no-such-folder/" 1 "$WS33_FILES_PROPS"
+
+# WS-34: the calendar cards. These fixtures keep synthetic *.example.net addresses (organiser
+# and attendee must stay distinct for the iMIP card to mean anything), so they pass through
+# scrub_identity only — the operator's own address still becomes user@example.com.
+echo "-- WS-34: calendar (iMIP body, itinerary, UID conflict)"
+ws34_fetch() {
+    # $1 output file, $2 url — JSON through scrub_identity only
+    local out="$OUT/$1" tmp status
+    tmp="$(mktemp)"
+    status="$(curl -sS -o "$tmp" -w '%{http_code}' -u "$LOGIN:$PASSWORD" \
+        -H 'OCS-APIRequest: true' -H 'Accept: application/json' \
+        -H 'User-Agent: Nextcloud Mail (macOS)/fixtures' "$2" || true)"
+    cp "$tmp" "$LAST_RAW"
+    jq '.' < "$tmp" | scrub_debug | scrub_identity > "$out"
+    printf '  %-38s HTTP %s  %s\n' "$1" "$status" "$(wc -c < "$out" | tr -d ' ') bytes"
+    rm -f "$tmp"
+}
+# A PUT of a second object with an existing UID into the same calendar: 409 UidConflict,
+# naming the existing href in cal:no-uid-conflict (measured; ADR-0093).
+WS34_UID="ws34-uid-conflict-$NOW"
+WS34_ICS="$(printf 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//WS34//EN\r\nBEGIN:VEVENT\r\nUID:%s\r\nDTSTAMP:20261004T100000Z\r\nDTSTART:20261110T090000Z\r\nDTEND:20261110T100000Z\r\nSUMMARY:WS34 UID conflict\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n' "$WS34_UID")"
+rawdav PUT "$CAL_URL/ws34-first.ics" '' "$WS34_ICS" 'text/calendar; charset=utf-8' >/dev/null
+dav dav-error-uid-conflict-ws34.xml PUT "$CAL_URL/ws34-second.ics" '' "$WS34_ICS" 'text/calendar; charset=utf-8'
+rawdav DELETE "$CAL_URL/ws34-first.ics" >/dev/null
+# Itinerary: a draft whose HTML carries schema.org JSON-LD, moved into the IMAP Drafts
+# folder; the server's KItinerary extractor (kitinerary-extractor on PATH or the
+# kitinerary_bin app) answers the itineraries route. Without an extractor it answers [].
+WS34_LD='{"@context":"http://schema.org","@type":"FlightReservation","reservationNumber":"WS34AB","underName":{"@type":"Person","name":"Test Person"},"reservationFor":{"@type":"Flight","flightNumber":"123","airline":{"@type":"Airline","iataCode":"LH","name":"Lufthansa"},"departureAirport":{"@type":"Airport","iataCode":"TXL","name":"Berlin Tegel"},"departureTime":"2026-11-20T09:30:00+01:00","arrivalAirport":{"@type":"Airport","iataCode":"MUC","name":"Munich"},"arrivalTime":"2026-11-20T10:35:00+01:00"}}'
+WS34_HTML="<html><head><script type=\"application/ld+json\">$WS34_LD</script></head><body><p>WS34 flight confirmation LH123 TXL-MUC</p></body></html>"
+WS34_SUBJECT="WS34 itinerary seed $NOW"
+WS34_DRAFT="$(jq -nc --argjson a "$ACCOUNT_ID" --arg h "$WS34_HTML" --arg s "$WS34_SUBJECT" --arg to "$SELF_EMAIL" \
+    '{accountId:$a,subject:$s,bodyPlain:"",bodyHtml:$h,editorBody:$h,isHtml:true,smimeSign:false,smimeEncrypt:false,to:[{label:"Self",email:$to}],cc:[],bcc:[],attachments:[]}')"
+WS34_DRAFT_ID="$(curl -sS -u "$LOGIN:$PASSWORD" -H 'OCS-APIRequest: true' -H 'Accept: application/json' -H 'Content-Type: application/json' -d "$WS34_DRAFT" "$API/drafts" | jq -r '.data.id // .id // empty' 2>/dev/null || true)"
+if [ -n "$WS34_DRAFT_ID" ] && [ -n "$DRAFTS_MAILBOX_ID" ]; then
+    quiet POST "$API/drafts/move/$WS34_DRAFT_ID" '{}'
+    quiet POST "$API/mailboxes/$DRAFTS_MAILBOX_ID/sync" '{"ids":[],"init":true}'
+    WS34_MID="$(rawget "$API/messages?mailboxId=$DRAFTS_MAILBOX_ID&view=singleton&limit=50" | jq -r --arg s "$WS34_SUBJECT" '[.[] | select(.subject == $s)][0].databaseId // empty' 2>/dev/null || true)"
+    if [ -n "$WS34_MID" ]; then
+        ws34_fetch message-itineraries-flight-ws34.json "$API/messages/$WS34_MID/itineraries"
+        quiet DELETE "$API/messages/$WS34_MID"
+    fi
+else
+    echo "  (itinerary skipped — no draft or no drafts folder)"
+fi
+# iMIP: a real iMIP REQUEST (text/calendar; method=REQUEST plus a named .ics attachment)
+# APPENDed to the inbox through the server's own IMAP client, because outgoing SMTP is not
+# something a recorder can count on. Needs the server's container:
+# NCMAIL_FIXTURE_CONTAINER=<docker container name>.
+if [ -n "${NCMAIL_FIXTURE_CONTAINER:-}" ]; then
+    WS34_IMIP_UID="ws34-imip-$NOW"
+    WS34_IMIP_ICS="$(printf 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Sabre//Sabre VObject 4.5.6//EN\r\nMETHOD:REQUEST\r\nBEGIN:VEVENT\r\nUID:%s\r\nDTSTAMP:20261004T100000Z\r\nDTSTART:20261112T090000Z\r\nDTEND:20261112T093000Z\r\nSUMMARY:WS34 seeded invitation\r\nLOCATION:Room 1\r\nORGANIZER;CN=Alice:mailto:alice@example.net\r\nATTENDEE;CN=Alice;PARTSTAT=ACCEPTED;ROLE=CHAIR:mailto:alice@example.net\r\nATTENDEE;CN=Self;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT:mailto:%s\r\nSEQUENCE:0\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n' "$WS34_IMIP_UID" "$SELF_EMAIL")"
+    WS34_EML="$(mktemp)"
+    printf 'From: Alice <alice@example.net>\r\nTo: Self <%s>\r\nSubject: Invitation: WS34 seeded invitation\r\nDate: Sun, 04 Oct 2026 12:00:00 +0000\r\nMessage-ID: <%s@example.net>\r\nMIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary="b1"\r\n\r\n--b1\r\nContent-Type: multipart/alternative; boundary="b2"\r\n\r\n--b2\r\nContent-Type: text/plain; charset=utf-8\r\n\r\nYou are invited to WS34 seeded invitation.\r\n--b2\r\nContent-Type: text/calendar; charset=utf-8; method=REQUEST\r\n\r\n%s--b2--\r\n--b1\r\nContent-Type: application/ics; name="invite.ics"\r\nContent-Disposition: attachment; filename="invite.ics"\r\n\r\n%s--b1--\r\n' \
+        "$SELF_EMAIL" "$WS34_IMIP_UID" "$WS34_IMIP_ICS" "$WS34_IMIP_ICS" > "$WS34_EML"
+    WS34_PHP="$(mktemp)"
+    cat > "$WS34_PHP" <<'PHP'
+<?php
+require '/var/www/html/lib/base.php';
+$account = \OCP\Server::get(\OCA\Mail\Service\AccountService::class)->findById((int)$argv[1]);
+$client = \OCP\Server::get(\OCA\Mail\IMAP\IMAPClientFactory::class)->getClient($account);
+$client->append('INBOX', [['data' => file_get_contents($argv[2]), 'flags' => []]]);
+$client->logout();
+PHP
+    # mktemp files are 0600; the container's www-data must read them.
+    chmod 644 "$WS34_EML" "$WS34_PHP"
+    docker cp "$WS34_EML" "$NCMAIL_FIXTURE_CONTAINER:/tmp/ws34.eml" >/dev/null
+    docker cp "$WS34_PHP" "$NCMAIL_FIXTURE_CONTAINER:/tmp/ws34-append.php" >/dev/null
+    docker exec -u www-data "$NCMAIL_FIXTURE_CONTAINER" php /tmp/ws34-append.php "$ACCOUNT_ID" /tmp/ws34.eml
+    rm -f "$WS34_EML" "$WS34_PHP"
+    quiet POST "$API/mailboxes/$MAILBOX_ID/sync" '{"ids":[],"init":false}'
+    WS34_IMIP_MID="$(rawget "$API/messages?mailboxId=$MAILBOX_ID&limit=20" | jq -r '[.[] | select(.imipMessage == true)][0].databaseId // empty' 2>/dev/null || true)"
+    if [ -n "$WS34_IMIP_MID" ]; then
+        ws34_fetch message-body-imip-ws34.json "$API/messages/$WS34_IMIP_MID/body"
+    fi
+else
+    echo "  (iMIP body skipped — set NCMAIL_FIXTURE_CONTAINER to APPEND the invitation)"
+fi
+
+# WS-37: the Teams (Circles) routes the fetcher and the team commands use, against a scratch
+# team created and deleted here, plus the two files_sharing listings "Shared items" filters.
+# Members: a second server user, a group, an address — the three kinds the add-member sheet
+# offers besides a team. The share is a scratch user share of the first root file.
+echo "-- WS-37: Teams lifecycle (scratch team, deleted after) and shares listings"
+WS37_CIRCLES="$OCSAPI/apps/circles/circles"
+WS37_SECOND="$(rawget "$SERVER/ocs/v2.php/cloud/users" | jq -r --arg me "$LOGIN" '[.ocs.data.users[]? | select(. != $me)][0] // empty' 2>/dev/null || true)"
+WS37_GROUP="$(rawget "$SERVER/ocs/v2.php/cloud/groups" | jq -r '.ocs.data.groups[0] // empty' 2>/dev/null || true)"
+post circle-created-ws37.json "$WS37_CIRCLES" '{"name":"Fixture WS37 team","personal":false,"local":false}'
+WS37_TEAM="$(jq -r '.ocs.data.id // empty' < "$LAST_RAW" 2>/dev/null || true)"
+if [ -n "$WS37_TEAM" ]; then
+    post circle-member-added-ws37.json "$WS37_CIRCLES/$WS37_TEAM/members" '{"userId":"fixture-member@example.net","type":4}'
+    WS37_MEMBER="$(jq -r '.ocs.data.id // empty' < "$LAST_RAW" 2>/dev/null || true)"
+    [ -n "$WS37_SECOND" ] && quiet POST "$WS37_CIRCLES/$WS37_TEAM/members" "{\"userId\":\"$WS37_SECOND\",\"type\":1}"
+    [ -n "$WS37_GROUP" ] && quiet POST "$WS37_CIRCLES/$WS37_TEAM/members" "{\"userId\":\"$WS37_GROUP\",\"type\":2}"
+    fetch circle-members-ws37.json "$WS37_CIRCLES/$WS37_TEAM/members"
+    if [ -n "$WS37_MEMBER" ]; then
+        req PUT circle-member-level-ws37.json "$WS37_CIRCLES/$WS37_TEAM/members/$WS37_MEMBER/level" '{"level":4}'
+        req DELETE circle-member-removed-ws37.json "$WS37_CIRCLES/$WS37_TEAM/members/$WS37_MEMBER"
+    fi
+    req PUT circle-config-ws37.json "$WS37_CIRCLES/$WS37_TEAM/config" '{"value":8}'
+    req PUT circle-description-ws37.json "$WS37_CIRCLES/$WS37_TEAM/description" '{"value":"Recorded by the fixture recorder."}'
+    req DELETE circle-deleted-ws37.json "$WS37_CIRCLES/$WS37_TEAM"
+else
+    echo "  (Teams lifecycle skipped — the Circles app did not create a team)"
+fi
+WS37_FILE="$(rawdav PROPFIND "$SERVER/remote.php/dav/files/$LOGIN/" 1 '<d:propfind xmlns:d="DAV:"><d:prop><d:resourcetype/></d:prop></d:propfind>' | grep -o '<d:href>[^<]*</d:href>' | sed -E 's#</?d:href>##g' | grep -v '/$' | head -1 || true)"
+WS37_SHARE=""
+if [ -n "$WS37_SECOND" ] && [ -n "$WS37_FILE" ]; then
+    WS37_PATH="$(printf '%s' "${WS37_FILE#/remote.php/dav/files/$LOGIN}" | sed 's/%20/ /g')"
+    WS37_SHARE="$(curl -s -u "$LOGIN:$PASSWORD" -H 'OCS-APIRequest: true' -H 'Accept: application/json' \
+        -H 'Content-Type: application/json' -X POST "$OCSAPI/apps/files_sharing/api/v1/shares" \
+        -d "{\"path\":\"$WS37_PATH\",\"shareType\":0,\"shareWith\":\"$WS37_SECOND\"}" | jq -r '.ocs.data.id // empty' 2>/dev/null || true)"
+fi
+fetch shares-mine-ws37.json "$OCSAPI/apps/files_sharing/api/v1/shares"
+fetch shares-with-me-ws37.json "$OCSAPI/apps/files_sharing/api/v1/shares?shared_with_me=true"
+[ -n "$WS37_SHARE" ] && quiet DELETE "$OCSAPI/apps/files_sharing/api/v1/shares/$WS37_SHARE"
 
 echo
 echo "Done. Before committing:"

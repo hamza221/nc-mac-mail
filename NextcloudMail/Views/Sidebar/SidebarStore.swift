@@ -391,6 +391,7 @@ final class SidebarStore {
 
     func openAccountSettings(_ account: AccountRecord) {
         Self.logger.info("account settings requested for account \(account.id, privacy: .public)")
+        SettingsTab.preferredAccountID = account.id
         SettingsTab.preferredTab = .accounts
     }
 

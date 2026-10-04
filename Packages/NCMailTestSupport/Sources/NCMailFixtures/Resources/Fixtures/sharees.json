@@ -1,0 +1,37 @@
+{
+  "ocs": {
+    "meta": {
+      "status": "ok",
+      "statuscode": 200,
+      "message": "OK"
+    },
+    "data": {
+      "exact": {
+        "users": [],
+        "groups": [
+          {
+            "label": "admin",
+            "value": {
+              "shareType": 1,
+              "shareWith": "admin"
+            }
+          }
+        ],
+        "remotes": [],
+        "remote_groups": [],
+        "emails": [],
+        "circles": [],
+        "rooms": []
+      },
+      "users": [],
+      "groups": [],
+      "remotes": [],
+      "remote_groups": [],
+      "emails": [],
+      "lookup": [],
+      "circles": [],
+      "rooms": [],
+      "lookupEnabled": false
+    }
+  }
+}
