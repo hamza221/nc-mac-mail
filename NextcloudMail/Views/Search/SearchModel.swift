@@ -22,6 +22,16 @@ final class SearchModel {
     /// happens in the store, once, at the last possible moment.
     var text = ""
 
+    /// The chips and the sheet's toggles. Shared, so "Has attachment" is one switch whether
+    /// it was flipped in the bar or in the sheet.
+    var flags = SearchQuery.FlagFilter()
+
+    /// The sheet's valued fields, as last applied with its Search button.
+    var parameters = SearchQuery.Parameters()
+
+    /// Whether the "Search parameters" sheet is up.
+    var isParametersSheetPresented = false
+
     var scope: MessageListFilter.Scope = .mailbox {
         didSet {
             guard scope != oldValue else { return }
@@ -58,19 +68,76 @@ final class SearchModel {
 
     /// The narrowing to hand the message list, or nil for the ordinary mailbox.
     ///
-    /// Whitespace is nil rather than a query that matches nothing, so clearing the field with
-    /// the space bar still held down returns to the mailbox instead of an empty screen.
+    /// Nil whenever the query has nothing to search for — a blank field, whitespace, or a
+    /// single character, with no filter on — so clearing the field with the space bar held
+    /// down, or typing the first letter, leaves the mailbox showing rather than an empty
+    /// screen. A filter on its own is a search.
     var filter: MessageListFilter? {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return nil }
-        return MessageListFilter(query: text, scope: scope)
+        let query = query
+        guard query.hasCriteria else { return nil }
+        return MessageListFilter(
+            query: text.trimmingCharacters(in: .whitespacesAndNewlines), scope: scope, search: query)
     }
 
     var isSearching: Bool { filter != nil }
 
-    /// The store's query for what is in the field right now.
+    /// The store's query for the field, the chips and the sheet right now.
     var query: SearchQuery {
-        SearchQuery(text: text, scope: storeScope)
+        SearchQuery(text: text, scope: storeScope, flags: flags.isEmpty ? nil : flags, parameters: parameters)
+    }
+
+    // MARK: - Filters
+
+    /// Whether any chip, toggle or parameter is on — what keeps the filter bar on screen
+    /// after the field is cleared.
+    var hasActiveFilters: Bool { !flags.isEmpty || !parameters.isEmpty }
+
+    /// How many of the sheet's fields are set, for the button's label. The three chips are
+    /// visible in the bar already and are not counted again, except where the sheet shares
+    /// one ("Has attachments").
+    var activeParameterCount: Int {
+        let p = parameters
+        let fields: [Bool] = [
+            !p.subject.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+            !p.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+            p.sentAfter != nil || p.sentBefore != nil,
+            p.from.map { !$0.trimmingCharacters(in: .whitespaces).isEmpty } ?? false,
+            !p.to.isEmpty, !p.cc.isEmpty, !p.bcc.isEmpty, !p.tags.isEmpty,
+            flags.importantOnly, flags.starredOnly, flags.mentionsMeOnly,
+        ]
+        return fields.count(where: { $0 })
+    }
+
+    /// The Clear button: every chip, toggle and parameter off. The text is left alone —
+    /// Escape is what clears that.
+    func clearFilters() {
+        flags = SearchQuery.FlagFilter()
+        parameters = SearchQuery.Parameters()
+    }
+
+    /// The sheet's Search button: its draft becomes the query in one assignment, so the
+    /// list reopens its observation once rather than once per field.
+    func apply(parameters newParameters: SearchQuery.Parameters, flags newFlags: SearchQuery.FlagFilter) {
+        parameters = newParameters
+        flags = newFlags
+        isParametersSheetPresented = false
+    }
+
+    /// The tags the sheet offers for the current scope, live.
+    func tagOptions() -> StoreObservation<[SearchTagOption]> {
+        store.observeSearchTags(scope: storeScope)
+    }
+
+    /// Addresses seen in mirrored mail starting with `prefix`, for the address fields.
+    /// Empty on failure: a suggestion list is a convenience, and the field still accepts
+    /// whatever is typed.
+    func addressSuggestions(for prefix: String) async -> [SearchAddressSuggestion] {
+        do {
+            return try await store.searchAddressSuggestions(prefix: prefix)
+        } catch {
+            Self.logger.error("address suggestions failed: \(String(describing: error), privacy: .private)")
+            return []
+        }
     }
 
     /// The message list's window, opened on the search instead of the mailbox.

@@ -59,14 +59,14 @@ extension OperationDrainer {
         case .snooze:
             _ = try await client.post(
                 Endpoint.snoozeMessage(id: try messageRemoteId(item)),
-                body: try snoozeRequest(intent)
+                body: try await snoozeRequest(intent)
             )
         case .unsnooze:
             _ = try await client.post(Endpoint.unsnoozeMessage(id: try messageRemoteId(item)))
         case .snoozeThread:
             _ = try await client.post(
                 Endpoint.snoozeThread(messageId: try messageRemoteId(item)),
-                body: try snoozeRequest(intent)
+                body: try await snoozeRequest(intent)
             )
         case .unsnoozeThread:
             _ = try await client.post(Endpoint.unsnoozeThread(messageId: try messageRemoteId(item)))
@@ -79,16 +79,19 @@ extension OperationDrainer {
                 body: CreateMailboxRequest(accountId: Int(try await accountRemoteId()), name: name)
             )
             let write = try MirrorMapping.mailboxWrite(mailbox, accountId: accountId)
-            return [
-                LocalEffect(
-                    messageIds: [],
-                    rows: [
-                        .replaceMailboxRemoteId(accountId: accountId, from: placeholder, to: write.remoteId),
-                        .upsertMailbox(write),
-                        Self.placeholderMeta("mailbox", placeholder, write.remoteId),
-                    ]
-                )
+            var rows: [RowEffect] = [
+                .replaceMailboxRemoteId(accountId: accountId, from: placeholder, to: write.remoteId)
             ]
+            // The server answers with the name it was created under. A rename (or move, or
+            // subscription change) queued behind this create has already set the local row and
+            // will reach the server next; upserting this answer would show the stale name until
+            // the next refresh. Only when nothing else is waiting is the answer the freshest truth.
+            let edited = try await hasLaterOperations(after: item, targeting: placeholder, kinds: Self.mailboxEditKinds)
+            if !edited {
+                rows.append(.upsertMailbox(write))
+            }
+            rows.append(Self.placeholderMeta("mailbox", placeholder, write.remoteId))
+            return [LocalEffect(messageIds: [], rows: rows)]
         case .renameMailbox, .moveMailbox:
             _ = try await client.patch(
                 Endpoint.patchMailbox(id: Int(try await resolved(intent.targetRemoteId, "mailbox"))),
@@ -130,12 +133,12 @@ extension OperationDrainer {
                     editorMode: patch.editorMode,
                     order: patch.order,
                     showSubscribedOnly: patch.showSubscribedOnly,
-                    draftsMailboxId: remote["draftsMailboxId"].map(Int.init),
-                    sentMailboxId: remote["sentMailboxId"].map(Int.init),
-                    trashMailboxId: remote["trashMailboxId"].map(Int.init),
-                    archiveMailboxId: remote["archiveMailboxId"].map(Int.init),
-                    snoozeMailboxId: remote["snoozeMailboxId"].map(Int.init),
-                    junkMailboxId: remote["junkMailboxId"].map(Int.init),
+                    draftsMailboxId: try await deferredMailbox(remote["draftsMailboxId"]).map(Int.init),
+                    sentMailboxId: try await deferredMailbox(remote["sentMailboxId"]).map(Int.init),
+                    trashMailboxId: try await deferredMailbox(remote["trashMailboxId"]).map(Int.init),
+                    archiveMailboxId: try await deferredMailbox(remote["archiveMailboxId"]).map(Int.init),
+                    snoozeMailboxId: try await deferredMailbox(remote["snoozeMailboxId"]).map(Int.init),
+                    junkMailboxId: try await deferredMailbox(remote["junkMailboxId"]).map(Int.init),
                     signatureAboveQuote: patch.signatureAboveQuote,
                     trashRetentionDays: patch.trashRetentionDays,
                     searchBody: patch.searchBody,
@@ -467,9 +470,23 @@ extension OperationDrainer {
         return account.remoteId
     }
 
-    private func snoozeRequest(_ intent: OperationIntent) throws -> SnoozeRequest {
-        guard let until = intent.until, let destination = intent.mailboxRemoteId else { throw MailError.notFound }
+    private func snoozeRequest(_ intent: OperationIntent) async throws -> SnoozeRequest {
+        guard let until = intent.until, let mailbox = intent.mailboxRemoteId else { throw MailError.notFound }
+        let destination = try await deferredMailbox(mailbox) ?? mailbox
         return SnoozeRequest(unixTimestamp: Int(until), destMailboxId: Int(destination))
+    }
+
+    /// A mailbox server id through the placeholder map. A placeholder whose create has not
+    /// drained yet is a retry-later failure, not a drop: the operation waits for the create
+    /// and a negative id never reaches the server.
+    private func deferredMailbox(_ id: Int64?) async throws -> Int64? {
+        guard let id else { return nil }
+        guard id < 0 else { return id }
+        guard
+            let text = try await store.metaValue(forKey: Self.placeholderKey("mailbox", id)),
+            let real = Int64(text)
+        else { throw OperationError.noSuchMailbox }
+        return real
     }
 
     /// A server id, through the placeholder map when it is negative (ADR-0081).
@@ -494,6 +511,24 @@ extension OperationDrainer {
         guard label.hasPrefix(MutationQueue.placeholderLabelPrefix) else { return label }
         guard let real = try await store.metaValue(forKey: Self.labelKey(label)) else { throw MailError.notFound }
         return real
+    }
+
+    static let mailboxEditKinds: Set<OperationKind> = [
+        .renameMailbox, .moveMailbox, .setMailboxSubscribed, .setMailboxSyncInBackground, .deleteMailbox,
+    ]
+
+    /// Whether a row queued after `item` (and not folded into it) names `placeholder` as its
+    /// target, so a create's write-back must not overwrite the local effect that row applied.
+    func hasLaterOperations(
+        after item: CollapsedOperation, targeting placeholder: Int64, kinds: Set<OperationKind>
+    ) async throws -> Bool {
+        let absorbed = Set(item.absorbedIds)
+        return try await store.pendingOperations(accountId: accountId).contains { row in
+            guard let id = row.id, id > item.id, !absorbed.contains(id),
+                let kind = OperationKind(rawValue: row.kind), kinds.contains(kind)
+            else { return false }
+            return OperationPayload.decode(row.payloadJSON).intent?.targetRemoteId == placeholder
+        }
     }
 
     static func placeholderKey(_ family: String, _ placeholder: Int64) -> String {

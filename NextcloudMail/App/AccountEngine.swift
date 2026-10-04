@@ -261,9 +261,21 @@ final class AccountEngine {
         running[accountId]?.engines.outbox
     }
 
+    /// Saves a message, its attachments or one attachment to disk for one account (WS-30).
+    /// Built fresh for each use: it holds nothing but the account's client and the store.
+    func exporter(accountId: Int64) -> MessageExporter? {
+        guard let session = running[accountId]?.session else { return nil }
+        return MessageExporter(store: store, client: session.client)
+    }
+
     /// ADR-0067's on-demand results for one login: summaries, smart replies, translations.
     func serverResults(sessionId: String) -> ServerResultFetcher? {
         logins[sessionId]?.engines.results
+    }
+
+    /// ADR-0067's cached Files listings for one login, which the picker observes.
+    func files(sessionId: String) -> FilesListingSync? {
+        logins[sessionId]?.engines.files
     }
 
     /// The login's server-state mirror, for Priority inbox's follow-up check.

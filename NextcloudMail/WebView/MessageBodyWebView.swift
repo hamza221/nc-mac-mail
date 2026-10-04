@@ -111,7 +111,7 @@ struct MessageBodyWebView: NSViewRepresentable {
         func attach(_ webView: WKWebView, rendered: RenderedMessage, assetContext: MailAssetSchemeHandler.Context) {
             self.webView = webView
             self.rendered = rendered
-            handler.update(context: assetContext)
+            handler.update(contexts: [assetContext])
             installation = Task { [weak self] in
                 do {
                     let list = try await MailContentRuleList.compiled()
@@ -137,7 +137,7 @@ struct MessageBodyWebView: NSViewRepresentable {
             self.rendered = rendered
             // The handler is told what it may serve *before* the document that asks for it
             // is loaded, never after.
-            handler.update(context: assetContext)
+            handler.update(contexts: [assetContext])
             loadIfNeeded()
         }
 

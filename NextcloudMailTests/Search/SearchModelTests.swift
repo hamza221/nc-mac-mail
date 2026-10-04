@@ -117,7 +117,7 @@ struct SearchModelTests {
     }
 
     static func show(_ search: SearchModel, _ list: MessageListStore, in mailboxId: Int64) {
-        list.show(mailbox: mailboxId, view: .flat, filter: search.filter)
+        list.show(.mailbox(mailboxId), view: .flat, filter: search.filter)
     }
 
     // MARK: - What counts as a search
@@ -144,17 +144,115 @@ struct SearchModelTests {
         #expect(list.presentation == .rows)
     }
 
-    /// Prefix matching is what makes "results as you type" mean anything: the first keystroke
-    /// has to narrow the list, not wait for a whole word.
-    @Test func resultsNarrowFromTheFirstCharacter() async throws {
+    /// Prefix matching is what makes "results as you type" mean anything — but a term needs
+    /// two characters (WS-32), so the first keystroke leaves the mailbox showing and the
+    /// second narrows it.
+    @Test func resultsNarrowFromTheSecondCharacter() async throws {
         let mirror = try await Self.seed()
         let (search, list) = Self.wired(mirror)
 
-        for (text, expected) in [("h", 2), ("he", 2), ("hedgehog c", 1)] {
+        for (text, expected) in [("h", 5), ("he", 2), ("hedgehog c", 2), ("hedgehog ce", 1)] {
             search.text = text
             Self.show(search, list, in: mirror.inboxId)
             #expect(await waitUntil { list.rows.count == expected }, "\(text) gave \(list.rows.count)")
         }
+        search.text = "h"
+        #expect(search.filter == nil)
+    }
+
+    // MARK: - Filters (WS-32)
+
+    /// A chip with an empty field is a search: newest first, filtered.
+    @Test func aChipAloneIsASearch() async throws {
+        let mirror = try await Self.seed()
+        let (search, list) = Self.wired(mirror)
+        // Mark the two inbox hedgehog messages read by re-mirroring their envelopes.
+        var seen = MessageFlags()
+        seen.isSeen = true
+        for (remoteId, subject) in [(Int64(1), "Quarterly hedgehog census"), (5, "Hedgehog rescue rota")] {
+            try await mirror.store.upsert(envelopes: [
+                EnvelopeWrite(
+                    remoteId: remoteId,
+                    mailboxId: mirror.inboxId,
+                    accountId: mirror.accountId,
+                    sentAt: 1_700_000_000 + remoteId - 1,
+                    syncedAt: 1_700_000_100,
+                    subject: subject,
+                    flags: seen,
+                    fromEmail: "sookie@dragonfly.invalid",
+                    addresses: [EnvelopeAddress(kind: .from, email: "sookie@dragonfly.invalid")]
+                )
+            ])
+        }
+        search.flags.unreadOnly = true
+        #expect(search.isSearching)
+        #expect(search.filter?.search?.flags?.unreadOnly == true)
+        Self.show(search, list, in: mirror.inboxId)
+        #expect(await waitUntil { list.rows.count == 3 })
+
+        search.clearFilters()
+        #expect(search.filter == nil)
+        Self.show(search, list, in: mirror.inboxId)
+        #expect(await waitUntil { list.rows.count == 5 })
+    }
+
+    /// Changing a chip changes the filter's identity, so the list reopens its observation
+    /// even though the text did not change.
+    @Test func aChipChangesTheFilterUnderTheSameText() async throws {
+        let mirror = try await Self.seed()
+        let (search, list) = Self.wired(mirror)
+        search.text = "hedgehog"
+        let before = search.filter
+        Self.show(search, list, in: mirror.inboxId)
+        #expect(await waitUntil { list.rows.count == 2 })
+
+        search.apply(
+            parameters: SearchQuery.Parameters(subject: "rescue"),
+            flags: SearchQuery.FlagFilter()
+        )
+        #expect(search.filter != before)
+        #expect(search.activeParameterCount == 1)
+        Self.show(search, list, in: mirror.inboxId)
+        #expect(await waitUntil { list.rows.count == 1 })
+    }
+
+    @Test func theSheetsParametersReachTheQuery() async throws {
+        let mirror = try await Self.seed()
+        let (search, list) = Self.wired(mirror)
+        search.scope = .allMail
+        search.isParametersSheetPresented = true
+        search.apply(
+            parameters: SearchQuery.Parameters(from: "luke@diner.invalid"),
+            flags: SearchQuery.FlagFilter()
+        )
+        #expect(search.isParametersSheetPresented == false)
+        #expect(search.hasActiveFilters)
+        Self.show(search, list, in: mirror.inboxId)
+        #expect(await waitUntil { list.rows.count == 1 })
+        #expect(list.rows.first?.mailboxId == mirror.archiveId)
+    }
+
+    @Test func addressSuggestionsComeFromTheMirror() async throws {
+        let mirror = try await Self.seed()
+        let (search, _) = Self.wired(mirror)
+        #expect(await search.addressSuggestions(for: "lu").map(\.email) == ["luke@diner.invalid"])
+        #expect(await search.addressSuggestions(for: "l").isEmpty)
+    }
+
+    /// A day range covers both whole days, half-open at the midnight after the end.
+    @Test func dayRangeIsInclusiveOfBothDays() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = try #require(TimeZone(identifier: "Europe/Berlin"))
+        let start = try #require(calendar.date(from: DateComponents(year: 2026, month: 3, day: 28, hour: 15)))
+        let end = try #require(calendar.date(from: DateComponents(year: 2026, month: 3, day: 29, hour: 9)))
+        let range = SearchDayRange(start: start, end: end, calendar: calendar)
+        let midnight28 = try #require(calendar.date(from: DateComponents(year: 2026, month: 3, day: 28)))
+        let midnight30 = try #require(calendar.date(from: DateComponents(year: 2026, month: 3, day: 30)))
+        #expect(range.sentAfter == Int64(midnight28.timeIntervalSince1970))
+        // Across the DST change: 47 hours, not 48.
+        #expect(range.sentBefore == Int64(midnight30.timeIntervalSince1970))
+        let reopened = SearchDayRange(sentAfter: range.sentAfter, sentBefore: range.sentBefore, calendar: calendar)
+        #expect(reopened == range)
     }
 
     @Test func clearingTheFieldReturnsToTheMailbox() async throws {

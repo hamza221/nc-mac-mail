@@ -45,10 +45,21 @@ final class MailAssetSchemeHandler: NSObject, WKURLSchemeHandler {
         )
     }
 
+    /// What one request resolves to, decided before anything is read or fetched.
+    nonisolated enum Decision: Equatable, Sendable {
+        /// An inline attachment of `message`, which listed `attachmentId` as one its document
+        /// references.
+        case inlineAttachment(Context, attachmentId: String)
+        case proxiedRemoteImage
+        case refuse(MailAssetRefusal)
+    }
+
     private let store: MailStore
     private let client: MailClient
     private let server: URL
-    private var context: Context = .none
+    /// One per message in the loaded document: exactly one on screen, one per message of a
+    /// whole-thread printout ([ADR-0085](../../docs/decisions/0085-thread-mode-expands-one-message-at-a-time.md)).
+    private var contexts: [Context] = []
     /// Tasks WebKit has not stopped. Calling back into a stopped task raises an Objective-C
     /// exception, which is a crash rather than an error, so every callback is guarded.
     private var liveTasks: Set<ObjectIdentifier> = []
@@ -59,8 +70,8 @@ final class MailAssetSchemeHandler: NSObject, WKURLSchemeHandler {
         self.server = server
     }
 
-    func update(context: Context) {
-        self.context = context
+    func update(contexts: [Context]) {
+        self.contexts = contexts
     }
 
     // MARK: - WKURLSchemeHandler
@@ -79,46 +90,58 @@ final class MailAssetSchemeHandler: NSObject, WKURLSchemeHandler {
     // MARK: - Serving
 
     private func serve(_ task: any WKURLSchemeTask, key: ObjectIdentifier, url: URL?) async {
-        guard let url, let target = MailAssetURL.decode(url) else {
-            return refuse(task, key: key, because: .notAnAssetURL)
-        }
-        guard MailAssetPolicy.isOnServer(target, server: server) else {
-            return refuse(task, key: key, because: .offServer)
-        }
-        guard
-            let kind = MailAssetPolicy.classify(
-                target,
-                server: server,
-                messageRemoteId: context.remoteMessageId
-            )
-        else {
-            // `classify` refuses an attachment belonging to another message and an
-            // unrecognised path with the same nil, and the two are worth telling apart in
-            // the log without putting the URL in it.
-            let isAttachmentPath =
-                MailAssetPolicy.relativePath(of: target, server: server)?
-                .contains("/attachment/") == true
-            return refuse(task, key: key, because: isAttachmentPath ? .otherMessage : .notAnAllowedPath)
-        }
-
-        switch kind {
-        case .inlineAttachment(let attachmentId):
-            guard context.inlineAttachmentIds.contains(attachmentId) else {
-                return refuse(task, key: key, because: .unknownAttachment)
-            }
-            await serveInlineAttachment(task, key: key, url: url, attachmentId: attachmentId)
+        switch Self.decide(url, server: server, contexts: contexts) {
+        case .refuse(let refusal):
+            refuse(task, key: key, because: refusal)
+        case .inlineAttachment(let context, let attachmentId):
+            guard let url else { return refuse(task, key: key, because: .notAnAssetURL) }
+            await serveInlineAttachment(task, key: key, url: url, context: context, attachmentId: attachmentId)
         case .proxiedRemoteImage:
-            guard context.showsRemoteImages else {
-                return refuse(task, key: key, because: .remoteImagesBlocked)
+            guard let url, let target = MailAssetURL.decode(url) else {
+                return refuse(task, key: key, because: .notAnAssetURL)
             }
             await serveProxiedImage(task, key: key, url: url, target: target)
         }
+    }
+
+    /// The whole allowlist for one requested URL, as a pure function so it is testable
+    /// without a web view.
+    ///
+    /// An inline attachment is attributed to the message its own path names, and served only
+    /// when that message is in `contexts` *and* lists the attachment id. A proxied image cannot
+    /// be attributed — its URL names a remote host, not a message — so it is served when any
+    /// listed message has remote images shown. On screen there is one context and the two
+    /// rules are v1's; ADR-0085 records why a printout's weaker proxy rule still holds.
+    nonisolated static func decide(_ url: URL?, server: URL, contexts: [Context]) -> Decision {
+        guard let url, let target = MailAssetURL.decode(url) else { return .refuse(.notAnAssetURL) }
+        guard MailAssetPolicy.isOnServer(target, server: server) else { return .refuse(.offServer) }
+        var classifiedNothing = false
+        for context in contexts {
+            switch MailAssetPolicy.classify(target, server: server, messageRemoteId: context.remoteMessageId) {
+            case .inlineAttachment(let attachmentId):
+                guard context.inlineAttachmentIds.contains(attachmentId) else { return .refuse(.unknownAttachment) }
+                return .inlineAttachment(context, attachmentId: attachmentId)
+            case .proxiedRemoteImage:
+                return contexts.contains(where: \.showsRemoteImages)
+                    ? .proxiedRemoteImage : .refuse(.remoteImagesBlocked)
+            case nil:
+                classifiedNothing = true
+            }
+        }
+        // `classify` refuses an attachment belonging to another message and an unrecognised
+        // path with the same nil, and the two are worth telling apart in the log without
+        // putting the URL in it.
+        let isAttachmentPath =
+            classifiedNothing
+            && MailAssetPolicy.relativePath(of: target, server: server)?.contains("/attachment/") == true
+        return .refuse(isAttachmentPath ? .otherMessage : .notAnAllowedPath)
     }
 
     private func serveInlineAttachment(
         _ task: any WKURLSchemeTask,
         key: ObjectIdentifier,
         url: URL,
+        context: Context,
         attachmentId: String
     ) async {
         let messageId = context.localMessageId

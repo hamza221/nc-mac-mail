@@ -980,6 +980,7 @@ post ocs-message-sent.json "$OCSAPI/apps/mail/message/send" \
     "{\"accountId\":$ACCOUNT_ID,\"fromEmail\":\"$SELF_EMAIL\",\"subject\":\"Fixture OCS send\",\"body\":\"Recorded by the fixture recorder.\",\"isHtml\":false,\"to\":[{\"label\":\"Self\",\"email\":\"$SELF_EMAIL\"}]}"
 fetch references-providers.json "$OCSAPI/references/providers"
 fetch picker-search-files.json "$OCSAPI/search/providers/files/search?term=fixture"
+fetch search-providers.json "$OCSAPI/search/providers"
 fetch notifications.json "$OCSAPI/apps/notifications/api/v2/notifications"
 fetch translation-languages.json "$OCSAPI/translation/languages"
 post translation-translate.json "$OCSAPI/translation/translate" '{"text":"Hello","fromLanguage":null,"toLanguage":"de"}'
@@ -998,6 +999,13 @@ if [ -n "$FILE_HREF" ]; then
 else
     echo "  (share link skipped — no file found in the root folder)"
 fi
+
+# WS-33: exactly the PROPFIND body FilesListingSync sends, against the Files root, and a
+# folder that does not exist (the 404 a stale breadcrumb produces).
+echo "-- DAV: Files listings (WS-33)"
+WS33_FILES_PROPS='<?xml version="1.0" encoding="utf-8" ?><d:propfind xmlns:d="DAV:" xmlns:card="urn:ietf:params:xml:ns:carddav" xmlns:cal="urn:ietf:params:xml:ns:caldav" xmlns:cs="http://calendarserver.org/ns/" xmlns:oc="http://owncloud.org/ns"><d:prop><d:resourcetype/><d:getcontenttype/><d:getcontentlength/><d:getlastmodified/><oc:fileid/><oc:size/></d:prop></d:propfind>'
+dav dav-files-root-ws33.xml PROPFIND "$SERVER/remote.php/dav/files/$LOGIN/" 1 "$WS33_FILES_PROPS"
+dav dav-files-missing-ws33.xml PROPFIND "$SERVER/remote.php/dav/files/$LOGIN/ws33-no-such-folder/" 1 "$WS33_FILES_PROPS"
 
 echo
 echo "Done. Before committing:"

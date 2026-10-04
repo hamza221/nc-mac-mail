@@ -501,6 +501,62 @@ test server's limit was raised for WS-24's recording and restored afterwards.
 **Suggestion:** none for the server — the limit is sensible. Recorder authors: reuse one
 scratch book per run.
 
+### 29. No translation provider is an empty language list on one route and a 412 on the other
+
+**Found by:** WS-30, live 2026-10-04.
+`GET /ocs/v2.php/translation/languages` on a server with no provider answers 200
+`{"languages":[],"languageDetection":false}`, and `POST /ocs/v2.php/translation/translate`
+answers OCS **412** "No translation provider available". The mail app's own
+`llm_translation_enabled` is the only signal that the feature is off, and it has no
+user-readable source (server-flags.md). A client that hides Translate on an empty language
+list hides it on every server that simply lists no pairs yet; one that shows it gets a 412.
+WS-30 shows the action unless the login row says it is off, builds its language pickers from
+`Locale`, and turns the 412 into a `failed` row ("The message could not be translated").
+
+**Suggestion:** expose `llm_translation_enabled` (or the provider's presence) on a route a
+user can read, e.g. the mail preferences or capabilities.
+
+### 30. `dkimValid` is null in every mirrored body, so the web's unsubscribe gate cannot be applied
+
+**Found by:** WS-30.
+The web client shows **Unsubscribe** only when `dkimValid` is true. `GET /api/messages/{id}/body`
+leaves it null unless DKIM was verified by the separate `GET /api/messages/{id}/dkim` call,
+which a mirror would have to make once per message. WS-30 applies "not known bad"
+(`dkimValid != false`) instead and documents the deviation in ux-spec.md; the one-click
+request is still made by the server, through the queue.
+
+**Suggestion:** verify DKIM when the body is built (it is cached server-side already), or put
+the verdict on the envelope.
+
+### 31. An SMTP refusal parks the message in the outbox as status 10, with `failed` still false
+
+**Found by:** WS-27's live re-verification, 2026-10-04 (from 12:12:47Z onwards).
+Every `POST /api/outbox/{id}` to the account's own address answered **500** "Could not send
+message"; the server log has `Horde_Mime_Exception` "Insufficient system storage" (code 6) from
+`MailTransmission::send` — the relay's SMTP 452 4.3.1, Postfix's wording for a queue disk
+running low, so an upstream condition rather than a rate limit. The message stays in the
+outbox with `status` 10 (`STATUS_SMPT_SEND_FAIL`) and `failed: false`, and cron retries it
+against the same relay. The client behaves as designed: the draft row is gone once
+`from-draft` succeeded, the failure is logged, and the mirrored Outbox shows the message.
+`ComposerLiveTests` deletes its own parked message and cancels with this reason when it sees
+status 10, so delivery is unverifiable rather than red while the relay refuses.
+
+**Suggestion:** set `failed` (or expose the SMTP reply) when the transport refuses, so a
+client can tell "will retry" from "the relay said no" without knowing the status table.
+
+### 32. `GET /api/mailboxes/{id}/messages` answers 409 while any sync of the mailbox runs
+
+**Found by:** WS-27's live re-verification.
+`MailSearch::findMessages` throws `MailboxLockedException` (409, "{id} is already being
+synced") whenever the mailbox holds any of its three sync locks — including one taken by a
+different client or the background job, for up to `Mailbox::LOCK_TIMEOUT`. A read that does
+not touch IMAP is refused because a writer is busy, and nothing (no `Retry-After`) says when to
+ask again. Right after a send, the client's own sync of Sent and a test's probe of Sent collide
+this way; the live tests now treat 409 as "ask again".
+
+**Suggestion:** serve the cached list while a sync runs (it is consistent per transaction), or
+answer with `Retry-After`.
+
 ## Deliberate behaviour that looks like a bug, and should be documented as deliberate
 
 ### 14. The 1x1 tracking pixel is unrecoverable, which is right

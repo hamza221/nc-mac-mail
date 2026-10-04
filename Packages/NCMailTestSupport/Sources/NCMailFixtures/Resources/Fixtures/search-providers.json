@@ -1,0 +1,196 @@
+{
+  "ocs": {
+    "meta": {
+      "status": "ok",
+      "statuscode": 200,
+      "message": "OK"
+    },
+    "data": [
+      {
+        "id": "appstore",
+        "appId": "appstore",
+        "name": "Apps",
+        "icon": "/core/img/appstore.svg",
+        "order": -50,
+        "isExternalProvider": false,
+        "triggers": [
+          "appstore"
+        ],
+        "filters": {
+          "term": "string"
+        },
+        "inAppSearch": false
+      },
+      {
+        "id": "files",
+        "appId": "files",
+        "name": "Files",
+        "icon": "/apps/files/img/app.svg",
+        "order": 5,
+        "isExternalProvider": false,
+        "triggers": [
+          "files"
+        ],
+        "filters": {
+          "term": "string",
+          "since": "datetime",
+          "until": "datetime",
+          "person": "person",
+          "min-size": "int",
+          "max-size": "int",
+          "mime": "string",
+          "type": "string",
+          "path": "string",
+          "is-favorite": "bool",
+          "title-only": "bool"
+        },
+        "inAppSearch": false
+      },
+      {
+        "id": "systemtags",
+        "appId": "systemtags",
+        "name": "Tags",
+        "icon": "/apps/systemtags/img/app.svg",
+        "order": 6,
+        "isExternalProvider": false,
+        "triggers": [
+          "systemtags"
+        ],
+        "filters": {
+          "term": "string"
+        },
+        "inAppSearch": false
+      },
+      {
+        "id": "circles",
+        "appId": "circles",
+        "name": "Teams",
+        "icon": "/apps-extra/circles/img/circles.svg",
+        "order": 9,
+        "isExternalProvider": false,
+        "triggers": [
+          "circles"
+        ],
+        "filters": {
+          "term": "string"
+        },
+        "inAppSearch": false
+      },
+      {
+        "id": "comments",
+        "appId": "comments",
+        "name": "Comments",
+        "icon": "/apps/comments/img/comments.svg",
+        "order": 10,
+        "isExternalProvider": false,
+        "triggers": [
+          "comments"
+        ],
+        "filters": {
+          "term": "string"
+        },
+        "inAppSearch": false
+      },
+      {
+        "id": "mail",
+        "appId": "mail",
+        "name": "Mails",
+        "icon": "/apps/mail/img/mail.svg",
+        "order": 20,
+        "isExternalProvider": false,
+        "triggers": [
+          "mail"
+        ],
+        "filters": {
+          "term": "string",
+          "since": "datetime",
+          "until": "datetime",
+          "person": "person"
+        },
+        "inAppSearch": false
+      },
+      {
+        "id": "contacts",
+        "appId": "dav",
+        "name": "Contacts",
+        "icon": "/apps/contacts/img/contacts.svg",
+        "order": 25,
+        "isExternalProvider": false,
+        "triggers": [
+          "contacts"
+        ],
+        "filters": {
+          "term": "string",
+          "since": "datetime",
+          "until": "datetime",
+          "person": "person",
+          "title-only": "bool"
+        },
+        "inAppSearch": false
+      },
+      {
+        "id": "calendar",
+        "appId": "dav",
+        "name": "Events",
+        "icon": "/apps/calendar/img/calendar.svg",
+        "order": 30,
+        "isExternalProvider": false,
+        "triggers": [
+          "calendar"
+        ],
+        "filters": {
+          "term": "string",
+          "person": "person",
+          "since": "datetime",
+          "until": "datetime"
+        },
+        "inAppSearch": false
+      },
+      {
+        "id": "search-poll",
+        "appId": "polls",
+        "name": "Polls",
+        "icon": "/apps/polls/img/polls.svg",
+        "order": 51,
+        "isExternalProvider": false,
+        "triggers": [
+          "search-poll"
+        ],
+        "filters": {
+          "term": "string"
+        },
+        "inAppSearch": false
+      },
+      {
+        "id": "kudos-boards",
+        "appId": "kudos",
+        "name": "Kudos",
+        "icon": "/apps/kudos/img/app.svg",
+        "order": 60,
+        "isExternalProvider": false,
+        "triggers": [
+          "kudos-boards"
+        ],
+        "filters": {
+          "term": "string"
+        },
+        "inAppSearch": false
+      },
+      {
+        "id": "settings",
+        "appId": "settings",
+        "name": "Settings",
+        "icon": "/apps/settings/img/settings.svg",
+        "order": 500,
+        "isExternalProvider": false,
+        "triggers": [
+          "settings"
+        ],
+        "filters": {
+          "term": "string"
+        },
+        "inAppSearch": false
+      }
+    ]
+  }
+}

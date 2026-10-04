@@ -43,6 +43,17 @@ final class TriageContext {
     var canPrintMessage: (@MainActor () -> Bool)?
     /// `⌘F` and `⌘⇧F`. WS-11's, and absent from the menu bar until it is wired.
     var search: (@MainActor (MessageListFilter.Scope) -> Void)?
+    /// Opens a composer window. Filled by ``View/triagePresentations(_:)``, which can read
+    /// `@Environment(\.openComposer)` where this object cannot.
+    var openComposer: (@MainActor (ComposeRequest) -> Void)?
+
+    /// The sheet the main window is showing for a triage action, if any. Set by the menu
+    /// bar, the toolbar and the context menu alike; presented by `.triagePresentations`.
+    var presentation: TriagePresentation?
+
+    /// The selection's account's quick actions that its mailboxes' ACLs allow (§4.4), for
+    /// the Quick Actions submenu. Refreshed with the availability.
+    private(set) var quickActions: [RunnableQuickAction] = []
 
     private let store: MailStore
     private static let logger = Logger(subsystem: "com.nextcloud.mail.macos", category: "triage")
@@ -52,21 +63,31 @@ final class TriageContext {
         actions = MessageActions(store: store)
     }
 
-    /// Where the selection can move to: every folder of its account that can hold a message.
+    /// Where the selection can move to: every folder of its account that can hold a message
+    /// and grants the `i` right (§4.7: "Move lists ACL i folders only").
     ///
     /// Empty when the selection spans two accounts, because a folder belongs to one of them
     /// and half a move is worse than none. ``isEnabled(_:)`` has already disabled the button
     /// in that case, with the reason in its tooltip.
     func moveDestinations() async -> [MoveDestination] {
+        guard let tree = await moveTree() else { return [] }
+        return tree.nodes.flatMap { $0.destinations() }.filter { tree.pickable.contains($0.id) }
+    }
+
+    /// The selection's account's mailbox tree for the move picker, and which of its rows can
+    /// take a message: selectable, subscribed and granting `i`.
+    func moveTree() async -> MoveTree? {
         guard actions.selectionAccountIds.count == 1, let accountId = actions.selectionAccountIds.first else {
-            return []
+            return nil
         }
         do {
             let records = try await store.mailboxes(accountId: accountId)
-            return MailboxTree.build(from: records.map(\.treeRow)).flatMap { $0.destinations() }
+            let pickable = Set(
+                records.filter { $0.isSelectable && MailboxRights(mailbox: $0).canInsert }.map(\.id))
+            return MoveTree(nodes: MailboxTree.build(from: records.map(\.treeRow)), pickable: pickable)
         } catch {
             Self.logger.error("could not read move destinations: \(String(describing: error), privacy: .public)")
-            return []
+            return nil
         }
     }
 
@@ -99,14 +120,37 @@ final class TriageContext {
         case .search, .searchAllMail: search != nil
         case .markAllRead: navigation?.selectedMailboxID != nil
         case .previousMessage, .nextMessage: listStore.map { !$0.rows.isEmpty } ?? false
+        case .compose: openComposer != nil
+        case .forwardAsAttachment, .editAsNew:
+            openComposer != nil && hasSelection && availability(of: action).isAvailable
         default: hasSelection && availability(of: action).isAvailable
         }
+    }
+
+    /// Junk's menu title, which follows the web's toggle: "Mark Not Junk" when every selected
+    /// message is already junk.
+    var junkTitle: String {
+        actions.selectionIsJunk ? String(localized: "Mark Not Junk") : TriageAction.junk.title
     }
 
     /// Runs one action. The single entry point the toolbar, the context menu and the menu bar
     /// share, so a key and a button cannot end up doing different things.
     func perform(_ action: TriageAction) async {
-        let selection = selection
+        await perform(action, selection: selection)
+    }
+
+    /// The same, on rows that are not the selection — the list's hover buttons act on the
+    /// row under the pointer without selecting it (which would open it and mark it read).
+    func perform(_ action: TriageAction, on ids: Set<Int64>) async {
+        let rows = listStore?.rows ?? []
+        await perform(
+            action,
+            selection: Selection(
+                ids: ids, orderedBy: rows, scope: Selection.scope(for: navigation?.listView ?? .threaded))
+        )
+    }
+
+    private func perform(_ action: TriageAction, selection: Selection) async {
         switch action {
         case .archive: await actions.archive(selection)
         case .delete: await actions.delete(selection)
@@ -123,20 +167,67 @@ final class TriageContext {
         case .searchAllMail: search?(.allMail)
         case .previousMessage: step(-1)
         case .nextMessage: step(1)
-        case .move:
-            // The destination comes from the menu, so there is nothing to do without one.
-            Self.logger.error("move performed with no destination")
+        case .move: presentation = .move(selection)
+        case .editTags:
+            guard let accountId = await singleAccount(of: selection) else { return }
+            presentation = .tags(selection, accountId: accountId)
+        case .snooze: presentation = .customSnooze(selection)
+        case .unsnooze: await actions.unsnooze(selection)
+        case .quickAction:
+            // The action comes from the submenu, so there is nothing to do without one.
+            Self.logger.error("quick action performed with no action")
+        case .compose:
+            openComposer?(.new(accountId: await composeAccountId(), mailto: nil))
+        case .forwardAsAttachment:
+            guard !selection.isEmpty else { return }
+            let ids = (try? await actions.expanded(selection).map(\.id)) ?? selection.messageIds
+            openComposer?(.forward(messageIds: ids, asAttachment: true))
+        case .editAsNew:
+            guard let id = selection.messageIds.first else { return }
+            openComposer?(.editAsNew(messageId: id))
         }
+    }
+
+    func snooze(until date: Date) async {
+        await actions.snooze(selection, until: Int64(date.timeIntervalSince1970))
+    }
+
+    func snooze(_ selection: Selection, until date: Date) async {
+        await actions.snooze(selection, until: Int64(date.timeIntervalSince1970))
+    }
+
+    func run(_ quickAction: RunnableQuickAction) async {
+        await actions.run(quickAction, on: selection)
+    }
+
+    /// The account a new message starts from: the open mailbox's, as the web preselects it;
+    /// nil (the composer's default) in the unified views.
+    private func composeAccountId() async -> Int64? {
+        guard let mailboxId = navigation?.selectedMailboxID else { return nil }
+        return try? await store.mailbox(id: mailboxId)?.accountId
+    }
+
+    private func singleAccount(of selection: Selection) async -> Int64? {
+        let records = (try? await actions.records(for: selection.messageIds)) ?? []
+        let accounts = Set(records.map(\.accountId))
+        return accounts.count == 1 ? accounts.first : nil
     }
 
     func move(to mailboxId: Int64) async {
         await actions.move(selection, to: mailboxId)
     }
 
-    /// Keeps the availability of the three actions that can be refused in step with the
-    /// selection. Called from `.task(id:)`, because every answer is a database read.
+    func move(_ selection: Selection, to mailboxId: Int64) async {
+        await actions.move(selection, to: mailboxId)
+    }
+
+    /// Keeps the availability of the actions that can be refused, and the quick actions the
+    /// selection allows, in step with the selection. Called from `.task(id:)`, because every
+    /// answer is a database read.
     func refreshAvailability() async {
+        let selection = selection
         await actions.refreshAvailability(for: selection)
+        quickActions = selection.isEmpty ? [] : await actions.quickActions(for: selection)
     }
 
     /// The rows a right-click landed on. Inside the current selection, the selection stands

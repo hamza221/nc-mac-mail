@@ -30,7 +30,7 @@ struct MessageListStoreTests {
         let mirror = try await Self.mirrorWithTen()
         let model = MessageListStore(store: mirror.store)
 
-        model.show(mailbox: mirror.mailboxId, view: .flat)
+        model.show(.mailbox(mirror.mailboxId), view: .flat)
         #expect(await waitUntil { model.rows.count == 10 })
         // Newest first, which is what `idxMessageMailboxSent` is walked for.
         #expect(model.rows.map(\.sentAt) == (1...10).reversed().map { 1_700_000_000 + Int64($0) })
@@ -43,7 +43,7 @@ struct MessageListStoreTests {
         let mirror = try await Self.mirrorWithTen()
         let model = MessageListStore(store: mirror.store)
 
-        model.show(mailbox: mirror.mailboxId, view: .flat)
+        model.show(.mailbox(mirror.mailboxId), view: .flat)
         #expect(await waitUntil { !model.rows.isEmpty })
         let newest = try #require(model.rows.first)
         #expect(newest.remoteId == 10)
@@ -54,7 +54,7 @@ struct MessageListStoreTests {
     func rowsUpdateLiveWhenSyncWrites() async throws {
         let mirror = try await Self.mirrorWithTen()
         let model = MessageListStore(store: mirror.store)
-        model.show(mailbox: mirror.mailboxId, view: .flat)
+        model.show(.mailbox(mirror.mailboxId), view: .flat)
         #expect(await waitUntil { model.rows.count == 10 })
         #expect(try #require(model.rows.first).isSeen == false)
 
@@ -81,11 +81,11 @@ struct MessageListStoreTests {
         try await mirror.finishEnumerating()
         let model = MessageListStore(store: mirror.store)
 
-        model.show(mailbox: mirror.mailboxId, view: .flat)
+        model.show(.mailbox(mirror.mailboxId), view: .flat)
         #expect(await waitUntil { model.rows.count == 4 })
         #expect(model.rows.allSatisfy { $0.threadCount == 1 })
 
-        model.show(mailbox: mirror.mailboxId, view: .threaded)
+        model.show(.mailbox(mirror.mailboxId), view: .threaded)
         #expect(await waitUntil { model.rows.count == 2 })
         let thread = try #require(model.rows.first { $0.threadRootId != nil })
         #expect(thread.threadCount == 3)
@@ -104,7 +104,7 @@ struct MessageListStoreTests {
         try await mirror.finishEnumerating()
         let model = MessageListStore(store: mirror.store)
 
-        model.show(mailbox: mirror.mailboxId, view: .flat)
+        model.show(.mailbox(mirror.mailboxId), view: .flat)
         #expect(await waitUntil { model.rows.count == MessageListStore.initialWindow })
         #expect(model.hasMore)
         let newestBefore = try #require(model.rows.first).id
@@ -125,7 +125,7 @@ struct MessageListStoreTests {
     func loadMoreAtTheTailIsANoOp() async throws {
         let mirror = try await Self.mirrorWithTen()
         let model = MessageListStore(store: mirror.store)
-        model.show(mailbox: mirror.mailboxId, view: .flat)
+        model.show(.mailbox(mirror.mailboxId), view: .flat)
         #expect(await waitUntil { model.rows.count == 10 })
 
         model.loadMore()
@@ -144,10 +144,10 @@ struct MessageListStoreTests {
         try await mirror.finishEnumerating(mailbox: second)
         let model = MessageListStore(store: mirror.store)
 
-        model.show(mailbox: mirror.mailboxId, view: .flat)
+        model.show(.mailbox(mirror.mailboxId), view: .flat)
         #expect(await waitUntil { model.rows.count == 10 })
 
-        model.show(mailbox: second, view: .flat)
+        model.show(.mailbox(second), view: .flat)
         #expect(await waitUntil { model.rows.count == 1 })
 
         // A write to the mailbox that is no longer shown. If its observation were still
@@ -163,11 +163,11 @@ struct MessageListStoreTests {
     func showIsIdempotent() async throws {
         let mirror = try await Self.mirrorWithTen()
         let model = MessageListStore(store: mirror.store)
-        model.show(mailbox: mirror.mailboxId, view: .flat)
+        model.show(.mailbox(mirror.mailboxId), view: .flat)
         #expect(await waitUntil { model.rows.count == 10 })
         model.loadMore()
 
-        model.show(mailbox: mirror.mailboxId, view: .flat)
+        model.show(.mailbox(mirror.mailboxId), view: .flat)
         // The window was not reset, and the rows were not cleared and refetched.
         #expect(model.rows.count == 10)
         #expect(model.selection.isEmpty)
@@ -177,7 +177,7 @@ struct MessageListStoreTests {
     func stopEndsTheObservation() async throws {
         let mirror = try await Self.mirrorWithTen()
         let model = MessageListStore(store: mirror.store)
-        model.show(mailbox: mirror.mailboxId, view: .flat)
+        model.show(.mailbox(mirror.mailboxId), view: .flat)
         #expect(await waitUntil { model.rows.count == 10 })
 
         model.stop()
@@ -193,7 +193,7 @@ struct MessageListStoreTests {
     func selectionPublishesCleanly() async throws {
         let mirror = try await Self.mirrorWithTen()
         let model = MessageListStore(store: mirror.store)
-        model.show(mailbox: mirror.mailboxId, view: .flat)
+        model.show(.mailbox(mirror.mailboxId), view: .flat)
         #expect(await waitUntil { model.rows.count == 10 })
 
         let newest = try #require(model.rows.first)
@@ -216,11 +216,11 @@ struct MessageListStoreTests {
         let mirror = try await Self.mirrorWithTen()
         let second = try await mirror.addMailbox(remoteId: 1006, name: "Archive")
         let model = MessageListStore(store: mirror.store)
-        model.show(mailbox: mirror.mailboxId, view: .flat)
+        model.show(.mailbox(mirror.mailboxId), view: .flat)
         #expect(await waitUntil { model.rows.count == 10 })
         model.selection = Set(model.rows.prefix(3).map(\.id))
 
-        model.show(mailbox: second, view: .flat)
+        model.show(.mailbox(second), view: .flat)
         #expect(model.selection.isEmpty)
         #expect(model.focusedMessageId == nil)
     }
@@ -231,7 +231,7 @@ struct MessageListStoreTests {
     func noMailboxSelected() async throws {
         let mirror = try await Self.mirrorWithTen()
         let model = MessageListStore(store: mirror.store)
-        model.show(mailbox: nil, view: .flat)
+        model.show(nil, view: .flat)
         #expect(model.presentation == .noMailboxSelected)
         #expect(model.rows.isEmpty)
     }
@@ -241,7 +241,7 @@ struct MessageListStoreTests {
         let mirror = try await MessageListMirror.seed()
         let model = MessageListStore(store: mirror.store)
 
-        model.show(mailbox: mirror.mailboxId, view: .flat)
+        model.show(.mailbox(mirror.mailboxId), view: .flat)
         #expect(await waitUntil { model.presentation == .mirroring })
         #expect(model.isMirroring)
 
@@ -256,7 +256,7 @@ struct MessageListStoreTests {
         let model = MessageListStore(store: mirror.store)
         model.isOffline = true
 
-        model.show(mailbox: mirror.mailboxId, view: .flat)
+        model.show(.mailbox(mirror.mailboxId), view: .flat)
         #expect(await waitUntil { model.presentation == .notDownloaded })
     }
 
@@ -266,7 +266,7 @@ struct MessageListStoreTests {
         let model = MessageListStore(store: mirror.store)
         model.isOffline = true
 
-        model.show(mailbox: mirror.mailboxId, view: .flat)
+        model.show(.mailbox(mirror.mailboxId), view: .flat)
         #expect(await waitUntil { model.rows.count == 10 })
         #expect(model.presentation == .rows)
 
@@ -280,7 +280,7 @@ struct MessageListStoreTests {
         try await mirror.addMessages(sentAt: [1_700_000_001, 1_700_000_002])
         let model = MessageListStore(store: mirror.store)
 
-        model.show(mailbox: mirror.mailboxId, view: .flat)
+        model.show(.mailbox(mirror.mailboxId), view: .flat)
         #expect(await waitUntil { model.rows.count == 2 })
         #expect(model.presentation == .rows)
         // The rows land before the mailbox row does — two observations, and the one the list
@@ -298,7 +298,7 @@ struct MessageListStoreTests {
         let mirror = try await Self.mirrorWithTen()
         let model = MessageListStore(store: mirror.store)
 
-        model.show(mailbox: mirror.mailboxId, view: .flat, filter: MessageListFilter(query: "risotto"))
+        model.show(.mailbox(mirror.mailboxId), view: .flat, filter: MessageListFilter(query: "risotto"))
         #expect(model.rows.isEmpty)
         #expect(model.presentation == .noResults("risotto"))
     }
@@ -314,11 +314,11 @@ struct MessageListStoreTests {
             store.observeMessages(mailboxId: mailboxId, view: .flat, range: 0..<min(range.upperBound, 3))
         }
 
-        model.show(mailbox: mailboxId, view: .flat, filter: MessageListFilter(query: "redacted"))
+        model.show(.mailbox(mailboxId), view: .flat, filter: MessageListFilter(query: "redacted"))
         #expect(await waitUntil { model.rows.count == 3 })
         #expect(model.presentation == .rows)
 
-        model.show(mailbox: mailboxId, view: .flat, filter: nil)
+        model.show(.mailbox(mailboxId), view: .flat, filter: nil)
         #expect(await waitUntil { model.rows.count == 10 })
     }
 
@@ -329,14 +329,14 @@ struct MessageListStoreTests {
         let mirror = try await Self.mirrorWithTen()
         let model = MessageListStore(store: mirror.store)
 
-        model.show(mailbox: mirror.mailboxId, view: .flat)
+        model.show(.mailbox(mirror.mailboxId), view: .flat)
         #expect(await waitUntil { model.rows.count == 10 })
         #expect(model.sections.reduce(0) { $0 + $1.rows.count } == model.rows.count)
         // 2023-11-14 by anybody's calendar, so one bucket holds all ten.
         #expect(model.sections.count == 1)
-        #expect(model.sections.first?.group == .earlier)
+        #expect(model.sections.first?.dateGroup == .year(2023))
 
-        model.show(mailbox: nil, view: .flat)
+        model.show(nil, view: .flat)
         #expect(model.sections.isEmpty)
     }
 }

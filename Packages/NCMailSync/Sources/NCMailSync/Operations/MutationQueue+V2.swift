@@ -120,21 +120,30 @@ extension MutationQueue {
             return units
 
         case .unsnooze(let messageIds):
+            let sources = try await unsnoozeSources(messageIds, accountId: accountId)
             var units: [Unit] = []
             for messageId in messageIds {
                 guard let message = try await store.message(id: messageId), message.accountId == accountId else {
                     continue
                 }
                 let previous = try await store.snoozeUntil(messageId: messageId)
+                let target = (sources.perMessage[message.id] ?? sources.inbox).flatMap {
+                    $0 == message.mailboxId ? nil : $0
+                }
                 var payload = OperationPayload(intent: OperationIntent())
                 payload.before = OperationSnapshot(
                     messageIds: [message.id],
+                    mailboxIds: target == nil ? [:] : [message.id: message.mailboxId],
                     rows: RowSnapshot(snoozeUntil: previous.map { [message.id: $0] } ?? [:])
                 )
                 units.append(
                     Unit(
                         record: record(kind: .unsnooze, accountId: accountId, message: message, payload: payload),
-                        effect: LocalEffect(messageIds: [], rows: [.setSnooze(messageIds: [message.id], until: nil)])
+                        effect: LocalEffect(
+                            messageIds: target == nil ? [] : [message.id],
+                            mailboxId: target,
+                            rows: [.setSnooze(messageIds: [message.id], until: nil)]
+                        )
                     )
                 )
             }
@@ -146,7 +155,14 @@ extension MutationQueue {
                 rootId: rootId, accountId: accountId, until: until, destination: destination)
 
         case .unsnoozeThread(let rootId):
-            return try await snoozeThreadUnit(rootId: rootId, accountId: accountId, until: nil, destination: nil)
+            let members = try await store.threadMessages(accountId: accountId, rootId: rootId)
+            guard let anchor = members.first else { return [] }
+            // One effect moves to one mailbox: the anchor's source. A thread snoozed from
+            // several folders is put right by the next sync.
+            let sources = try await unsnoozeSources(members.map(\.id), accountId: accountId)
+            return try await snoozeThreadUnit(
+                rootId: rootId, accountId: accountId, until: nil, destination: nil,
+                unsnoozeTarget: sources.perMessage[anchor.id] ?? sources.inbox)
 
         // MARK: Mailboxes
         case .createMailbox(let name):
@@ -667,7 +683,8 @@ extension MutationQueue {
         rootId: String,
         accountId: Int64,
         until: Int64?,
-        destination: MailboxRecord?
+        destination: MailboxRecord?,
+        unsnoozeTarget: Int64? = nil
     ) async throws -> [Unit] {
         let members = try await store.threadMessages(accountId: accountId, rootId: rootId)
         guard let anchor = members.first else { return [] }
@@ -680,9 +697,10 @@ extension MutationQueue {
             destinationMailboxId: destination?.id,
             intent: OperationIntent(mailboxId: destination?.id, until: until, mailboxRemoteId: destination?.remoteId)
         )
+        let moveTo = destination?.id ?? unsnoozeTarget
         payload.before = OperationSnapshot(
             messageIds: ids,
-            mailboxIds: destination == nil
+            mailboxIds: moveTo == nil
                 ? [:] : Dictionary(members.map { ($0.id, $0.mailboxId) }, uniquingKeysWith: { first, _ in first }),
             rows: RowSnapshot(snoozeUntil: snoozed)
         )
@@ -696,12 +714,33 @@ extension MutationQueue {
             Unit(
                 record: row,
                 effect: LocalEffect(
-                    messageIds: destination == nil ? [] : ids,
-                    mailboxId: destination?.id,
+                    messageIds: moveTo == nil ? [] : ids,
+                    mailboxId: moveTo,
                     rows: [.setSnooze(messageIds: ids, until: until)]
                 )
             )
         ]
+    }
+
+    /// Where an unsnooze puts messages back, as the server does
+    /// (`SnoozeService::unSnoozeMessage`): the mailbox a still-queued snooze took each one
+    /// from (the earliest, so a re-snooze does not count), else the account's inbox.
+    private func unsnoozeSources(
+        _ messageIds: [Int64], accountId: Int64
+    ) async throws -> (perMessage: [Int64: Int64], inbox: Int64?) {
+        let wanted = Set(messageIds)
+        var perMessage: [Int64: Int64] = [:]
+        for row in try await store.pendingOperations(accountId: accountId) {
+            guard let kind = OperationKind(rawValue: row.kind), kind == .snooze || kind == .snoozeThread else {
+                continue
+            }
+            for (messageId, mailboxId) in OperationPayload.decode(row.payloadJSON).before.mailboxIds
+            where wanted.contains(messageId) && perMessage[messageId] == nil {
+                perMessage[messageId] = mailboxId
+            }
+        }
+        let inbox = try await store.mailboxes(accountId: accountId).first { $0.specialRole == "inbox" }?.id
+        return (perMessage, inbox)
     }
 
     // MARK: - Lookups

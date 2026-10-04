@@ -25,8 +25,9 @@ public actor ServerResultFetcher {
     let now: @Sendable () -> Int64
 
     private var loginId: Int64?
-    private var conditions = MirrorConditions()
-    private var inFlight: [String: Task<Void, Never>] = [:]
+    // Internal, not private: the Smart Picker extension shares the door and the joins.
+    var conditions = MirrorConditions()
+    var inFlight: [String: Task<Void, Never>] = [:]
 
     public init(
         store: MailStore,
@@ -79,7 +80,7 @@ public actor ServerResultFetcher {
         }
     }
 
-    private func finished(_ id: String) {
+    func finished(_ id: String) {
         inFlight.removeValue(forKey: id)
     }
 
@@ -166,6 +167,10 @@ public actor ServerResultFetcher {
             let message = try await remoteMessageId(key)
             let check = try await client.post(.followUpCheck, body: FollowUpCheckRequest(messageIds: [message]))
             return .ready(.object(["wasFollowedUp": .bool(check.data.wasFollowedUp.contains(message))]))
+
+        case .messageSource:
+            let message = try await remoteMessageId(key)
+            return .ready(.object(["source": .string(try await client.get(.messageSource(id: message)).source)]))
         }
     }
 
@@ -198,7 +203,7 @@ public actor ServerResultFetcher {
         return Int(message.remoteId)
     }
 
-    private func resolveLoginId() async throws -> Int64 {
+    func resolveLoginId() async throws -> Int64 {
         if let loginId { return loginId }
         guard let id = try await store.ensureLogin(identity).id else { throw ServerResultError.unknownKey }
         loginId = id
@@ -206,8 +211,8 @@ public actor ServerResultFetcher {
     }
 }
 
-/// The quota row's data: `{"usage", "limit"}` in KiB as the server reports them, a limit
-/// of 0 meaning the IMAP server set none.
+/// The quota row's data: `{"usage", "limit"}` in bytes (the server multiplies IMAP's KiB by
+/// 1024 in `MailManager::getQuota`), a limit of 0 meaning the IMAP server set none.
 func quotaPayload(_ quota: Quota) -> ServerResultPayload {
     .ready(.object(["usage": .int(quota.usage), "limit": .int(quota.limit)]))
 }

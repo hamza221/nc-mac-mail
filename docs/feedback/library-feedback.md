@@ -1161,3 +1161,182 @@ needs Local Network permission the test host app never gets a prompt for. Resolv
 dev stack: nginx and `trusted_domains` now also accept `localhost` and `127.0.0.1`, so
 app-hosted live tests use `NCMAIL_LIVE_SHELL=http://localhost` (also `TEST_RUNNER_`-prefixed
 for xcodebuild); the package tests can keep `nextcloud.local`.
+
+## WS-32 — Search parity
+
+### `NCChip` has no selectable (toggle) form
+**Workstream:** WS-32 · **Component:** NextcloudUI `NCChip` · **Severity:** friction
+**Where:** `NextcloudMail/Views/Search/SearchFilterBar.swift` (`SearchToggleChip`)
+The search filter chips (Has attachment, Unread, To me) are on/off filters, the web client's
+`NcChip` with a selected state. `NCChip` is a display token only — a role, a tint and an
+optional remove button — so the app wraps it in a plain `Button`, swaps `.primary`/`.neutral`
+by hand and adds the `.isSelected` trait itself. An `NCChip(_:isOn:)` (or an
+`NCFilterChip`) owning the role swap, the selected trait and keyboard focus would replace the
+wrapper.
+
+## WS-33 — Files picker
+
+### No file-type icons in the symbol catalogue
+**Workstream:** WS-33 · **Component:** NextcloudUI `NCSymbol` · **Severity:** friction
+**Where:** `NextcloudMail/MailSymbol.swift` (`.file`, `.imageFile`, `.reload`)
+A Files browser needs a generic file glyph, an image-file glyph and a refresh glyph. The
+catalogue has `folder`/`folderOutline`/`folderUpload` but no `file-outline`,
+`file-image-outline` or `refresh`, so the app names those MDI assets and lives on the SF
+Symbol fallback. Bundling the MDI file-type set (file, image, pdf, document, spreadsheet,
+audio, video, archive) would let every Files surface match the web client's icons.
+
+### No list/browser row with a selection-disabled look
+**Workstream:** WS-33 · **Component:** NextcloudUI `NCListItem` · **Severity:** friction
+**Where:** `NextcloudMail/Views/Files/FilesPicker.swift`
+"Choose a folder" mode lists files dimmed and unselectable. `NCListItem` has no disabled
+state, so the picker applies `.opacity(0.5)` itself. An `isEnabled`-aware style (the web
+`NcListItem` greys disabled rows with the theme's disabled colour) would remove the magic
+number. `NCBreadcrumbs` fitted the picker without changes.
+
+## WS-28 — Sidebar and mailbox management
+
+### `NCNavigationItem` takes one count; Nextcloud's sidebar shows "3 (5)"
+**Workstream:** WS-28 · **Component:** `NCNavigationItem`, `NCCounterBubble` · **Severity:** friction
+**Where:** NextcloudMail/Views/Sidebar/SidebarView.swift (`MailboxTreeRowView.label`)
+The web navigation draws a folder's own unread and, in brackets, its subfolders' total in one
+`NcCounterBubble`. `NCNavigationItem(count: Int)` and `NCCounterBubble(count: Int)` take one
+integer, so the row puts a second `NCCounterBubble(role: .outlined)` after the item, outside
+its layout. A `secondaryCount:` on both (drawn "3 (5)" inside one pill) would keep the row
+one component.
+
+### `NCNavigationItem` has no drop-target state
+**Workstream:** WS-28 · **Component:** `NCNavigationItem` · **Severity:** polish
+**Where:** NextcloudMail/Views/Sidebar/SidebarView.swift (`.dropDestination … isTargeted`)
+Message drags onto folders need the targeted highlight; the row paints its own
+`theme.colors.primarySurface` rounded background behind the item. An `isTargeted` (or
+`highlighted`) parameter would make every sidebar drop target look the same.
+
+### `NCUserPicker` needs candidates nobody can supply yet
+**Workstream:** WS-28 · **Component:** `NCUserPicker` · **Severity:** friction
+**Where:** NextcloudMail/Views/Sidebar/DelegationSheet.swift
+Delegation picks one Nextcloud user. `NCUserPicker` filters a candidate list it is handed,
+which suits recipients but not a server-side user search with debounce; the sheet takes a user
+ID in a `TextField` instead. A search-driven variant (`search: (String) async -> [Candidate]`)
+would fit share sheets and delegation alike.
+
+## WS-26 — People: suggestions and contact cards
+
+### `NCPasteboard` is unreachable from `NextcloudUI`
+**Workstream:** WS-26 · **Component:** `NCPasteboard` (`NextcloudPlatform`) · **Severity:** friction
+**Where:** NextcloudMail/Views/People/ContactCardPopover.swift (`copy(_:)`)
+"Copy address" wanted `NCPasteboard.copy`, but `NextcloudUI` re-exports only
+`NextcloudDesign` and `NextcloudIcons`, and the app links only the `NextcloudUI` product, so
+the card writes `NSPasteboard` itself. Re-exporting `NextcloudPlatform` (or shipping it as part
+of `NextcloudUI`) would let every app copy text the same way.
+
+### `NCProfileCard` secondary lines cannot be selected
+**Workstream:** WS-26 · **Component:** `NCProfileCard` · **Severity:** polish
+**Where:** NextcloudMail/Views/People/ContactCardPopover.swift
+The card fits the §5.11 contact popover exactly, but its `secondaryLines` are plain `Text`, so
+the address under the name cannot be selected and the card needs its own "Copy address"
+button. A `selectableSecondaryLines` flag (`.textSelection(.enabled)`) would remove it.
+
+### `NCUserPicker` filters a fixed list; autocomplete needs a two-phase source
+**Workstream:** WS-26 · **Component:** `NCUserPicker`, `NCUserSearch` · **Severity:** friction
+**Where:** NextcloudMail/Views/People/RecipientSuggestionProvider.swift
+Recipient autocomplete (ADR-0072) yields a local list and then a longer one when the server
+supplement lands, ranked by rules `NCUserSearch` does not know (recency, frequency, identities
+last). `NCUserPicker` takes `candidates:` and does its own substring filtering, so it cannot
+show a pre-ranked, growing list; the provider therefore exposes an `AsyncStream` and leaves the
+chip field to the composer. Same request as WS-28's: a search-driven picker variant
+(`results: [Candidate]` supplied by the caller, no internal filtering).
+
+## WS-29 — Message list parity
+
+### `NCListItem` has no third line
+**Workstream:** WS-29 · **Component:** `NCListItem` · **Severity:** friction
+**Where:** NextcloudMail/Views/MessageList/MessageListRow.swift (`adornmentLines`)
+A mail row needs sender, subject, then a preview and a chip line (tags, attachments). The item
+takes title and subtitle only, so the row stacks a second block under it and indents it by
+`metrics.avatar.medium + metrics.spacing.standard` to line up with the text column — a guess at
+the item's internal layout that breaks if the item changes. A `footer:` slot inside the text
+column would remove the guess.
+
+### `NCListItem` subtitles cannot be styled in part
+**Workstream:** WS-29 · **Component:** `NCListItem` · **Severity:** friction
+**Where:** MessageListRow.swift (`subjectLine`)
+The web shows a draft's subject as *Draft:* in italics before the subject. The subtitle is a
+`String`, so the prefix is plain text. An `AttributedString` (or `Text`) subtitle overload
+would allow it.
+
+### No hover-actions or compact density for list rows
+**Workstream:** WS-29 · **Component:** `NCListItem` · **Severity:** friction
+**Where:** MessageListView.swift (`MessageHoverActions`), MessageListRow.swift (`isCompact`)
+Quick actions on hover are an overlay with a material background and borderless buttons built
+in the app; compact mode switches the avatar size by hand. A `hoverActions:` slot and a
+`.ncListDensity(.compact)` environment value would make Files, Mail and Talk rows agree.
+
+## WS-27 — Composer and outbox view
+
+### `NCUserPicker` cannot be a recipient field
+**Workstream:** WS-27 · **Component:** `NCUserPicker` · **Severity:** blocker for reuse
+**Where:** NextcloudMail/Views/Composer/RecipientField.swift
+A mail recipient field takes free-typed addresses (valid ones become chips, invalid text stays
+to be fixed), pasted lists with names, suggestions that arrive while the user types (local,
+then server rows merged), and duplicates refused case-insensitively. `NCUserPicker` picks ids
+out of a fixed `candidates:` pool shown as a `List`, with its own filtering, so none of that
+fits; the composer builds its own field on `NCChip`. Needed: a token-field variant —
+`NCTokenField(tokens: Binding<[Token]>, text: Binding<String>, suggestions: [Suggestion],
+commit: (String) -> [Token])` — where the caller owns parsing and suggestions.
+
+### No wrapping layout for chips
+**Workstream:** WS-27 · **Component:** `NCChip` / `NCUserPicker` · **Severity:** friction
+**Where:** RecipientField.swift (`FlowLayout`), ComposerParts.swift (`AttachmentStrip`)
+`NCUserPicker`'s chips scroll on one line ("revisit when a screen needs twenty recipients").
+A recipient field and an attachments strip both need chips that wrap, so the app has its own
+`FlowLayout`. An `NCChipFlow` (or a public flow `Layout`) would serve Mail, Deck labels and
+Talk participants alike.
+
+### `NCChip` has no "+N more" collapse
+**Workstream:** WS-27 · **Component:** `NCChip` · **Severity:** friction
+**Where:** RecipientField.swift (`hiddenCount`)
+§6.4 collapses long recipient lists to "+N"; the message view does the same past three. Both
+hand-roll a borderless button after the chips. A collapsing chip-list component with a limit
+would make the two agree on wording and accessibility.
+
+### `NCChip` cannot show progress
+**Workstream:** WS-27 · **Component:** `NCChip` · **Severity:** friction
+**Where:** ComposerParts.swift (`AttachmentStrip`)
+An attachment chip wants a progress bar while it uploads and a failed state (red, faded). The
+chip has a `role` and a leading view only; progress would need a trailing slot or a
+`progress: Double?` parameter.
+
+## WS-30 — Message view parity
+
+### `NCNoteCard` still swallows its controls
+**Workstream:** WS-30 · **Component:** `NCNoteCard` · **Severity:** friction
+**Where:** NextcloudMail/Views/Message/MessageBanners.swift
+Seven banners (phishing, read receipt, follow-up, translation, remote content, S/MIME, PGP)
+each want one or two buttons. `NCNoteCard` ends with `.accessibilityElement(children: .combine)`,
+so a button inside it is unreachable to VoiceOver (WS-09's entry), and every banner puts its
+buttons in an `HStack` beside or under the card instead — seven hand-built layouts that do
+not quite agree. Needed: an `actions:` slot that stays outside the combined element.
+
+### `NCNoteCard` takes `LocalizedStringResource`, not runtime text
+**Workstream:** WS-30 · **Component:** `NCNoteCard` · **Severity:** friction
+**Where:** MessageBanners.swift (phishing reasons, follow-up date, translation language)
+`message:` is a `LocalizedStringResource`, so a banner whose text is interpolated or comes from
+the server needs the content-builder form and a `Text` per line. A `String` overload (verbatim)
+would cover server-supplied text without a builder.
+
+### No assistant/AI styling
+**Workstream:** WS-30 · **Component:** `NCButtonStyle`, `NCChip` · **Severity:** gap
+**Where:** MessageReplyArea.swift (smart replies), MessageHeaderView.swift ("Contains AI content")
+The web client styles smart replies and the AI badge with the Assistant gradient. The library
+has no assistant role, so the app uses `.secondary` buttons and a `.primary` chip with a
+sparkles glyph. An `NCButtonStyle.assistant` and `NCChip.Role.assistant` would make AI output
+recognisable the same way in every Nextcloud app.
+
+### No collapsed/expanded list row
+**Workstream:** WS-30 · **Component:** `NCListItem` · **Severity:** friction
+**Where:** ThreadEnvelopeRow.swift, MessageView.swift
+Thread mode is a list of collapsed rows around one expanded card. `NCListItem` is the
+collapsed row; the expanded state and its disclosure affordance are app-built, as is the
+"expand on click, collapse on header click" behaviour. An `NCDisclosureListItem` with an
+expanded content slot would make the web's `ThreadEnvelope` pattern a component.
+

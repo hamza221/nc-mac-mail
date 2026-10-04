@@ -152,6 +152,37 @@ struct RowEffectTests {
         #expect(try await store.messageIds(mailboxId: 10).isEmpty)
     }
 
+    @Test("replacing a mailbox placeholder rewrites that account's special-mailbox columns only")
+    func replaceMailboxRemoteIdRewritesAccountColumns() async throws {
+        let (store, _) = try await Self.seeded()
+        var mine = Seed.account()
+        var other = Seed.account(remoteId: 2)
+        for keyPath in [
+            \AccountWrite.draftsMailboxId, \.sentMailboxId, \.trashMailboxId,
+            \.archiveMailboxId, \.snoozeMailboxId, \.junkMailboxId,
+        ] {
+            mine[keyPath: keyPath] = -1
+            other[keyPath: keyPath] = -1
+        }
+        mine.junkMailboxId = 5
+        let accounts = try await store.upsert(accounts: [mine, other])
+        #expect(accounts.first?.id == 1)
+        let otherId = try #require(accounts.last?.id)
+
+        try await Self.enqueue(store, [.replaceMailboxRemoteId(accountId: 1, from: -1, to: 77)])
+
+        let replaced = try #require(try await store.account(id: 1))
+        #expect(replaced.draftsMailboxId == 77)
+        #expect(replaced.sentMailboxId == 77)
+        #expect(replaced.trashMailboxId == 77)
+        #expect(replaced.archiveMailboxId == 77)
+        #expect(replaced.snoozeMailboxId == 77)
+        #expect(replaced.junkMailboxId == 5)
+        let untouched = try #require(try await store.account(id: otherId))
+        #expect(untouched.snoozeMailboxId == -1)
+        #expect(untouched.draftsMailboxId == -1)
+    }
+
     // MARK: Snooze and account
 
     @Test("snooze sets and clears; account upserts")

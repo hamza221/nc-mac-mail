@@ -5,6 +5,7 @@ import Foundation
 import NCMailFixtures
 import NCMailNet
 import NCMailStore
+import NCMailSync
 import Testing
 
 @testable import NextcloudMail
@@ -324,5 +325,201 @@ struct MessageViewModelTests {
         let attachment = try #require(mirror.model.attachments.first)
         #expect(attachment.attachmentId == "2")
         #expect(attachment.mime == "image/png")
+    }
+
+    // MARK: - Thread mode (WS-30, ADR-0085)
+
+    /// A second message in the same conversation, as the sync engine would write it.
+    private static func addSibling(
+        _ mirror: Mirror,
+        remoteId: Int64 = 9_001,
+        flags: NCMailStore.MessageFlags = NCMailStore.MessageFlags()
+    ) async throws -> Int64 {
+        let stored = try await mirror.store.message(id: mirror.messageId)
+        let record = try #require(stored)
+        let ids = try await mirror.store.upsert(envelopes: [
+            EnvelopeWrite(
+                remoteId: remoteId,
+                mailboxId: mirror.mailboxId,
+                accountId: record.accountId,
+                sentAt: 1_789_930_000,
+                syncedAt: 1_789_930_001,
+                messageId: "<sibling-\(remoteId)@example.com>",
+                threadRootId: mirror.threadRootId,
+                subject: "Re: Subject redacted",
+                flags: flags,
+                fromEmail: "rory@example.com",
+                fromLabel: "Rory",
+                addresses: [EnvelopeAddress(kind: .to, email: "user@example.com")]
+            )
+        ])
+        return try #require(ids.first)
+    }
+
+    @Test("the conversation lists every message and expands only the selected one")
+    func threadExpandsTheSelection() async throws {
+        let mirror = try await Self.seed()
+        let sibling = try await Self.addSibling(mirror)
+        mirror.model.present(messageId: mirror.messageId)
+
+        #expect(await Self.waitUntil { mirror.model.thread.count == 2 })
+        #expect(mirror.model.expandedId == mirror.messageId)
+        let split = ThreadSplit(thread: mirror.model.thread, expandedId: mirror.model.expandedId)
+        #expect(split.before.isEmpty)
+        #expect(split.after.map(\.id) == [sibling])
+    }
+
+    @Test("expanding a sibling draws it in place and collapses the other; the selection stays")
+    func expandingASiblingSwapsTheExpandedMessage() async throws {
+        let mirror = try await Self.seed()
+        let sibling = try await Self.addSibling(mirror)
+        mirror.model.present(messageId: mirror.messageId)
+        #expect(await Self.waitUntil { mirror.model.thread.count == 2 })
+
+        mirror.model.toggle(sibling)
+        #expect(mirror.model.expandedId == sibling)
+        #expect(mirror.model.selectedId == mirror.messageId)
+        #expect(await Self.waitUntil { mirror.model.header?.messageId == sibling })
+        #expect(mirror.model.header?.sender?.email == "rory@example.com")
+
+        // Collapsing the expanded one leaves the conversation collapsed.
+        mirror.model.toggle(sibling)
+        #expect(mirror.model.expandedId == nil)
+        #expect(mirror.model.header == nil)
+    }
+
+    @Test("a conversation of one cannot be collapsed")
+    func singleMessageStaysExpanded() async throws {
+        let mirror = try await Self.seed()
+        mirror.model.present(messageId: mirror.messageId)
+        #expect(await Self.waitUntil { mirror.model.header != nil })
+        mirror.model.toggle(mirror.messageId)
+        #expect(mirror.model.expandedId == mirror.messageId)
+    }
+
+    @Test("an expanded sibling is marked read through the reader's delay, not the selection")
+    func expandingMarksOpened() async throws {
+        let mirror = try await Self.seed()
+        let sibling = try await Self.addSibling(mirror)
+        let opened = OpenedRecorder()
+        let model = MessageViewModel(
+            services: MessageViewServices(
+                store: mirror.store,
+                client: mirror.model.services.client,
+                server: mirror.model.services.server,
+                messageOpened: { id in opened.ids.append(id) }
+            )
+        )
+        model.present(messageId: mirror.messageId)
+        #expect(await Self.waitUntil { model.thread.count == 2 })
+        model.toggle(sibling)
+        #expect(await Self.waitUntil { opened.ids == [sibling] })
+    }
+
+    @MainActor
+    final class OpenedRecorder {
+        var ids: [Int64] = []
+    }
+
+    // MARK: - PGP, read receipts, server results
+
+    @Test("a PGP message shows the notice and none of its body")
+    func pgpShowsTheNoticeOnly() async throws {
+        let mirror = try await Self.seed()
+        var flags = NCMailStore.MessageFlags()
+        flags.isEncrypted = true
+        let pgp = try await Self.addSibling(mirror, flags: flags)
+        try await mirror.store.upsert(
+            body: MessageBodyWrite(
+                fetchedAt: 1, plainBody: "-----BEGIN PGP MESSAGE-----\nhQEMA\n-----END PGP MESSAGE-----"),
+            for: pgp
+        )
+        mirror.model.present(messageId: pgp)
+        #expect(await Self.waitUntil { mirror.model.presentation == .encrypted })
+        #expect(mirror.model.security.isPGP)
+        #expect(mirror.model.printable?.body == .headerOnly(note: MessagePGPNotice.text))
+    }
+
+    @Test("Notify the sender queues sendMDN, and $mdnsent lands locally at once")
+    func readReceiptIsQueued() async throws {
+        let mirror = try await Self.seed()
+        try await mirror.store.upsert(
+            body: MessageBodyWrite(fetchedAt: 1, plainBody: "Hi", dispositionNotificationTo: "user@example.com"),
+            for: mirror.messageId
+        )
+        let model = MessageViewModel(
+            services: MessageViewServices(
+                store: mirror.store,
+                client: mirror.model.services.client,
+                server: mirror.model.services.server,
+                queue: MutationQueue(store: mirror.store)
+            )
+        )
+        model.present(messageId: mirror.messageId)
+        #expect(await Self.waitUntil { model.security.readReceipt == .requested })
+
+        await model.sendReadReceipt()
+        #expect(model.actionError == nil)
+        #expect(model.security.readReceipt == .sent)
+        #expect(await Self.waitUntil { model.header?.isMdnSent == true })
+        let accountId = try #require(model.header?.accountId)
+        let queued = try await mirror.store.pendingOperations(accountId: accountId)
+        #expect(queued.map(\.kind).contains("sendMDN"))
+    }
+
+    @Test("smart replies are read from their serverResult row, pending until it exists")
+    func smartRepliesComeFromTheRow() async throws {
+        let mirror = try await Self.seed()
+        try await Self.storeBody(mirror, plain: "Lunch tomorrow?")
+        let login = try await mirror.store.ensureLogin(ServerIdentity(serverURL: Self.server, loginName: "lorelai"))
+        let loginId = try #require(login.id)
+        mirror.model.present(messageId: mirror.messageId)
+        #expect(await Self.waitUntil { mirror.model.smartReplies == .pending })
+
+        // What `ServerResultFetcher` writes when the route answers.
+        try await mirror.store.upsert(
+            serverResult: ServerResultRecord(
+                loginId: loginId,
+                kind: ServerResultKind.smartReply.rawValue,
+                key: ServerResultKind.messageKey(mirror.messageId),
+                payloadJSON: #"{"status":"ready","data":["Sounds good","Can't make it"]}"#,
+                fetchedAt: 1
+            )
+        )
+        #expect(await Self.waitUntil { mirror.model.smartReplies == .ready(["Sounds good", "Can't make it"]) })
+    }
+
+    @Test("an empty smart-reply row (the 204 of a server with no LLM) shows nothing")
+    func emptySmartRepliesShowNothing() async throws {
+        let mirror = try await Self.seed()
+        let login = try await mirror.store.ensureLogin(ServerIdentity(serverURL: Self.server, loginName: "lorelai"))
+        let loginId = try #require(login.id)
+        try await mirror.store.upsert(
+            serverResult: ServerResultRecord(
+                loginId: loginId,
+                kind: ServerResultKind.smartReply.rawValue,
+                key: ServerResultKind.messageKey(mirror.messageId),
+                payloadJSON: #"{"status":"empty"}"#,
+                fetchedAt: 1
+            )
+        )
+        mirror.model.present(messageId: mirror.messageId)
+        #expect(await Self.waitUntil { mirror.model.smartReplies == .empty })
+        #expect(mirror.model.smartReplies.value == nil)
+    }
+
+    @Test("whole-thread print reads collapsed messages from the mirror, missing bodies as a line")
+    func printableThreadIncludesCollapsedMessages() async throws {
+        let mirror = try await Self.seed()
+        try await Self.storeBody(mirror, plain: "First body")
+        _ = try await Self.addSibling(mirror)
+        mirror.model.present(messageId: mirror.messageId)
+        #expect(await Self.waitUntil { mirror.model.thread.count == 2 && mirror.model.printable != nil })
+
+        let printout = await mirror.model.printableThread()
+        #expect(printout.count == 2)
+        #expect(printout.first?.body == .plain(text: "First body", signature: nil))
+        #expect(printout.last?.body == .headerOnly(note: "This message has not been downloaded yet."))
+        #expect(printout.last?.header.sender?.email == "rory@example.com")
     }
 }

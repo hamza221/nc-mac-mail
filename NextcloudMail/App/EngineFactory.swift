@@ -98,6 +98,7 @@ nonisolated struct LoginEngines: Sendable {
     /// The scheduler's deep-reconcile trigger and the outbox engine's `refreshOutbox` hook.
     var serverState: ServerStateMirror?
     var results: ServerResultFetcher?
+    var files: FilesListingSync?
 }
 
 /// Everything running for one mail account row.
@@ -160,6 +161,7 @@ struct EngineFactory {
                 }
             )
             let results = ServerResultFetcher(store: store, client: session.client, identity: session.identity)
+            let files = FilesListingSync(store: store, dav: session.dav, client: session.client, loginId: loginId)
             let serverState = ServerStateMirror(
                 store: store,
                 client: session.client,
@@ -167,10 +169,11 @@ struct EngineFactory {
                 onFollowedUp: followedUp
             )
             return LoginEngines(
-                parts: [calendars, contacts, results, serverState],
+                parts: [calendars, contacts, results, files, serverState],
                 queueConfiguration: MutationQueueConfiguration(dav: handler),
                 serverState: serverState,
-                results: results
+                results: results,
+                files: files
             )
         },
         account: { store, row, session, login in

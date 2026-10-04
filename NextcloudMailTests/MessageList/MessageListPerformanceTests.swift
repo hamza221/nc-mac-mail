@@ -51,7 +51,7 @@ struct MessageListPerformanceTests {
     /// Milliseconds from `show` to the first non-empty `rows`.
     private static func timeToFirstRows(_ model: MessageListStore, mailboxId: Int64, view: ListView) async -> Double {
         let start = DispatchTime.now().uptimeNanoseconds
-        model.show(mailbox: mailboxId, view: view)
+        model.show(.mailbox(mailboxId), view: view)
         _ = await waitUntil { !model.rows.isEmpty }
         return Double(DispatchTime.now().uptimeNanoseconds - start) / 1_000_000
     }

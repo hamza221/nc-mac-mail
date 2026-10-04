@@ -40,6 +40,8 @@ struct NextcloudMailApp: App {
             SearchCommands(model: session.search)
         }
         KeyboardShortcutsWindow()
+        ComposerScene(session: session)
+        MessageWindowScene(session: session)
         Settings {
             SettingsScene()
                 .environment(session)

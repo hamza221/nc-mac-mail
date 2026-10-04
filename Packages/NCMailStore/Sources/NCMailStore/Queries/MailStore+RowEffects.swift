@@ -184,6 +184,15 @@ extension MailStore {
                 sql: "UPDATE mailbox SET remoteId = ? WHERE accountId = ? AND remoteId = ?",
                 arguments: [to, accountId, from]
             )
+            for column in [
+                "draftsMailboxId", "sentMailboxId", "trashMailboxId",
+                "archiveMailboxId", "snoozeMailboxId", "junkMailboxId",
+            ] {
+                try db.execute(
+                    sql: "UPDATE account SET \(column) = ? WHERE id = ? AND \(column) = ?",
+                    arguments: [to, accountId, from]
+                )
+            }
 
         case .setSnooze(let messageIds, let until):
             guard !messageIds.isEmpty else { return }

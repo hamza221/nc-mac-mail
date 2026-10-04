@@ -41,7 +41,15 @@ struct KeyboardShortcutRow: Identifiable, Equatable, Sendable {
         let bound = TriageAction.allCases.compactMap { action in
             action.shortcut.map { KeyboardShortcutRow(action, shortcut: $0) }
         }
-        return bound + platform
+        let composer = ComposerCommand.allCases.map { command in
+            KeyboardShortcutRow(
+                id: command.id,
+                keys: NCKeyboardShortcutGlyphs.string(for: command.shortcut),
+                action: command.title,
+                spoken: NCKeyboardShortcutGlyphs.accessibilityDescription(for: command.shortcut)
+            )
+        }
+        return bound + composer + platform
     }
 
     static let platform: [KeyboardShortcutRow] = [

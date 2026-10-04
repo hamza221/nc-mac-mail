@@ -39,6 +39,22 @@ nonisolated enum MessageDocument {
         """
     }
 
+    /// What ``wrap(body:baseFontSize:allowsOwnColorScheme:)`` put between its own `<body>` and
+    /// `</body>`, for a printout that places several messages in one shell.
+    ///
+    /// The first `bodyOpenTag` is the shell's because everything before it is ours, and the
+    /// last `</body>` is the shell's because everything after it is ours; a fragment that
+    /// carries a stray `</body>` of its own sits between the two and is kept, as on screen. A
+    /// document this file did not write gives back nothing rather than its head.
+    static func bodyContent(of document: String) -> String {
+        guard
+            let open = document.range(of: bodyOpenTag),
+            let close = document.range(of: "</body>", options: .backwards),
+            open.upperBound <= close.lowerBound
+        else { return "" }
+        return String(document[open.upperBound..<close.lowerBound])
+    }
+
     /// A reset, not a theme. Five things: the canvas, a readable default for mail that sets
     /// no font, the same inset `PlainTextBodyView` gives a plain body, images that cannot push
     /// the layout wider than the pane, and long unbroken strings — tracking ids, German

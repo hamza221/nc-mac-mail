@@ -37,6 +37,23 @@ extension MailStore {
         }
     }
 
+    /// One kind's rows for many keys, across every login — a list window's batch read.
+    /// Ordered by key, then login.
+    public func observeServerResults(kind: String, keys: [String]) -> StoreObservation<[ServerResultRecord]> {
+        observation { db in
+            guard !keys.isEmpty else { return [] }
+            return try ServerResultRecord.fetchAll(
+                db,
+                sql: """
+                    SELECT * FROM serverResult
+                    WHERE kind = ? AND key IN \(databaseQuestionMarks(count: keys.count))
+                    ORDER BY key, loginId
+                    """,
+                arguments: StatementArguments([kind] + keys)
+            )
+        }
+    }
+
     /// Expires one kind's rows. Each owning feature sets its own staleness policy (ADR-0067),
     /// which is why this takes the cutoff rather than knowing one.
     public func deleteServerResults(kind: String, olderThan cutoff: Int64, loginId: Int64) async throws {

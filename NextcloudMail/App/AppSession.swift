@@ -171,8 +171,9 @@ final class AppSession {
 
     /// What the detail column needs to draw one message: the mirror it reads from, the client
     /// its WebView's scheme handler fetches assets with, the server those assets must come
-    /// from, the coordinator that can move a missing body up the backfill queue, and the
-    /// queued "always show images from this sender".
+    /// from, the coordinator that can move a missing body up the backfill queue, the
+    /// queued "always show images from this sender", and WS-30's three engine doors — the
+    /// login's server results, the account's queue and its exporter.
     ///
     /// - Parameter accountId: the account the selected mailbox belongs to. Nil, or an account
     ///   whose coordinator has not started yet, falls back to the first signed-in account so
@@ -187,7 +188,11 @@ final class AppSession {
                 client: running.session.client,
                 server: running.session.server,
                 prioritiser: running.prioritiser,
-                trustSender: trustSender
+                trustSender: trustSender,
+                serverResults: engine.serverResults(sessionId: running.session.id),
+                queue: engine.mutationQueue(accountId: accountId),
+                exporter: engine.exporter(accountId: accountId),
+                messageOpened: { [triage] messageId in await triage.actions.messageOpened(messageId) }
             )
         }
         guard let fallback = accounts.first else { return nil }

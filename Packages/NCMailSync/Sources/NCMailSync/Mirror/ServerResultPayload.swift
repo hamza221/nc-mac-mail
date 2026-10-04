@@ -29,6 +29,8 @@ public enum ServerResultKind: String, Sendable, CaseIterable {
     /// `POST /api/follow-up/check-message-ids`. Key: local message id; data
     /// `{"wasFollowedUp": Bool}`.
     case followUp
+    /// `GET /api/messages/{id}/source`. Key: local message id; data `{"source": String}`.
+    case messageSource
 
     /// How long a `ready` or `empty` row answers a request without asking again, in
     /// seconds. Each kind's owner set it from how often the answer can change.
@@ -37,7 +39,7 @@ public enum ServerResultKind: String, Sendable, CaseIterable {
         case .threadSummary, .eventData: 7 * 86_400
         case .smartReply: 86_400
         // A body never changes once delivered, so neither does what it says.
-        case .translation, .itinerary: 30 * 86_400
+        case .translation, .itinerary, .messageSource: 30 * 86_400
         case .autoComplete, .quota: 3_600
         // Asked only while the follow-up section is on screen, and the whole point is to
         // notice a reply as soon as it lands.

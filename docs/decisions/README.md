@@ -84,7 +84,7 @@ old one stays.*
 | [0069](0069-contacts-same-database.md) | Contacts use the same database and the same five modules, keyed by Nextcloud login | Accepted — 412 rule refined by 0082 |
 | [0070](0070-contacts-sidebar-section.md) | Contacts appear as a sidebar section, under the mail accounts | Accepted |
 | [0071](0071-widgets-read-snapshot.md) | Widgets read a snapshot file in the app group, never the database | Proposed |
-| [0072](0072-local-first-autocomplete.md) | Recipient autocomplete is local-first | Proposed |
+| [0072](0072-local-first-autocomplete.md) | Recipient autocomplete is local-first | Accepted |
 | [0073](0073-editor-canonical-html.md) | The editor serialises one canonical HTML form, and import makes any input canonical | Accepted |
 | [0074](0074-editor-triggers.md) | Editor triggers are one session API; `:` opens the system emoji palette | Accepted |
 | [0075](0075-lossless-raw-line-retention.md) | vCard and iCalendar properties keep their unfolded original line; untouched properties re-emit it | Accepted |
@@ -97,6 +97,12 @@ old one stays.*
 | [0082](0082-contact-writes-reapply-per-property.md) | A contact write that meets a 412 reapplies the edited properties once; local wins a same-field race; a second 412 parks a conflict row | Accepted — refines 0069's 412 rule |
 | [0083](0083-send-converts-the-server-draft-in-place.md) | A send converts the server draft in place, with `sendAt` pinned, and its state lives on the draft row | Accepted — refines 0066's send sequence |
 | [0084](0084-the-shell-starts-logins-before-accounts.md) | The shell starts a login's engines before its accounts', stops them in reverse, and restores the local selection before the server's start mailbox | Accepted |
+| [0085](0085-thread-mode-expands-one-message-at-a-time.md) | Thread mode expands one message at a time; whole-thread print is one document and the scheme handler takes a context per message | Accepted — refines 0063 |
+| [0086](0086-a-provisioned-account-that-cannot-connect-is-disabled.md) | A provisioned account whose connection test fails is the sidebar's disabled row | Accepted |
+| [0087](0087-files-actions-are-online-commands-with-row-results.md) | Files share links and image embeds are online-only commands whose results are `serverResult` rows; Files attachments are `cloud` draft attachments | Accepted — applies 0067/0068 |
+| [0088](0088-list-layout-preferences-follow-the-first-login.md) | The list's layout preferences are read from the first login and written to every login; the selection lives in the list model | Accepted |
+| [0089](0089-composer-keeps-signature-and-quote-outside-the-editor.md) | The composer keeps the signature and the quote outside the editor, and hides its window during a send | Accepted |
+| [0090](0090-editing-an-outbox-entry-converts-it-to-a-local-draft.md) | Editing an outbox entry converts it to a local draft | Accepted |
 
 ## Which ones matter most
 

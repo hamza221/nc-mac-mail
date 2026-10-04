@@ -5,9 +5,9 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 # ADR-0072: Recipient autocomplete is local-first
 
-**Status:** Proposed
-**Date:** 2026-10-03
-**Decided by:** v2 roadmap, to be confirmed by the owning workstream
+**Status:** Accepted
+**Date:** 2026-10-03, confirmed 2026-10-04
+**Decided by:** v2 roadmap; confirmed by WS-26, which implements it (`RecipientSuggestionProvider`)
 
 ## Context
 
@@ -27,6 +27,30 @@ Recipient autocomplete is local-first.
   Nextcloud groups and collected addresses still appear.
 - Ranking: own identities last, then contacts by recent interaction, then mail-derived
   addresses by frequency.
+
+### As built (WS-26)
+
+- `RecipientSuggestionProvider` (app target, one per composer and login) yields the local
+  list, *then* asks `ServerResultFetcher` for `autoComplete` and re-yields the merge every
+  time the `recipientSuggestion` rows for the term change. The cache key is the term
+  trimmed and lowercased; the server is asked from two characters on.
+- Two local query shapes, chosen by size. **Contacts** are queried per keystroke through
+  the `contactSearch` FTS5 index (prefix match of every typed word, enabled books of the
+  login only), because the mirror's contacts are the large source and the index is
+  already there. **Mirrored-mail addresses and own identities** are an in-memory index
+  built by one aggregate over `messageAddress` (count and newest date per address), kept
+  for five minutes and rebuilt in the background — scanning `messageAddress` per keystroke
+  is the one thing that would not stay at typing speed on a large mirror, and a few
+  minutes' lag in "how often" is invisible.
+- "Recent interaction" for a contact is the newest mirrored message carrying the address
+  (from that same in-memory index); never-mailed contacts follow, by name. A contact group
+  ranks by its most recent member and expands to its mirrored members' first addresses.
+- Dedup is by address, case-insensitively, first source wins; an own address (account or
+  alias) is only ever an identity row, even when the system address book lists it.
+- Measured (debug build, M-series Mac, file-backed store with 10,000 contacts and 2,000
+  messages): in-memory index built in 10 ms; a local query takes 2–21 ms, worst on the
+  one-letter term `a` (20.7 ms), against the 50 ms budget
+  (`RecipientSuggestionProviderTests.tenThousandContacts`).
 
 ## Consequences
 

@@ -32,6 +32,7 @@ struct MessageListMirror: Sendable {
                     name: "INBOX",
                     delimiter: ".",
                     displayName: "Inbox",
+                    specialRole: "inbox",
                     isSubscribed: true
                 )
             ],
@@ -60,7 +61,11 @@ struct MessageListMirror: Sendable {
         seenEvery: Int? = nil,
         isFlagged: Bool = false,
         hasAttachments: Bool = false,
-        isAnswered: Bool = false
+        isAnswered: Bool = false,
+        isImportant: Bool = false,
+        isDraft: Bool = false,
+        tags: [TagWrite] = [],
+        account: Int64? = nil
     ) async throws -> [Int64] {
         let target = mailbox ?? mailboxId
         let envelopes = sentAt.enumerated().map { offset, moment -> EnvelopeWrite in
@@ -69,11 +74,13 @@ struct MessageListMirror: Sendable {
             flags.isFlagged = isFlagged
             flags.hasAttachments = hasAttachments
             flags.isAnswered = isAnswered
+            flags.isImportant = isImportant
+            flags.isDraft = isDraft
             let remoteId = firstRemoteId + Int64(offset)
             return EnvelopeWrite(
                 remoteId: remoteId,
                 mailboxId: target,
-                accountId: accountId,
+                accountId: account ?? accountId,
                 sentAt: moment,
                 syncedAt: moment,
                 messageId: "<\(remoteId)@example.invalid>",
@@ -89,10 +96,31 @@ struct MessageListMirror: Sendable {
                 addresses: [
                     EnvelopeAddress(kind: .from, email: "sender@example.invalid", label: "Name redacted"),
                     EnvelopeAddress(kind: .to, email: "lorelai@example.invalid", label: "Name redacted"),
-                ]
+                ],
+                tags: tags
             )
         }
         return try await store.upsert(envelopes: envelopes)
+    }
+
+    /// A second account on another login, with its own Inbox, for the merged lists.
+    func addAccount(loginName: String, remoteId: Int64) async throws -> (accountId: Int64, inboxId: Int64) {
+        let identity = ServerIdentity(serverURL: "https://two.example.invalid/", loginName: loginName)
+        let accounts = try await store.upsert(accounts: [
+            AccountWrite(
+                identity: identity, remoteId: remoteId, name: "Home", emailAddress: "\(loginName)@example.invalid")
+        ])
+        guard let account = accounts.first else { throw MirrorSeedError.accountNotWritten }
+        let mailboxes = try await store.upsert(
+            mailboxes: [
+                MailboxWrite(
+                    accountId: account.id, remoteId: remoteId * 1000, name: "INBOX", delimiter: ".",
+                    displayName: "Inbox", specialRole: "inbox", isSubscribed: true)
+            ],
+            accountId: account.id
+        )
+        guard let inbox = mailboxes.first else { throw MirrorSeedError.mailboxNotWritten }
+        return (account.id, inbox.id)
     }
 
     /// A second mailbox on the same account, for the tests about replacing an observation.

@@ -82,9 +82,7 @@ extension MailStore {
     /// `range` is a row window, not a page number: the list asks for `0..<60`, then `0..<120`
     /// as it scrolls. Fifty thousand rows never become a fifty-thousand-element array.
     public func messages(mailboxId: Int64, view: ListView, range: Range<Int>) async throws -> [MessageRow] {
-        try await dbQueue.read { db in
-            try Self.fetchMessages(db, mailboxId: mailboxId, view: view, range: range)
-        }
+        try await messages(query: MessageListQuery(mailboxIds: [mailboxId]), view: view, order: .newest, range: range)
     }
 
     public func observeMessages(
@@ -92,9 +90,7 @@ extension MailStore {
         view: ListView,
         range: Range<Int>
     ) -> StoreObservation<[MessageRow]> {
-        observation { db in
-            try Self.fetchMessages(db, mailboxId: mailboxId, view: view, range: range)
-        }
+        observeMessages(query: MessageListQuery(mailboxIds: [mailboxId]), view: view, order: .newest, range: range)
     }
 
     /// Every message of one thread, oldest first, which is how a conversation reads.
@@ -161,28 +157,11 @@ extension MailStore {
             )
         }
     }
-
-    static func fetchMessages(
-        _ db: Database,
-        mailboxId: Int64,
-        view: ListView,
-        range: Range<Int>
-    ) throws -> [MessageRow] {
-        guard !range.isEmpty else { return [] }
-        return try MessageRow.fetchAll(
-            db,
-            sql: view == .threaded ? MessageSQL.threadedList : MessageSQL.flatList,
-            arguments: [
-                "mailboxId": mailboxId,
-                "limit": range.count,
-                "offset": range.lowerBound,
-            ]
-        )
-    }
 }
 
-/// The three list queries, written out because they are the performance-critical part of the
-/// application and deserve to be read rather than generated.
+/// The list queries. `flatList` and `threadedList` are the single-mailbox, newest-first,
+/// unfiltered shapes of ``list(query:view:order:)``, kept by name so the plan tests pin the
+/// hot path.
 enum MessageSQL {
     /// One mailbox, newest first, straight down `idxMessageMailboxSent`.
     ///
@@ -193,16 +172,7 @@ enum MessageSQL {
     /// threaded list from 0.4 ms to 201 ms. Two messages with the same `dateInt` come out in
     /// index order, which is by ascending server id and stable across inserts, so a window
     /// does not reshuffle under a scrolling list.
-    static let flatList = """
-        SELECT
-            \(MessageRow.selection),
-            1 AS threadCount,
-            (CASE WHEN m.isSeen THEN 0 ELSE 1 END) AS threadUnreadCount
-        FROM message m
-        WHERE m.mailboxId = :mailboxId
-        ORDER BY m.sentAt DESC
-        LIMIT :limit OFFSET :offset
-        """
+    static let flatList = list(query: MessageListQuery(mailboxIds: [0]), view: .flat, order: .newest).sql
 
     /// The newest message of each thread, plus the thread's size and unread count.
     ///
@@ -226,31 +196,7 @@ enum MessageSQL {
     /// A NULL `threadRootId` is its own thread of one. `=` never matches NULL in SQL, so
     /// without the explicit branch every unthreaded message in the mailbox would vanish from
     /// the list.
-    static let threadedList = """
-        SELECT
-            \(MessageRow.selection),
-            CASE WHEN m.threadRootId IS NULL THEN 1 ELSE (
-                SELECT count(*) FROM message c
-                 WHERE c.mailboxId = :mailboxId AND c.threadRootId = m.threadRootId
-            ) END AS threadCount,
-            CASE WHEN m.threadRootId IS NULL THEN (CASE WHEN m.isSeen THEN 0 ELSE 1 END) ELSE (
-                SELECT coalesce(sum(CASE WHEN c.isSeen THEN 0 ELSE 1 END), 0) FROM message c
-                 WHERE c.mailboxId = :mailboxId AND c.threadRootId = m.threadRootId
-            ) END AS threadUnreadCount
-        FROM message m
-        WHERE m.mailboxId = :mailboxId
-          AND (
-                m.threadRootId IS NULL
-                OR m.id = (
-                    SELECT c.id FROM message c
-                     WHERE c.mailboxId = :mailboxId AND c.threadRootId = m.threadRootId
-                     ORDER BY c.sentAt DESC
-                     LIMIT 1
-                )
-              )
-        ORDER BY m.sentAt DESC
-        LIMIT :limit OFFSET :offset
-        """
+    static let threadedList = list(query: MessageListQuery(mailboxIds: [0]), view: .threaded, order: .newest).sql
 
     /// One thread, oldest first.
     static let thread = """

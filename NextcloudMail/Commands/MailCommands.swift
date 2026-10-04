@@ -35,6 +35,20 @@ struct MailCommands: Commands {
                 .disabled(!context.actions.canRedo)
         }
 
+        // ⌘N replaces File ▸ New Window: a second main window is not something this app
+        // offers, and ⌘N is New Message in every Mac mail client.
+        CommandGroup(replacing: .newItem) {
+            NewMessageMenuItem(context: context)
+        }
+
+        // ⌘S is Save Draft rather than the document Save the template offers; Send sits
+        // beside it. All four are live only while a composer window is key.
+        CommandGroup(replacing: .saveItem) {
+            ComposerMenuItems(commands: [.saveDraft])
+            Divider()
+            ComposerMenuItems(commands: [.send, .sendNow])
+        }
+
         CommandGroup(replacing: .printItem) {
             item(.printMessage)
         }
@@ -44,19 +58,28 @@ struct MailCommands: Commands {
         }
 
         CommandMenu(String(localized: "Message")) {
+            item(.compose)
+            Divider()
             item(.archive)
-            item(.junk)
+            item(.junk, title: context.junkTitle)
             item(.delete)
+            item(.move)
             Divider()
             item(.star)
             item(.unread)
             item(.important)
+            Divider()
+            TriageMoreItems(context: context)
             Divider()
             item(.markAllRead)
             item(.refresh)
             Divider()
             item(.previousMessage)
             item(.nextMessage)
+        }
+
+        CommandMenu(String(localized: "Format")) {
+            ComposerMenuItems(commands: [.heading1, .heading2, .heading3])
         }
 
         // Only when something can answer them. `.searchable` binds `⌘F` itself, so offering a
@@ -70,8 +93,8 @@ struct MailCommands: Commands {
         }
     }
 
-    private func item(_ action: TriageAction) -> some View {
-        Button(String(localized: action.label)) {
+    private func item(_ action: TriageAction, title: String? = nil) -> some View {
+        Button(title ?? action.title) {
             Task { await context.perform(action) }
         }
         .triageShortcut(action)

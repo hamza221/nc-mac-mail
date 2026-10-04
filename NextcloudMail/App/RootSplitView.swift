@@ -21,6 +21,7 @@ struct RootSplitView: View {
 
     @State private var sidebar: SidebarStore
     @State private var messageList: MessageListStore
+    @State private var listPreferences: MessageListPreferenceStore
 
     @SceneStorage("shell.sidebarWidth") private var sidebarWidth = ColumnWidth.sidebar.ideal
     @SceneStorage("shell.contentWidth") private var contentWidth = ColumnWidth.content.ideal
@@ -32,21 +33,18 @@ struct RootSplitView: View {
     init(session: AppSession) {
         self.session = session
         let sidebar = SidebarStore(store: session.store)
-        // The sidebar's own Refresh and Mark all as read, which were log-only until the
-        // engine and the triage queue existed to call.
+        // The sidebar's own Refresh, which was log-only until the engine existed to call.
         sidebar.refresh = { [weak session] accountId, mailboxId in
             session?.engine.refresh(mailboxId: mailboxId, accountId: accountId)
         }
-        sidebar.markAllRead = { [weak session] mailboxId in
-            guard let session else { return }
-            Task { await session.triage.actions.markAllRead(mailboxId: mailboxId) }
-        }
         _sidebar = State(initialValue: sidebar)
-        _messageList = State(initialValue: MessageListStore(store: session.store))
+        _messageList = State(initialValue: MessageListWiring.makeStore(session: session))
+        _listPreferences = State(initialValue: MessageListWiring.makePreferences(session: session))
     }
 
     var body: some View {
         shell
+            .triagePresentations(session.triage)
             // On the sign-in screen as well as the columns: the mirror is shared by every
             // account, and an unreadable one affects whichever screen comes up first.
             .onAppear { isShowingMirrorAlert = session.mirrorIsTemporary }
@@ -70,7 +68,12 @@ struct RootSplitView: View {
         if session.needsSignIn {
             LoginView(onSignedIn: session.signedIn)
         } else {
-            NavigationSplitView {
+            // The server's `layout-mode` picks the window's shape; the three columns' views
+            // are the same in every shape, and the selection lives in `messageList` (WS-29).
+            MessageListLayoutHost(
+                layout: listPreferences.preferences.layout,
+                openedMessageId: $messageList.openedMessageId
+            ) {
                 SidebarView(model: sidebar, navigation: session.navigation)
                     .navigationSplitViewColumnWidth(
                         min: ColumnWidth.sidebar.min, ideal: sidebarWidth, max: ColumnWidth.sidebar.max
@@ -96,6 +99,9 @@ struct RootSplitView: View {
                     // Which actions the selection can take is a database read per account.
                     .task(id: messageList.selection) { await session.triage.refreshAvailability() }
             }
+            .environment(listPreferences)
+            .task { listPreferences.start() }
+            .undoSendBanner(session: session)
             .onChange(of: session.expiredAccount) { _, newValue in
                 isShowingExpiredAlert = newValue != nil
             }
@@ -113,13 +119,13 @@ struct RootSplitView: View {
         }
     }
 
-    /// Routes on ``SidebarSelection``. A mailbox, or nothing yet, is v1's searchable list;
-    /// every other selection is wave 3's to draw and shows ``PendingSelectionView`` until it
-    /// is (ux-spec.md, "What the sidebar can select").
+    /// Routes on ``SidebarSelection``: every message source is the searchable list (WS-29),
+    /// the outbox is WS-27's view, and what is left — contacts until WS-35 lands — shows
+    /// ``PendingSelectionView`` (ux-spec.md, "What the sidebar can select").
     @ViewBuilder
     private var contentColumn: some View {
         switch session.navigation.selection {
-        case nil, .mailbox:
+        case nil, .mailbox, .unifiedInbox, .priorityInbox, .favorites:
             SearchableMessageList(
                 model: session.search,
                 list: messageList,
@@ -127,14 +133,16 @@ struct RootSplitView: View {
                 isOffline: session.status.isOffline,
                 triage: session.triage
             )
+        case .outbox:
+            OutboxView(session: session)
         case let selection?:
             PendingSelectionView(selection: selection)
         }
     }
 
-    /// Nothing selected yet, or a mailbox: the v1 detail column.
+    /// Nothing selected yet, or a message list: the message detail column.
     private var showsMailbox: Bool {
-        session.navigation.selection.map { $0.mailboxId != nil } ?? true
+        session.navigation.selection.map { MessageListSource($0) != nil } ?? true
     }
 
     /// The message, from the account the selected mailbox belongs to.
@@ -145,14 +153,13 @@ struct RootSplitView: View {
     /// assets with the first account's client.
     @ViewBuilder
     private var detailColumn: some View {
-        let accountId = messageList.mailbox?.accountId
+        let accountId = messageList.focusedAccountId
         if showsMailbox, let services = session.messageServices(accountId: accountId) {
             MessageView(
                 services: services,
                 messageId: messageList.focusedMessageId,
                 isOffline: session.status.isOffline,
-                printer: session.printer,
-                select: { messageList.selection = [$0] }
+                printer: session.printer
             )
             .id(accountId)
             .task(id: messageList.focusedMessageId) {

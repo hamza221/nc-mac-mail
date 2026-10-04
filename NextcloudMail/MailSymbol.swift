@@ -54,6 +54,45 @@ enum MailSymbol: CaseIterable {
     case undo
     case redo
     case formatting
+    // WS-31: triage v2
+    case snooze
+    case chevronForward
+    case more
+    // WS-30: message view v2
+    case replyAll
+    case forward
+    case encrypted
+    case signatureInvalid
+    case aiContent
+    case translate
+    case download
+    case print
+    case saveToFiles
+    case preview
+    case unsubscribe
+    case readReceipt
+    case expand
+    // WS-33: Files picker
+    case filesBack
+    case file
+    case imageFile
+    case reload
+    case shareLink
+    // WS-29: message list v2
+    case important
+    case openInWindow
+    case back
+    case layout
+    // WS-28: sidebar v2
+    case priorityInbox
+    case unifiedInbox
+    case outbox
+    case sharedFolder
+    case warning
+    case newMessage
+    case info
+    case cloudFile
+    case forwardedMessage
 
     /// The symbol to hand a library component whose icon slot takes one directly, such as
     /// `NCNavigationItem(icon:)`. `NCIcon` already falls back to `systemFallback` for any
@@ -118,6 +157,41 @@ enum MailSymbol: CaseIterable {
         case .undo: NCSymbol(asset: "undo", systemFallback: "arrow.uturn.backward")
         case .redo: NCSymbol(asset: "redo", systemFallback: "arrow.uturn.forward")
         case .formatting: NCSymbol(asset: "format-text", systemFallback: "textformat")
+        // MDI `alarm-snooze` — not in the catalogue.
+        case .snooze: NCSymbol(asset: "alarm-snooze", systemFallback: "clock.badge")
+        case .chevronForward: NCSymbol(asset: "chevron-right", systemFallback: "chevron.right")
+        case .more: NCSymbol(asset: "dots-horizontal", systemFallback: "ellipsis.circle")
+        case .replyAll: NCSymbol(asset: "reply-all", systemFallback: "arrowshape.turn.up.left.2")
+        case .forward: NCSymbol(asset: "share", systemFallback: "arrowshape.turn.up.right")
+        case .encrypted: .lockOutline
+        case .signatureInvalid: NCSymbol(asset: "lock-off-outline", systemFallback: "lock.slash")
+        case .aiContent: NCSymbol(asset: "creation", systemFallback: "sparkles")
+        case .translate: NCSymbol(asset: "translate", systemFallback: "character.bubble")
+        case .download: .downloadOutline
+        case .print: NCSymbol(asset: "printer", systemFallback: "printer")
+        case .saveToFiles: .folderUpload
+        case .preview: NCSymbol(asset: "eye-outline", systemFallback: "eye")
+        case .unsubscribe: NCSymbol(asset: "email-remove-outline", systemFallback: "envelope.badge.minus")
+        case .readReceipt: NCSymbol(asset: "email-check-outline", systemFallback: "envelope.badge")
+        case .expand: .chevronDown
+        case .filesBack: .arrowLeft
+        case .file: NCSymbol(asset: "file-outline", systemFallback: "doc")
+        case .imageFile: NCSymbol(asset: "file-image-outline", systemFallback: "photo")
+        case .reload: NCSymbol(asset: "refresh", systemFallback: "arrow.clockwise")
+        case .shareLink: .linkVariant
+        case .important: NCSymbol(asset: "label-variant", systemFallback: "exclamationmark.circle")
+        case .openInWindow: NCSymbol(asset: "open-in-new", systemFallback: "macwindow.badge.plus")
+        case .back: NCSymbol(asset: "chevron-left", systemFallback: "chevron.left")
+        case .layout: NCSymbol(asset: "view-split-vertical", systemFallback: "rectangle.split.3x1")
+        case .priorityInbox: NCSymbol(asset: "label-variant-outline", systemFallback: "bolt.horizontal")
+        case .unifiedInbox: NCSymbol(asset: "inbox-multiple", systemFallback: "tray.2")
+        case .outbox: NCSymbol(asset: "inbox-arrow-up", systemFallback: "tray.and.arrow.up")
+        case .sharedFolder: NCSymbol(asset: "folder-account-outline", systemFallback: "folder.badge.person.crop")
+        case .warning: NCSymbol(asset: "alert-outline", systemFallback: "exclamationmark.triangle")
+        case .newMessage: .pencil
+        case .info: NCSymbol(asset: "information-outline", systemFallback: "info.circle")
+        case .cloudFile: NCSymbol(asset: "cloud-outline", systemFallback: "icloud")
+        case .forwardedMessage: NCSymbol(asset: "email-outline", systemFallback: "envelope")
         }
     }
 
@@ -165,6 +239,40 @@ enum MailSymbol: CaseIterable {
         case .undo: .text("Undo")
         case .redo: .text("Redo")
         case .formatting: .text("Formatting")
+        case .snooze: .text("Snooze")
+        case .chevronForward: .text("Open")
+        case .more: .text("More actions")
+        case .replyAll: .text("Reply all")
+        case .forward: .text("Forward")
+        case .encrypted: .text("Encrypted")
+        case .signatureInvalid: .text("Signature unverified")
+        case .aiContent: .text("Contains AI content")
+        case .translate: .text("Translate")
+        case .download: .text("Download")
+        case .print: .text("Print")
+        case .saveToFiles: .text("Save to Files")
+        case .preview: .text("Preview")
+        case .unsubscribe: .text("Unsubscribe")
+        case .readReceipt: .text("Read receipt")
+        case .expand: .text("Expand")
+        case .filesBack: .text("Back")
+        case .file: .text("File")
+        case .imageFile: .text("Image")
+        case .reload: .text("Reload")
+        case .shareLink: .text("Share link")
+        case .important: .text("Important")
+        case .openInWindow: .text("Open in New Window")
+        case .back: .text("Back")
+        case .layout: .text("View options")
+        case .priorityInbox: .text("Priority inbox")
+        case .unifiedInbox: .text("All inboxes")
+        case .outbox: .text("Outbox")
+        case .sharedFolder: .text("Shared folder")
+        case .warning: .text("Warning")
+        case .newMessage: .text("New message")
+        case .info: .text("Information")
+        case .cloudFile: .text("From Files")
+        case .forwardedMessage: .text("Forwarded message")
         }
     }
 

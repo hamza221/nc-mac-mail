@@ -217,6 +217,37 @@ struct ServerResultFetcherTests {
         #expect(try await f.payload(.followUp, f.messageKey) == .ready(.object(["wasFollowedUp": .bool(false)])))
     }
 
+    @Test("message source: ready with the RFC 822 text, asked again only after 30 days")
+    func messageSource() async throws {
+        let f = try await Self.fixture()
+        let route = RequestMatcher.pathSuffix("/messages/\(f.remoteId)/source")
+        await f.transport.stubSequence(route, [.json(#"{"source": "Subject: hi\r\n\r\nbody"}"#), .status(500)])
+        await f.fetcher.request(kind: .messageSource, key: f.messageKey)
+        await f.fetcher.settle()
+        #expect(
+            try await f.payload(.messageSource, f.messageKey)
+                == .ready(.object(["source": .string("Subject: hi\r\n\r\nbody")])))
+
+        await f.fetcher.request(kind: .messageSource, key: f.messageKey)
+        await f.fetcher.settle()
+        #expect(await f.transport.sendCount == 1)
+        #expect(ServerResultKind.messageSource.expiry == 30 * 86_400)
+
+        f.clock.advance(by: ServerResultKind.messageSource.expiry)
+        await f.fetcher.request(kind: .messageSource, key: f.messageKey)
+        await f.fetcher.settle()
+        #expect(await f.transport.sendCount == 2)
+    }
+
+    @Test("message source with nothing to keep fails as a row")
+    func messageSourceFailure() async throws {
+        let f = try await Self.fixture()
+        await f.transport.stub(.pathSuffix("/messages/\(f.remoteId)/source"), with: .status(500))
+        await f.fetcher.request(kind: .messageSource, key: f.messageKey)
+        await f.fetcher.settle()
+        #expect(try await f.payload(.messageSource, f.messageKey) == .failed("server(status: 500)"))
+    }
+
     // MARK: - Failure, staleness, offline
 
     @Test("a failed request with nothing to keep is a failed row, so the view stops waiting")

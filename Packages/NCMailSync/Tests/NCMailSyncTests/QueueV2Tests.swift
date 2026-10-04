@@ -260,6 +260,135 @@ struct QueueV2Tests {
         #expect(try await fixture.store.textBlock(loginId: fixture.loginId, remoteId: 8)?.title == "Draft 2")
     }
 
+    @Test func anOfflineCreateThenRenameKeepsTheRenameAfterDrain() async throws {
+        let fixture = try await QueueV2Test.make()
+        try await fixture.queue.perform(.createMailbox(name: "X"), accountId: fixture.accountId)
+        let created = try #require(
+            try await fixture.store.mailboxes(accountId: fixture.accountId).first { $0.remoteId < 0 })
+        try await fixture.queue.perform(.renameMailbox(mailboxId: created.id, name: "Y"), accountId: fixture.accountId)
+        try await QueueV2Test.stubV2(fixture.transport)
+        await fixture.drainer.drain()
+
+        #expect(try await fixture.rows().isEmpty)
+        let mailbox = try #require(
+            try await fixture.store.mailboxes(accountId: fixture.accountId).first { $0.id == created.id })
+        #expect(mailbox.remoteId == 19)
+        #expect(mailbox.displayName == "Y")
+    }
+
+    @Test func anOfflineCreateWithNoLaterEditTakesTheServersRow() async throws {
+        let fixture = try await QueueV2Test.make()
+        try await fixture.queue.perform(.createMailbox(name: "X"), accountId: fixture.accountId)
+        try await QueueV2Test.stubV2(fixture.transport)
+        await fixture.drainer.drain()
+
+        #expect(try await fixture.rows().isEmpty)
+        let mailbox = try #require(
+            try await fixture.store.mailboxes(accountId: fixture.accountId).first { $0.remoteId == 19 })
+        #expect(mailbox.displayName == "FixtureScratch 1791062118")
+    }
+
+    @Test func anOfflineCreateThenUpdateTagKeepsTheUpdateAfterDrain() async throws {
+        let fixture = try await QueueV2Test.make()
+        try await fixture.queue.perform(.createTag(displayName: "X", color: "#000000"), accountId: fixture.accountId)
+        let tag = try #require(try await fixture.store.tags(accountId: fixture.accountId).first { $0.remoteId < 0 })
+        try await fixture.queue.perform(
+            .updateTag(tagRemoteId: tag.remoteId, displayName: "Y", color: "#ffffff"), accountId: fixture.accountId)
+        try await QueueV2Test.stubV2(fixture.transport)
+        await fixture.drainer.drain()
+
+        #expect(try await fixture.rows().isEmpty)
+        let drained = try #require(
+            try await fixture.store.tags(accountId: fixture.accountId).first { $0.remoteId == 13 })
+        #expect(drained.displayName == "Y")
+        #expect(drained.color == "#ffffff")
+    }
+
+    /// WS-31's offline flow: a new "Snoozed" mailbox, made the snooze mailbox, then used.
+    private func queueOfflineSnoozeSetup(_ fixture: QueueV2Test.Fixture) async throws -> Int64 {
+        try await fixture.queue.perform(.createMailbox(name: "Snoozed"), accountId: fixture.accountId)
+        let created = try #require(
+            try await fixture.store.mailboxes(accountId: fixture.accountId).first { $0.remoteId < 0 })
+        try await fixture.queue.perform(
+            .patchAccount(AccountPatch(snoozeMailboxId: created.id)), accountId: fixture.accountId)
+        try await fixture.queue.perform(
+            .snooze(messageIds: [fixture.base.messageIds[0]], until: 1_900_000_000), accountId: fixture.accountId)
+        return created.remoteId
+    }
+
+    @Test func anOfflineSnoozeMailboxSendsOnlyTheServersId() async throws {
+        let fixture = try await QueueV2Test.make()
+        let placeholder = try await queueOfflineSnoozeSetup(fixture)
+        try await QueueV2Test.stubV2(fixture.transport)
+        await fixture.drainer.drain()
+
+        #expect(try await fixture.rows().isEmpty)
+        let requests = await fixture.transport.requests
+        let paths = requests.map { "\($0.httpMethod ?? "") \($0.url?.path ?? "")" }
+        let create = try #require(paths.firstIndex { $0.hasPrefix("POST") && $0.hasSuffix("/api/mailboxes") })
+        let patch = try #require(paths.firstIndex { $0.hasPrefix("PATCH") && $0.hasSuffix("/api/accounts/1") })
+        let snooze = try #require(paths.firstIndex { $0.hasSuffix("/snooze") })
+        #expect(create < patch && patch < snooze)
+        for request in requests {
+            let text = (request.url?.absoluteString ?? "") + String(decoding: request.httpBody ?? Data(), as: UTF8.self)
+            #expect(!text.contains(String(placeholder)), "placeholder leaked: \(text)")
+        }
+        let patchBody = String(decoding: requests[patch].httpBody ?? Data(), as: UTF8.self)
+        #expect(patchBody.contains(#""snoozeMailboxId":19"#))
+        let snoozeBody = String(decoding: requests[snooze].httpBody ?? Data(), as: UTF8.self)
+        #expect(snoozeBody.contains(#""destMailboxId":19"#))
+        #expect(try await fixture.store.account(id: fixture.accountId)?.snoozeMailboxId == 19)
+    }
+
+    @Test func anUnresolvedMailboxPlaceholderDefersTheDependentOperation() async throws {
+        let fixture = try await QueueV2Test.make()
+        let placeholder = try await queueOfflineSnoozeSetup(fixture)
+        await fixture.transport.stub(.method("POST") && .pathSuffix("/api/mailboxes"), with: .status(500))
+        try await QueueV2Test.stubV2(fixture.transport)
+        await fixture.drainer.drain()
+
+        let rows = try await fixture.rows()
+        #expect(Set(rows.map(\.kind)) == ["createMailbox", "patchAccount", "snooze"])
+        let requests = await fixture.transport.requests
+        #expect(!requests.contains { $0.httpMethod == "PATCH" || ($0.url?.path ?? "").hasSuffix("/snooze") })
+        for request in requests {
+            let text = (request.url?.absoluteString ?? "") + String(decoding: request.httpBody ?? Data(), as: UTF8.self)
+            #expect(!text.contains(String(placeholder)))
+        }
+    }
+
+    @Test func anUnsnoozeMovesTheMessageBackWhereTheSnoozeTookItFrom() async throws {
+        let fixture = try await QueueV2Test.make()
+        let message = fixture.base.messageIds[0]
+        let source = try #require(try await fixture.store.message(id: message)).mailboxId
+        try await fixture.queue.perform(
+            .snooze(messageIds: [message], until: 1_900_000_000), accountId: fixture.accountId)
+        #expect(try await fixture.store.message(id: message)?.mailboxId == fixture.snoozeId)
+
+        try await fixture.queue.perform(.unsnooze(messageIds: [message]), accountId: fixture.accountId)
+        #expect(try await fixture.store.message(id: message)?.mailboxId == source)
+        #expect(try await fixture.store.snoozeUntil(messageId: message) == nil)
+
+        await fixture.drainer.discardAll()
+        #expect(try await fixture.store.message(id: message)?.mailboxId == source)
+    }
+
+    @Test func anUnsnoozeWithNoQueuedSnoozeGoesToTheInbox() async throws {
+        let fixture = try await QueueV2Test.make()
+        let message = fixture.base.messageIds[0]
+        try await fixture.queue.perform(
+            .snooze(messageIds: [message], until: 1_900_000_000), accountId: fixture.accountId)
+        try await QueueV2Test.stubV2(fixture.transport)
+        await fixture.drainer.drain()
+        #expect(try await fixture.rows().isEmpty)
+
+        try await fixture.queue.perform(.unsnooze(messageIds: [message]), accountId: fixture.accountId)
+        #expect(try await fixture.store.message(id: message)?.mailboxId == fixture.base.inboxId)
+
+        await fixture.drainer.discardAll()
+        #expect(try await fixture.store.message(id: message)?.mailboxId == fixture.snoozeId)
+    }
+
     @Test func settersCollapseAndADeleteAbsorbsItsUpdates() async throws {
         let fixture = try await QueueV2Test.make()
         try await fixture.queue.perform(

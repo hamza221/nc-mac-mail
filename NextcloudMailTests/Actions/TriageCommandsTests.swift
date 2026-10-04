@@ -21,7 +21,7 @@ struct TriageCommandsTests {
         // ⌘, all belong to `List`, the WebView and the system.
         // Shift before Command: Apple's canonical modifier order is Control, Option, Shift,
         // Command, so `⌘⇧F` in the specification's prose renders as `⇧⌘F` on the key cap.
-        #expect(Set(bound) == ["A", "S", "U", "J", "\u{232B}", "R", "\u{2190}", "\u{2192}", "⌘P", "⌘F", "⇧⌘F"])
+        #expect(Set(bound) == ["A", "S", "U", "J", "\u{232B}", "R", "\u{2190}", "\u{2192}", "⌘P", "⌘F", "⇧⌘F", "C"])
         #expect(bound.count == Set(bound).count)
     }
 
@@ -33,7 +33,10 @@ struct TriageCommandsTests {
         for action in bound {
             #expect(rows.contains { $0.id == action.rawValue })
         }
-        #expect(rows.count == bound.count + KeyboardShortcutRow.platform.count)
+        #expect(rows.count == bound.count + ComposerCommand.allCases.count + KeyboardShortcutRow.platform.count)
+        // The composer's keys (§2.6 and the brief) are listed too.
+        let composerKeys = Set(ComposerCommand.allCases.map { NCKeyboardShortcutGlyphs.string(for: $0.shortcut) })
+        #expect(composerKeys == ["⌘N", "⇧⌘D", "⌘\u{21A9}", "⌘S", "⌃⌥1", "⌃⌥2", "⌃⌥3"])
         // Every line reads aloud as words rather than as punctuation.
         #expect(rows.allSatisfy { !$0.spoken.isEmpty && !$0.action.isEmpty })
     }
@@ -93,7 +96,7 @@ struct TriageCommandsTests {
         let listStore = MessageListStore(store: mirror.store)
         let context = TriageContext(store: mirror.store)
         context.listStore = listStore
-        listStore.show(mailbox: account.inboxId, view: .flat)
+        listStore.show(.mailbox(account.inboxId), view: .flat)
         #expect(await waitUntil { listStore.rows.count == 3 })
 
         await context.perform(.nextMessage)
@@ -119,7 +122,7 @@ struct TriageCommandsTests {
         let listStore = MessageListStore(store: mirror.store)
         let context = TriageContext(store: mirror.store)
         context.listStore = listStore
-        listStore.show(mailbox: account.inboxId, view: .flat)
+        listStore.show(.mailbox(account.inboxId), view: .flat)
         #expect(await waitUntil { listStore.rows.count == 3 })
         let ids = listStore.rows.map(\.id)
         listStore.selection = [ids[2], ids[0]]

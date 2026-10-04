@@ -110,7 +110,7 @@ struct MessageActionsTests {
 
     // MARK: - Junk
 
-    @Test("junk sets the flag and moves, as two operations in that order")
+    @Test("junk marks read, then flags and moves, flags before the move")
     func junkFlagsThenMoves() async throws {
         let (mirror, account, actions) = try await Self.oneAccount()
         let id = try #require(try await mirror.addMessages(count: 1, account: account).first)
@@ -122,7 +122,8 @@ struct MessageActionsTests {
         #expect(junked.isNotJunk == false)
         #expect(junked.mailboxId == account.junkId)
         let queued = try await mirror.store.pendingOperations(accountId: account.id)
-        #expect(queued.map(\.kind) == ["setFlags", "move"])
+        // Read (the web's spam marks read), then the junk flags, then the move.
+        #expect(queued.map(\.kind) == ["setFlags", "setFlags", "move"])
     }
 
     // MARK: - Toggles
