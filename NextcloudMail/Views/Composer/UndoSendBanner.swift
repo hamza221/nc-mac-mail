@@ -184,17 +184,38 @@ private struct UndoSendBannerModifier: ViewModifier {
     }
 }
 
+/// How a notice enters and leaves the strip. Reduce Motion turns the slide off and leaves
+/// the crossfade, which is the substitute the HIG gives for movement (ux-spec.md,
+/// Accessibility).
+enum UndoSendBannerMotion: Equatable {
+    case slide
+    case fade
+
+    init(reduceMotion: Bool) {
+        self = reduceMotion ? .fade : .slide
+    }
+
+    var transition: AnyTransition {
+        switch self {
+        case .slide: .move(edge: .bottom).combined(with: .opacity)
+        case .fade: .opacity
+        }
+    }
+}
+
 struct UndoSendBanner: View {
     let model: PendingSendsModel
     let session: AppSession
 
     @Environment(\.ncTheme) private var theme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
+        let motion = UndoSendBannerMotion(reduceMotion: reduceMotion)
         VStack(spacing: theme.metrics.spacing.tight) {
             ForEach(model.notices) { notice in
                 row(notice)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .transition(motion.transition)
             }
         }
         .padding(theme.metrics.spacing.loose)

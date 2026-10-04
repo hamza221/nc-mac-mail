@@ -83,7 +83,7 @@ old one stays.*
 | [0068](0068-settings-commands.md) | Settings the server must validate are online-only commands | Accepted |
 | [0069](0069-contacts-same-database.md) | Contacts use the same database and the same five modules, keyed by Nextcloud login | Accepted — 412 rule refined by 0082 |
 | [0070](0070-contacts-sidebar-section.md) | Contacts appear as a sidebar section, under the mail accounts | Accepted |
-| [0071](0071-widgets-read-snapshot.md) | Widgets read a snapshot file in the app group, never the database | Proposed |
+| [0071](0071-widgets-read-snapshot.md) | Widgets read a snapshot file in the app group, never the database | Accepted (WS-42) |
 | [0072](0072-local-first-autocomplete.md) | Recipient autocomplete is local-first | Accepted |
 | [0073](0073-editor-canonical-html.md) | The editor serialises one canonical HTML form, and import makes any input canonical | Accepted |
 | [0074](0074-editor-triggers.md) | Editor triggers are one session API; `:` opens the system emoji palette | Accepted |
@@ -109,6 +109,11 @@ old one stays.*
 | [0094](0094-oauth-account-setup-polls-the-connection-test.md) | OAuth account setup observes completion by polling the connection test; closing the window deletes the temporary account | Accepted |
 | [0096](0096-address-book-import-and-merge-are-queued-card-writes.md) | Address-book management, vCard import (one `contactPut` per card; a UID in the book updates it) and merge (one put + one delete) are queued writes; export is written from the mirror; social auto-update is a per-Mac on-view switch | Accepted |
 | [0097](0097-teams-are-mirrored-rows-and-online-commands.md) | Teams: one `teams` server-result row is the Circles capability gate and the `team`/`teamMember` refresh; team edits are online-only commands that refresh before answering; Shared items filters the files_sharing listings; the org chart is computed from `X-MANAGERSNAME` | Accepted |
+| [0098](0098-new-mail-notifications-gate-on-the-inbox-enumeration.md) | New-mail banners: per inbox, the gate is `envelopesComplete` and the watermark the highest local id at that moment; more than five at once become one summary; suppressed when the key main window shows that inbox; Mail-app Nextcloud notifications are shown once each and never deleted on the server | Accepted |
+| [0099](0099-spotlight-indexes-the-newest-window-of-the-mirror.md) | Spotlight mirrors the newest 5 000 messages and every contact card, diffed from store observations; envelope fields only | Accepted |
+| [0100](0100-app-group-and-extension-targets.md) | Team-prefixed app group `$(TeamIdentifierPrefix)com.nextcloud.mail.macos` (no profile under ad-hoc signing); extensions signed ad hoc like the app and embedded by it; `NextcloudMailShared/` compiled into all three | Accepted |
+| [0101](0101-an-answered-invitation-shows-its-buttons-again-once-sent.md) | An invitation answered here shows its answer while it is queued and Accept/Decline again once sent, because calendar objects are not mirrored; mirroring them is the revisit trigger | Accepted |
+| [0102](0102-no-not-grouped-contacts-entry.md) | The Contacts sidebar has no "Not grouped" entry; a `ContactsScope.notGrouped` case is the revisit trigger | Accepted |
 
 ## Which ones matter most
 

@@ -22,7 +22,8 @@ XCODEFLAGS := -project NextcloudMail.xcodeproj -scheme NextcloudMail \
 # The toolchain ships swift-format as a subcommand of `swift`. There is no
 # standalone `swift-format` binary to install, and invoking one is the most
 # common way this Makefile gets broken by a well-meaning edit.
-FORMAT_PATHS := Packages/*/Package.swift Packages/*/Sources Packages/*/Tests NextcloudMail NextcloudMailTests
+FORMAT_PATHS := Packages/*/Package.swift Packages/*/Sources Packages/*/Tests NextcloudMail NextcloudMailTests \
+	NextcloudMailShared NextcloudMailWidgets NextcloudMailShare
 
 # Swift 6.3's default build system links NCMailNetTests with NCMailNet.o twice
 # (the target is reached both directly and through NCMailTestSupport) and the

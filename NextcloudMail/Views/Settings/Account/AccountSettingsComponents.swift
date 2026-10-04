@@ -53,22 +53,20 @@ struct BusyButton: View {
     }
 }
 
-/// What a provisioned account shows instead of a server form (§9).
+/// What a provisioned account shows instead of a server form (§9): a form section, so it
+/// sits in its page's form like the section it replaces.
 struct LockedSectionView: View {
     let section: AccountSettingsSection
 
     var body: some View {
-        Form {
-            Section(section.title) {
-                NCNoteCard(.info) {
-                    Text(
-                        "This account is managed by your administrator. Its server settings come from the "
-                            + "provisioning configuration and cannot be changed here."
-                    )
-                }
+        Section(section.title) {
+            NCNoteCard(.info) {
+                Text(
+                    "This account is managed by your administrator. Its server settings come from the "
+                        + "provisioning configuration and cannot be changed here."
+                )
             }
         }
-        .formStyle(.grouped)
     }
 }
 

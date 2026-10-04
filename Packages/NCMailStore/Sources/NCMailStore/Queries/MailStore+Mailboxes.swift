@@ -68,6 +68,23 @@ extension MailStore {
         }
     }
 
+    /// The mailboxes of one account whose last sync failed, live, by id. Reads the
+    /// `mailbox` table alone, so only a recorded failure or a success that clears one
+    /// wakes it (WS-25's session-expiry trigger).
+    public func observeMailboxSyncFailures(accountId: Int64) -> StoreObservation<[MailboxSyncFailure]> {
+        observation { db in
+            try MailboxSyncFailure.fetchAll(
+                db,
+                sql: """
+                    SELECT id, syncFailureCount, lastSyncError FROM mailbox
+                     WHERE accountId = ? AND lastSyncError IS NOT NULL
+                     ORDER BY id
+                    """,
+                arguments: [accountId]
+            )
+        }
+    }
+
     /// The rows, with `unreadCount` taken from the mirror wherever the mirror is complete.
     ///
     /// The column holds the server's figure, written only by a folder refresh or a stats

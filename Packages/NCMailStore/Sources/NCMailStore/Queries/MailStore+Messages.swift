@@ -110,6 +110,21 @@ extension MailStore {
         }
     }
 
+    /// Every mirrored copy of the message whose `Message-ID` header is exactly
+    /// `messageIdHeader` (angle brackets included, as the server stores it), newest first.
+    /// One message filed in two mailboxes is two rows. For `ncmail://open/<Message-ID>`
+    /// (WS-42): a one-off read when a link is opened, so there is no index behind it — a
+    /// scan of 10 000 rows measured in WS-42's report.
+    public func messages(messageIdHeader: String) async throws -> [MessageRecord] {
+        try await dbQueue.read { db in
+            try MessageRecord.fetchAll(
+                db,
+                sql: "SELECT * FROM message WHERE messageId = ? ORDER BY sentAt DESC, id DESC",
+                arguments: [messageIdHeader]
+            )
+        }
+    }
+
     /// Every address on one message, in header order: `from`, then `to`, `cc`, `bcc` and
     /// `replyTo`, each in the order the header listed them.
     ///

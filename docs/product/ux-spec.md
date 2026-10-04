@@ -569,7 +569,10 @@ One rule, and it is the difference between a calm app and a nervous one:
   silently run on an empty copy: **Delete and Download Again** (deletes the file and
   relaunches), **Continue Without Saving**, or **Quit**.
 - Authentication lost (401) → this one **is** modal, because nothing works until it is
-  fixed: "Your session has expired. Sign in again."
+  fixed: "Your session has expired. Sign in again." It comes from discovery at launch or
+  sign-in, or from a 401 a sync records later in the session (a mailbox sync, an envelope
+  page or a body fetch); once per login until it signs in again, however many requests
+  fail (`SessionExpiryTrigger`).
 - Disk full → surfaced once in the storage panel with the number of bytes needed.
 
 ## Accessibility
@@ -914,7 +917,9 @@ and a **Comment** field. The answer is the attached object without METHOD, with 
 the user's own ATTENDEE line in every VEVENT, RSVP cleared, and the comment as
 `X-RESPONSE-COMMENT` and COMMENT. Nextcloud's scheduling sends the organiser the REPLY;
 when the calendar already holds the UID the write lands on that copy (ADR-0093). A reopened
-card shows an answer still waiting in the queue; once sent, it shows the buttons again.
+card shows an answer still waiting in the queue; once sent, it shows the buttons again,
+because calendar objects are not mirrored
+([ADR-0101](../decisions/0101-an-answered-invitation-shows-its-buttons-again-once-sent.md)).
 
 **Itinerary cards** — the `itinerary` server result for the message (kept 30 days), one card
 per reservation, de-duplicated by UID: flights ("Flight LH123 from TXL to MUC", times,
@@ -1122,12 +1127,35 @@ Drafts.
 ## Account settings (WS-39)
 
 §8 of the web client's checklist, per account. Hosted by the Settings window's **Accounts**
-tab (WS-38 owns the tab and its account list): selecting an account shows
-`AccountSettingsView(accountId:)`, a two-pane view — a section list on the left, the
-selected section's grouped `Form` on the right. The sidebar's *Account settings…* and the
-"cannot connect" row open the Settings window on that account
-(`SettingsTab.preferredAccountID`). Opening Settings re-reads server state
-(`.settingsOpened`), so every section shows the mirror first and fresher rows a moment later.
+tab (WS-38 owns the tab, its sidebar and the account header; layout under "App settings
+(WS-38)"): the tab's sidebar lists each account's **pages**, and selecting one shows
+`AccountSettingsView(accountId:group:)`, which renders that one page as a grouped `Form` that
+scrolls on its own. The sidebar's *Account settings…* and the "cannot connect" row open the
+Settings window on that account (`SettingsTab.preferredAccountID`). Opening Settings re-reads
+server state (`.settingsOpened`), so every section shows the mirror first and fresher rows a
+moment later.
+
+**Pages.** The sixteen §8 sections are grouped into nine pages (`AccountSettingsGroup`), in
+this order; a page lists only the sections visible for the account (table below), and a page
+with none is not listed. Each section is on exactly one page.
+
+| Page | Sections |
+| --- | --- |
+| General | Aliases, Alias certificates, Writing mode, Classification, Calendar |
+| Signature | Signature |
+| Folders | Default folders, Automatic trash deletion, Folder search |
+| Autoresponder | Autoresponder |
+| Filters | Filters |
+| Quick actions | Quick actions |
+| Mail server | Mail server |
+| Sieve | Sieve server, Sieve script |
+| Delegation | Delegation |
+
+Sections with sheets or dialogs (Signature, Autoresponder, Filters, Quick actions, Mail
+server, Delegation) each have a page to themselves. Links between sections move the page:
+Aliases' *Edit* opens Mail server, the Sieve hint card's *Go to Sieve settings* opens Sieve.
+Switching to an account that lacks the page shown (a delegated account has no Mail server
+or Delegation) shows General.
 
 Every section reads the store. Writes go one of two ways (ADR-0068):
 
@@ -1138,7 +1166,7 @@ Every section reads the store. Writes go one of two ways (ADR-0068):
   {message}" with the server's text): alias certificate, autoresponder, mail server,
   connection test, Sieve server, Sieve script, filters, delegation.
 
-**Section list and visibility.**
+**Section visibility.**
 
 | Section | Shown |
 | --- | --- |
@@ -1155,7 +1183,7 @@ only: "This account is managed by your administrator. Its server settings come f
 provisioning configuration and cannot be changed here." Nothing else is editable there.
 
 **Aliases (§8.1).** First row is the primary identity, "**Name** <email>", not deletable;
-for an unprovisioned account its *Edit* button selects Mail server. Each alias row: name and
+for an unprovisioned account its *Edit* button opens the Mail server page. Each alias row: name and
 address, *Rename alias* (inline name + email fields, *Update alias*; the email field is
 disabled for a provisioned alias), *Delete alias* (hidden for provisioned aliases). *Add
 alias* (not on a provisioned account): Name (prefilled with the account name) + Email, both
@@ -1358,9 +1386,19 @@ captioned "{login} on {host}" when several logins are signed in; it hides itself
 login's server disallows new accounts (`login.allowNewAccounts == false`). A declined
 Launch Services prompt shows "Could not set this app as the default mail app.".
 
-**Accounts** — the account list on the left with the same "Add mail account" buttons under
-it, WS-39's `AccountSettingsView(accountId:)` for the selected account on the right;
-sign-out and "Open Web Client" stay on each row.
+**Accounts** — a sidebar (220 pt, `List(selection:)`, so arrow keys move through it): one
+section per mirrored account, headed by its address (`NCNavigationCaption`), listing that
+account's settings pages (`NCNavigationItem`, see "Account settings (WS-39)"); under the
+list, the same "Add mail account" buttons as General, captioned per login when several are
+signed in. The selection is the account (`SettingsTab.preferredAccountID`, defaulting to the
+first account) and the page (General by default, kept across accounts that have it). On the
+right, a header for the selected account — avatar, name, address, "{status} · Last synced
+{time}", then *Open Web Client* and *Sign Out* — above the selected page. *Sign Out* runs the
+two-question flow (pending actions, then keep or remove local copies).
+
+**Window size.** One size for every tab, set on the tab view: at least 780 × 520 pt, ideally
+820 × 580. No tab sets its own minimum, so the window does not jump between tabs; each tab's
+`Form` scrolls inside it.
 
 **Appearance** — the web's §2.4 controls over the same preferences WS-29 reads
 (`MessageListPreferenceStore`): "Show all messages in thread" (`layout-message-view`,
@@ -1447,7 +1485,8 @@ enabled address book except Recently contacted, the **contact groups** (every `C
 value of the login's cards, natural case-insensitive order), and **Recently contacted** while
 the server's `contactsinteraction` book exists and is enabled. The Teams rows follow the
 groups ([Teams, shared items and the organisation chart](#teams-shared-items-and-the-organisation-chart-ws-37)). Web Contacts' "Not grouped" entry has no
-`ContactsScope` case and is not offered.
+`ContactsScope` case and is not offered
+([ADR-0102](../decisions/0102-no-not-grouped-contacts-entry.md)).
 
 **List** (content column). People only — `KIND:group` cards are not listed, as in web
 Contacts. Favourites first, then by the **sort setting**: web Contacts' `orderKey` (First name,
@@ -1647,3 +1686,87 @@ Contacts' `X-MANAGERSNAME;UID=` (also what the server writes from a user profile
 field), looked up in the card's own address book. A manager that is not in the book is said
 so ("Manager *name* is not in this address book") and the card heads its own chart; a
 reporting loop is cut at its alphabetically first member, which says so.
+
+## Notifications and the Dock badge (WS-41)
+
+Notification Center banners for new mail and for the Mail app's Nextcloud notifications, and
+the Dock icon's unread badge. Everything reads the mirror
+([ADR-0098](../decisions/0098-new-mail-notifications-gate-on-the-inbox-enumeration.md)).
+
+**Permission.** Asked once, at the first launch (alert and sound). Refused, the app works the
+same without banners; nothing in the app nags about it.
+
+**New mail.** One banner per unread message the sync puts in an inbox, once that inbox's first
+enumeration has finished — the first sync of an account, and a later re-download of the whole
+inbox, never notify. Title: the sender's name (or address); body: the subject, or "No subject".
+Banners of one thread stack together. More than five new messages in one sync pass of an
+inbox give one banner instead: the account's address, "*N* new messages"; clicking it selects
+that inbox.
+
+**Show previews.** The app sets nothing of its own: with System Settings ▸ Notifications ▸
+Nextcloud Mail ▸ Show previews set to *Never* (or *When Unlocked* on a locked Mac) the system
+shows "New message" instead of the sender and subject: the categories set
+`hiddenPreviewsBodyPlaceholder` and deliberately not `hiddenPreviewsShowTitle`, because the
+title is the sender. That is the UserNotifications contract, not a measurement — an unsigned
+development build is refused notification permission, so it could not be observed on screen.
+
+**Actions** on a message banner: **Archive** (only when the account has an archive mailbox),
+**Mark as read**, **Reply**. Archive and Mark as read are queued exactly as the toolbar's are,
+so they work offline and show in the mirror at once. Reply brings the app forward and opens
+the composer replying to the sender. Clicking the banner opens the message in its own window.
+
+**When nothing is shown.** No banner while a main window is key *and* shows that inbox — the
+inbox itself, Unified inbox or Priority inbox; the message is on screen already. Another
+window key, another app frontmost or another mailbox selected: the banner is shown, even while
+the app is frontmost. Read messages and drafts never notify.
+
+**Nextcloud notifications.** Every five minutes per signed-in login the app reads the server's
+notifications and keeps those of the Mail app (`app == "mail"`: mailbox nearly full, a
+delegation). Each is shown once, as the server words it — title the subject, body the message —
+and clicking it opens its link in the browser. Nothing is dismissed on the server: the web's
+notification bell keeps it until the user dismisses it there, as the web client does. A server
+without the notifications app (the route answers 404) is asked again only after the Mac wakes
+or the app relaunches; any other failure keeps quiet until the next poll.
+
+**Dock badge.** The unread count over every account's inbox — the same numbers the sidebar
+shows next to each inbox, added up. No badge at zero.
+
+## System integration (WS-42)
+
+Nothing here draws its own window: every integration ends in a composer or a selection the
+user already knows.
+
+**Links the app opens.** The app registers `mailto:` and `ncmail:` (Info.plist).
+
+| Link | Result |
+| --- | --- |
+| `mailto:…` (from any app, once Nextcloud Mail is the default mail app — WS-38's button) | A new composer with every field the URL carries (`to`, `cc`, `bcc`, `subject`, `body`), the account the one on screen |
+| `ncmail://open/<Message-ID>` (WS-30's "Copy direct link") | The main window comes forward, the sidebar selects the message's mailbox and the list selects the message; in the list layout it opens in place. Several copies (one message in two mailboxes): the newest. No main window: the message opens in its own window. A Message-ID the mirror does not have: nothing happens |
+| `ncmail://message/<id>` (a widget row) | The same selection, by local id |
+| `ncmail://shared/<item>` (the Share extension) | A composer for the shared item |
+
+A link that arrives with the launch is handled after the saved selection is restored, so the
+link wins.
+
+**Spotlight.** Messages appear as email items — subject as the title, the preview as the
+description, the sender as author — and contacts as contact items with their addresses. The
+newest 5 000 messages across every mailbox are in Spotlight, and every contact card (not
+groups) of every signed-in login (ADR-0099). A message deleted, moved past the newest 5 000, or
+a login signed out leaves Spotlight. Opening a message result selects it as a link does;
+opening a contact selects its address book in that login's Contacts section, then the card.
+
+**Widgets.** Two widgets, small, medium and large: **Important** and **Unread**, each listing
+the newest messages of that kind across every inbox — sender (semibold when unread) and
+subject, one line each. Small shows 2, medium 3, large 7. Clicking a row opens the message.
+Empty: "No important messages" / "No unread messages"; before the app has ever written a
+snapshot: "Open Nextcloud Mail to sign in". The widgets are as fresh as the last sync pass that
+changed inbox rows (ADR-0071).
+
+**Share extension.** "Nextcloud Mail" in the share menu of Finder, Safari and any app that
+shares files, images, a web page or text. Choosing it shows nothing of its own: the files are
+copied, and Nextcloud Mail opens a new composer with them attached, the page's URL and any text
+in the body, and the shared title as the subject. If the app was not running and the hand-off
+link is lost, the composer opens on the next launch.
+
+**Services.** Services ▸ "New Nextcloud Mail message with selection": a new composer with the
+selected text as the body. With nothing selected macOS greys the item out.

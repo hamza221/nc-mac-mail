@@ -372,4 +372,19 @@ struct StoreWriteTests {
         #expect(mailbox?.syncFailureCount == 2)
         #expect(mailbox?.lastSyncError == "428 Precondition Required")
     }
+
+    @Test func syncFailuresAreObservedAndASuccessClearsThem() async throws {
+        let store = try MailStore.inMemory()
+        try await Seed.base(store)
+        var iterator = store.observeMailboxSyncFailures(accountId: 1).makeAsyncIterator()
+        #expect(try await iterator.next() == [])
+
+        try await store.recordSyncFailure(mailboxId: 10, message: "unauthorized")
+        #expect(
+            try await iterator.next()
+                == [MailboxSyncFailure(id: 10, syncFailureCount: 1, lastSyncError: "unauthorized")]
+        )
+        try await store.setEnvelopeCursor(nil, complete: false, mailboxId: 10, lastSyncAt: 1)
+        #expect(try await iterator.next() == [])
+    }
 }

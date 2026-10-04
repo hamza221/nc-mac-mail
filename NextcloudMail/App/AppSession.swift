@@ -54,6 +54,8 @@ final class AppSession {
     /// `⌘F` is a `Commands` body outside the window, and it has to move the caret in the
     /// field the column is drawing.
     let search: SearchModel
+    /// WS-41's new-mail banners, Mail-app Nextcloud notifications and the Dock badge.
+    let notifier: MailNotifier
     /// The mirror on disk could not be opened, so this session runs on an empty in-memory
     /// one that is lost at quit. `RootSplitView` offers the recovery: delete the file and
     /// download everything again.
@@ -80,6 +82,7 @@ final class AppSession {
         engine = AccountEngine(store: store, status: status)
         triage = TriageContext(store: store)
         search = SearchModel(store: store)
+        notifier = MailNotifier(store: store, center: SystemNotificationCenter())
     }
 
     /// Deletes the unreadable mirror and starts the app again, so the next launch opens a new
@@ -125,6 +128,7 @@ final class AppSession {
             await self?.engine.saveStartMailbox(selection)
         }
         connectTriage()
+        notifier.start(navigation: navigation, queue: { [engine] in engine.mutationQueue(accountId: $0) })
         networkMonitor.start { [weak self] conditions in
             guard let self else { return }
             status.isOffline = conditions.isOffline

@@ -37,6 +37,12 @@ in the Xcode project. A sixth package, `NCMailTestSupport`, holds the fake trans
 recorded fixtures; it ships nothing and the app never depends on it. The split exists so that everything except the views is testable
 without a GUI, and so that workstreams own directories rather than fighting over files.
 
+The app embeds two extensions (WS-42, [ADR-0100](../decisions/0100-app-group-and-extension-targets.md)):
+`NextcloudMailWidgets` (WidgetKit) and `NextcloudMailShare` (Share). Neither links a package
+or opens the mirror; they exchange files with the app through the app group — the widget
+snapshot ([ADR-0071](../decisions/0071-widgets-read-snapshot.md)) and the Share inbox — using
+the few types in `NextcloudMailShared/`, which all three targets compile.
+
 ```
                     ┌───────────────────────┐
                     │  NextcloudMail (app)  │  SwiftUI, @Observable stores,

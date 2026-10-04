@@ -7,16 +7,43 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 *Ready for a human to post. Nothing here was filed by an agent.*
 
-Thirteen drafts: six against
-[`hamza221/nextcloud-swiftui`](https://github.com/hamza221/nextcloud-swiftui), six against
-[`nextcloud/mail`](https://github.com/nextcloud/mail), and one that goes to the security
-inbox rather than to a public tracker.
+Twenty-five drafts. Thirteen were written by WS-15 for v1 on 2026-09-23; WS-43 extended
+three of them with v2 evidence and added twelve on 2026-10-04.
+
+| Repository | Drafts |
+| --- | --- |
+| [`hamza221/nextcloud-swiftui`](https://github.com/hamza221/nextcloud-swiftui) | L-1 to L-10 |
+| [`nextcloud/mail`](https://github.com/nextcloud/mail) | M-1 to M-3, M-5 to M-13 |
+| Nextcloud security inbox, not a public tracker | M-4 |
+| [`nextcloud/server`](https://github.com/nextcloud/server) | S-1 to S-3 |
+| [`nextcloud/circles`](https://github.com/nextcloud/circles) | C-1 |
+| [`nextcloud/contacts`](https://github.com/nextcloud/contacts) | K-1 |
 
 Each draft is a title and a body. The evidence behind each one, with the call sites, is in
 [library-feedback.md](library-feedback.md) and [server-findings.md](server-findings.md).
 
 **Before posting.** Read L-6 and M-4 first: L-6 asks for a CI job rather than a code change,
-and M-4 is a privacy report that should not be a public issue.
+and M-4 is a privacy report that should not be a public issue. L-7 is an offer of code, not
+a bug: post it as a discussion or an issue as the maintainer prefers.
+
+## If only five get posted
+
+Ranked by what each one changes for the most clients, across all repositories:
+
+1. **L-1, `NCNoteCard` actions** (`nextcloud-swiftui`). Five workstreams and about a dozen
+   call sites worked around it, it is an accessibility blocker, and the fix changes a
+   signature, so it has to land before the API freezes.
+2. **L-7, `NCRichContenteditable`** (`nextcloud-swiftui`). The largest deferred component on
+   the roadmap, offered as working code with three consumers and 40 tests.
+3. **L-8, `NCUserPicker` caller-owned results** (`nextcloud-swiftui`). Four workstreams, and
+   no people-picking screen in v2 could use the picker. Changes the initialiser.
+4. **M-9, the drafts and outbox contract** (`nextcloud/mail`). A literal reading of the API
+   retries a send that succeeded or expunges an unrelated message.
+5. **M-8, a configuration route for native clients** (`nextcloud/mail`). One capability and
+   one batch preference route close six findings and cut a launch from 25 requests.
+
+M-1 to M-6 (v1) still stand and are not re-ranked here: M-1 to M-3 are silent data loss for
+any mirroring client and come before everything above for `nextcloud/mail`.
 
 ---
 
@@ -77,32 +104,68 @@ A component should combine its children when its generic parameters prove it has
 focusable content, and should not when a caller supplied any. Both components currently
 choose based on their own most common use rather than on what the caller passed.
 
+### Since this was first written: four more screens, and two more asks
+
+Building the rest of the client (web-client parity plus Contacts and Calendar) hit
+`NCNoteCard`'s `.combine` four more times, independently: seven message banners (phishing,
+read receipt, follow-up, translation, remote content, S/MIME, PGP), invitation cards with
+Accept / Decline / Tentative, itinerary cards with "Import into calendar", a dismissible
+settings error, and an account-setup form message. Every one of them put its buttons beside
+or under the card in a hand-built stack, so one app now has about a dozen slightly different
+card-plus-buttons layouts. That is the strongest single signal from building the client.
+
+Two more asks from the same call sites, both additive:
+
+- **`onDismiss:`**, a close button the card owns, for an inline error that has to go away
+  once read.
+- **A verbatim `String` message.** `message:` is a `LocalizedStringResource`, so text from
+  the server (phishing reasons, a date, a language name) needs the content-builder form and
+  one `Text` per line.
+
 ## L-2
 
-**Title:** `NCListItem`: a list row needs an accessory column before the leading slot
+**Title:** `NCListItem`: the slots a mail row still has to build itself
 
 **Body:**
 
-`NCListItem(_:subtitle:leading:details:trailing:)` gives a row one leading view
-(`Components/ListItem/NCListItem.swift:79`). A mail row needs four things there: an unread
-dot, a star and an attachment clip, each optional, and then the avatar.
+`NCListItem` gives a row a title, a `String` subtitle, one leading view, details and one
+trailing view (`Components/ListItem/NCListItem.swift:79`). Building a full Mail client and
+a Contacts client against it, seven separate screens needed something the row does not
+have. Each item below is a call site that rebuilds part of the library's layout from
+outside.
 
-Predicted from the signature during a design pass, then hit for real while building the
-message list, so this is two independent sightings of the same gap.
+**1. A footer line inside the text column** (the most important). A mail row is sender,
+subject, then a preview and a line of tag and attachment chips. The row stacks a second block
+under the item and indents it by `metrics.avatar.medium + metrics.spacing.standard` to line
+up with the text column: a guess at the item's internal layout that breaks if the item
+changes. A `footer:` slot removes the guess.
 
-**What a caller has to do.** Build `HStack { threeFixedSlots; NCAvatar(...) }` inside the
-leading slot and size the slots by hand from `theme.metrics.icon.small` and
-`theme.metrics.spacing.hairline`. Every absent glyph has to be a `Color.clear` of that
-size, because without a fixed width a row with no glyphs puts its avatar two points left of
-a row with one, and a list scanned vertically stops lining up.
+**2. A trailing accessory cluster beside `details:`.** Unread, starred and attachment glyphs.
+We first built them as a fixed column ahead of the avatar, three `Color.clear` placeholders
+wide, because a variable-width leading slot breaks vertical alignment. Seen in use, that was
+a blank column on nearly every row, so the glyphs now go in `trailing:`, drawn only when they
+apply, next to the right-aligned date. A cluster the component lays out there would replace
+the spacing arithmetic. Files (shared, favourite, locked) and Talk (unread, mention) want the
+same.
 
-It works and it is twenty lines. The twenty lines are the library's own alignment
-reimplemented by a caller who cannot see the library's spacing decisions, which means three
-Nextcloud apps will line their rows up three slightly different ways.
+**3. A `Text` or `AttributedString` subtitle,** so a draft can read *Draft:* in italics
+before the subject, as the web does.
 
-**Suggested fix:** an `accessories:` slot ahead of `leading:`, laid out by the component at
-a width it picks from the metric scale. Files wants the same shape for shared, favourite and
-locked. Talk wants it for unread and mention markers.
+**4. An `isEnabled`-aware look.** A "choose a folder" picker lists files dimmed and
+unselectable; today the caller applies `.opacity(0.5)`.
+
+**5. `hoverActions:` and an `.ncListDensity(.compact)` environment value.** Quick actions on
+hover are an app-built overlay; compact mode switches the avatar size by hand.
+
+**6. A disclosure form with an expanded content slot,** the web's `ThreadEnvelope`: a list of
+collapsed rows around one expanded message.
+
+**7. A leading control,** a switch before the name (address books, calendars), and **8. a
+depth or outline form** with connectors (an organisation chart; nested mailboxes).
+
+Several of these could be one generic slot API rather than eight parameters; that is the
+maintainer's call. What matters is that the library owns the alignment, because three
+Nextcloud apps reimplementing it will line their rows up three slightly different ways.
 
 **Related, smaller.** There is no `NCListItem(_:subtitle:details:)`: the five initialisers
 cover every combination except title, subtitle and details with no leading view. The source
@@ -149,6 +212,30 @@ blocked-content bar falls back to the warning card's own alert glyph, which tell
 
 `alertOctagonOutline`, `trashCanOutline`, `folderOutline`, `star`, `cogOutline` and
 `accountOutline` were already there and are used as they are.
+
+**Since this was first written,** the client grew to 95 icons, and **57 of them** resolve to
+a fallback: the eleven above plus forty-six more. In the order a mail-and-contacts client
+draws them:
+
+- **Editor (15):** `format-strikethrough-variant`, `format-subscript`, `format-superscript`,
+  `image-plus`, `format-align-justify`, `format-pilcrow-arrow-right`,
+  `format-pilcrow-arrow-left`, `format-list-bulleted`, `format-list-numbered`,
+  `format-quote-close`, `format-clear`, `find-replace`, `code-tags`, `redo`, `format-text`.
+  (`format-bold`, `format-italic`, `format-underline`, the left, centre and right aligns,
+  `link-variant` and `undo` are already there.)
+- **Message actions and banners (12):** `reply-all`, `share` (forward), `alarm-snooze`,
+  `label-variant` (important), `printer`, `eye-outline`, `translate`,
+  `email-remove-outline` (unsubscribe), `email-check-outline` (read receipt),
+  `lock-off-outline`, `creation` (AI content), `email-outline`.
+- **Mailboxes and navigation (6):** `inbox-multiple`, `label-variant-outline`,
+  `inbox-arrow-up`, `folder-account-outline`, `chevron-left`, `view-split-vertical`.
+- **Status (2):** `alert-outline`, `information-outline`.
+- **Files (4):** `file-outline`, `file-image-outline`, `refresh`, `cloud-outline`, and
+  ideally the whole MDI file-type set (pdf, document, spreadsheet, audio, video, archive).
+- **Contacts, calendar and teams (7):** `domain`, `certificate-outline`,
+  `cloud-download-outline`, `airplane`, `train`, `sitemap-outline`, `logout`.
+
+`alarm` in the paragraph above is now `alarm-snooze`, which is what snooze draws.
 
 ## L-4
 
@@ -270,6 +357,185 @@ one.
 **Related, small:** `REUSE.toml:30` still has a `Showcase/**/*.pbxproj` glob with no project
 behind it. When that project appears, it will be the first in-repo consumer and it will hit
 exactly this class of problem.
+
+## L-7
+
+**Title:** Offer: a native `NCRichContenteditable`, built to be upstreamed, with three
+consumers already
+
+**Body:**
+
+The roadmap defers `NCRichContenteditable` to v1.1 ("needs `NSTextView` bridging, 3–4
+person-weeks alone"). A Mail client built against this library could not wait for it, so it
+built one designed to move here: no mail types anywhere, theming through `.ncTheme`, every
+control labelled. This issue offers it, says what it does and does not do, and lists what
+would change on the way in. Code: `NextcloudMail/Editor/` in
+[nc-mac-mail](https://github.com/hamza221/nc-mac-mail), twelve files, about 2,500 lines,
+plus a 268-line HTML tokenizer it depends on. Same author and the same licence
+(AGPL-3.0-or-later) as this library.
+
+**What it is.**
+
+- **A TextKit 2 `NSTextView`** (`ComposerTextView`), wrapped as `RichTextEditor`
+  (`NSViewRepresentable`) and composed with a toolbar as
+  `ComposerEditor(document:providers:onFileDrop:onMention:)`.
+- **An `@Observable` document** (`EditorDocument`) with two modes, `.plain` and `.rich`, and
+  every formatting operation as a method with a registered undo inverse, so the toolbar,
+  menus and keyboard shortcuts drive one model. Switching rich to plain asks first when the
+  text has formatting.
+- **Its own HTML, in both directions.** `HTMLSerializer` writes one canonical spelling of a
+  fixed tag set (p, br, strong, em, u, s, sub, sup, h1–h3, ul/ol/li, blockquote, a, img,
+  span with colour, background, family and size, `dir`, `text-align`), with a fixed nesting
+  order and property order, so serialise → import → serialise is a fixed point. 33
+  parameterised fixed-point cases test it construct by construct. `HTMLImporter` reads any
+  HTML into that model and never calls `NSAttributedString(html:)`, so it never runs WebKit
+  and never fetches. Only `data:` images and `http`, `https` and `mailto` links can enter the
+  model.
+- **A full toolbar:** heading, family and size; bold, italic, underline, strikethrough;
+  text and background colour (SwiftUI `ColorPicker`); sub- and superscript; image embed;
+  alignment; left-to-right and right-to-left; lists; quote; link; remove formatting;
+  `NSTextFinder` find and replace; an editable source view; undo and redo.
+- **Trigger sessions:** `:` (emoji), `@` (mention), `!` (text blocks) and `/` (smart picker),
+  each behind a provider protocol (`MentionProvider`, `TextBlockProvider`,
+  `SmartPickerProvider`) so the editor never learns what a suggestion is.
+- **A restricted pasteboard.** `readablePasteboardTypes` excludes web archives, and
+  `readSelection(from:type:)` never calls `super` for HTML, so pasted HTML goes through the
+  importer and a remote image on the pasteboard does not survive.
+
+**Evidence that it is general.** It carries a mail composer, a per-identity signature
+editor, and a text-block editor in Settings, which took it as it was. 40 unit
+tests across four suites. Design records:
+[ADR-0065](https://github.com/hamza221/nc-mac-mail/blob/main/docs/decisions/0065-native-rich-text-editor.md)
+(why native),
+[ADR-0073](https://github.com/hamza221/nc-mac-mail/blob/main/docs/decisions/0073-editor-canonical-html.md)
+(the canonical HTML),
+[ADR-0074](https://github.com/hamza221/nc-mac-mail/blob/main/docs/decisions/0074-editor-triggers.md)
+(triggers).
+
+**What TextKit 2 does not give, which an upstream design should know before it starts.**
+
+- **No inline image resize handles.** `NSTextAttachment` has none; building them means custom
+  hit-testing over `NSTextLayoutManager` fragments. The editor ships without interactive
+  resize; `width` survives the round trip.
+- **`NSTextList` numbering is per list instance.** Splitting a list mid-edit restarts the
+  numbering at the split. Cosmetic here, because block identity lives in a custom attribute
+  rather than in the text list, which is also why the serialised HTML stays right.
+- **`NSTextView`'s HTML reading is WebKit's.** It goes through `NSAttributedString(html:)`,
+  which can fetch. There is no reader hook to replace; the only safe seam is overriding
+  `readSelection(from:type:)` and never calling `super` for `.html`. Anyone building a
+  Nextcloud editor needs this one.
+- **No typed API for the find bar's replace mode.** The caller fabricates an `NSMenuItem`
+  whose tag is `NSTextFinder.Action.showReplaceInterface.rawValue`.
+- `Unicode.Scalar.Properties` has no `isExtendedPictographic`, so the emoji trigger
+  approximates.
+
+**What would change on the way in.**
+
+1. The tokenizer (`HTMLScanner` and `HTMLEntities`, 268 lines, also mail-free) moves with
+   the editor.
+2. Types become `public` and get `NC` names: `NCRichContenteditable` for the composed view,
+   `NCRichTextDocument` for the model, the three provider protocols as they are.
+3. `NCEmojiPalette` has to be reachable from the module the editor lands in; today it lives
+   in `NextcloudPlatform`, which is not a product (see L-9).
+4. Fifteen toolbar glyphs are missing from the catalogue (see L-3).
+5. macOS only today. The serialiser and importer are attributed-string code a `UITextView`
+   host could share; the view and pasteboard layers are AppKit.
+
+**Not included, deliberately:** anything that knows about mail (signatures, quoting, the
+recipient field).
+
+**Question for the maintainer:** take it as one component, or split the HTML model
+(`NCRichTextDocument` with its serialiser and importer, platform-neutral) from the AppKit
+view? The second makes an iOS host cheaper later and keeps the canonical HTML a contract
+with one owner.
+
+## L-8
+
+**Title:** `NCUserPicker`: let the caller own the results (a search-driven picker and a
+token field)
+
+**Body:**
+
+`NCUserPicker` takes a `candidates:` list and filters it by substring itself
+(`Components/UserPicker/NCUserPicker.swift:63,74`). That fits a short, local, unranked list.
+Building a Mail and Contacts client, four separate screens needed to pick people, and **none
+of them could use the picker**:
+
+- **Recipient autocomplete** yields a local list at once and a longer one when a server
+  supplement lands, ranked by rules the picker does not know (recency, frequency, identities
+  last). The picker re-filters, so it cannot show a pre-ranked, growing list.
+- **A recipient field** takes free-typed addresses (valid ones become chips, invalid text
+  stays to be fixed), pasted lists with names, suggestions that arrive while typing, and
+  refuses duplicates case-insensitively. None of that is "pick an id from a pool".
+- **Mailbox delegation** picks one Nextcloud user from a server search. It fell back to a
+  user-id `TextField`.
+- **Adding team members** searches users and groups on the sharees route, about a third of a
+  second per term. It became a `TextField` over a `List` of `NCListItem`s.
+
+**Suggested fix, two shapes:**
+
+1. **A search-driven picker:** results supplied by the caller (`results: [Candidate]`, or
+   `search: (String) async -> [Candidate]`), no internal filtering, and a pending state
+   while results are fetched.
+2. **A token field:** `NCTokenField(tokens: Binding<[Token]>, text: Binding<String>,
+   suggestions: [Suggestion], commit: (String) -> [Token])`, where the caller owns parsing
+   and suggestions. It needs chips that wrap (L-10).
+
+Both change or add initialisers, which is why this is worth settling before the API freezes.
+
+## L-9
+
+**Title:** Packaging: `NextcloudPlatform` is neither a product nor re-exported, and an app
+extension cannot take the tokens alone
+
+**Body:**
+
+`Package.swift` declares three products (`NextcloudDesign`, `NextcloudUI`,
+`NextcloudIcons`), and `Sources/NextcloudUI/Exports.swift` re-exports `NextcloudDesign` and
+`NextcloudIcons`. `NextcloudPlatform`, which holds `NCEmojiPalette` and `NCPasteboard`, is
+neither.
+
+Two parts of one app made opposite choices about it. The editor writes
+`import NextcloudPlatform`, which compiles only because Xcode puts every package target's
+module in the build directory, which is an implementation detail and not an API. The contact
+card refused to rely on that and writes `NSPasteboard` directly instead of
+`NCPasteboard.copy`. An API that admits both is not frozen.
+
+Two neighbouring asks belong to the same decision:
+
+- **A dependency-free tokens product.** A WidgetKit extension will not link the whole UI
+  package and its asset catalogues for a few metrics and a brand colour, so the widgets fall
+  back to system styles. A `NextcloudUITokens` product (metrics and the brand colour as plain
+  values) would let an extension follow the app.
+- **An `Image` from an `NCSymbol`.** SwiftUI's `tabItem` takes `Label(_:image:)`, and the
+  catalogue hands out a view, so a settings window with eleven tabs has no tab icons.
+
+**Suggested fix:** add `NextcloudPlatform` to `Exports.swift` or make it a product; split
+the token values into a product with no resources; add an `Image` accessor (or a `Label`
+helper) on `NCSymbol`.
+
+## L-10
+
+**Title:** `NCChip`: a wrapping group, a selectable form, a "+N" limit and progress
+
+**Body:**
+
+`NCChip` is a display token: a role, a tint, an optional leading view and `onRemove:`
+(`Components/Chip/NCChip.swift:36`). Five places in one client needed it to be a control:
+
+- **A wrapping group, built twice.** A recipient field and an attachment strip
+  (`FlowLayout`), and a contact's groups (`ContactFlowLayout`), each wrote a SwiftUI `Layout`
+  that wraps chips. `NCUserPicker`'s own chips scroll on one line. An `NCChipGroup` that
+  wraps with the theme's spacing would serve Mail, Deck labels and Talk participants.
+- **A limit with "+N more".** Long recipient lists collapse to "+N" in the composer and past
+  three in the message header; both hand-roll a borderless button after the chips. The group
+  could own the limit, the wording and its accessibility.
+- **A selectable form.** Search filters (has attachment, unread, to me) are the web's
+  `NcChip` with a selected state. Today: a chip in a plain `Button`, the role swapped by
+  hand, the `.isSelected` trait added by the caller. `NCChip(_:isOn:)` would own all three.
+- **Progress and failure.** An uploading attachment wants a progress bar and a failed state:
+  `progress: Double?` or a trailing slot.
+- **An action** (from L-5): the `action:` parameter `NCUserBubble` already has.
 
 ---
 
@@ -525,3 +791,316 @@ author who "fixes" the apparent inconsistency would quietly undo it. One sentenc
 transform's doc block would prevent that.
 
 Version: 5.12.0-rc.1.
+
+## M-8
+
+**Title:** Native clients need the configuration the web page gets as initial state: a
+`mail` capability and one preferences route
+
+**Body:**
+
+`lib/Controller/PageController.php::index` provides the web client, as initial state,
+values a native client has no other way to read: `allow-new-accounts`,
+`disable-scheduled-send`, `disable-snooze`, `importance_classification_default`,
+`google-oauth-url`, `microsoft-oauth-url`, and the `preferences` blob with
+`attachment-size-limit`. Capabilities carry no `mail` section, `GET /api/preferences/{key}`
+reads user preferences only, and the provisioning API exposes three of the app-config keys,
+to admins only. A native client has to assume every feature is on and learn otherwise from
+an error. Six consequences, found building a native macOS client:
+
+1. **The flags themselves are unreadable** (above).
+2. **A settings refresh is 25 requests.** Fifteen are `GET /api/preferences/{key}`, one key
+   each. At about 210 ms of PHP bootstrap per Mail route on the test server, that is 7.3 s
+   serially and 2.6–3.1 s four at a time.
+3. **Translation off is invisible.** With no provider, `GET /ocs/v2.php/translation/languages`
+   answers 200 with an empty list and `POST …/translate` answers OCS 412. Mail's own
+   `llm_translation_enabled` is the only real signal, and a user cannot read it.
+4. **"New accounts disabled" answers a generic error.**
+   `AccountsController::create`'s `ALLOW_NEW_MAIL_ACCOUNTS` check returns
+   `MailJsonResponse::error('Could not create account')`, the same text as an unexpected
+   `ServiceException` a few lines later.
+5. **Omitting `classificationEnabled` on create ignores the admin default.** The controller
+   passes `null`, `MailAccount` keeps its property default `true`, and only the CLI commands
+   call `isClassificationEnabledByDefault()`. The web form always sends the value, so it
+   never notices.
+6. **`attachment-size-limit`, `disable-scheduled-send` and `disable-snooze` are enforced only
+   in Vue.** `AttachmentsController`, `OutboxController` and the snooze routes never check
+   them, so a client that cannot read them (1) cannot honour them, and the server accepts
+   the request anyway.
+
+**Suggested fix:** a `mail` capability (or `GET /ocs/v2.php/apps/mail/config`) with the
+values `PageController` already computes, including whether translation is available, and
+`GET /api/preferences` returning every user preference at once. Then, smaller: a 403 with
+"Creating mail accounts is disabled by your administrator"; apply
+`ClassificationSettingsService::isClassificationEnabledByDefault()` when the parameter is
+null; check the three flags server-side.
+
+Version: Mail 5.12.0-rc.1 on Nextcloud 36.
+
+## M-9
+
+**Title:** Drafts and outbox: 202 means "done", `draftId` deletes a message, and an SMTP
+refusal looks like a retry
+
+**Body:**
+
+Three ways a client that reads the drafts and outbox API literally does the wrong thing with
+a user's outgoing mail. Each one was found building a native client, and each risks a
+duplicate or a lost message.
+
+**1. 202 means two opposite things.** `MailboxesController`'s sync answers
+`JsonResponse::fail([], 202)`: not done, ask again. `DraftsController::update`, `destroy`
+and `move`, and `OutboxController::update`, `send` and `destroy`, answer
+`JsonResponse::success(…, 202)`: done. A client that learns 202 from sync treats every
+successful draft save and every successful send as a failure, and a queue that retries a
+"failed" send **sends it twice**. Suggested: 200 for the drafts and outbox successes.
+
+**2. `draftId` is the IMAP message to expunge.** On `POST /api/drafts` and `POST
+/api/outbox` it reads as "the draft I am sending". It is the database id of an IMAP message
+that the server flags `\Deleted` and expunges (`DraftsController.php:94-95`,
+`handleDraft`). Passing a `/api/drafts` id there deletes an unrelated message. Separately,
+`DraftsService::flush` moves every draft untouched for 300 s with no `send_at` into the
+IMAP Drafts folder and deletes the row (`LocalMessageMapper.php:188`), so a client holding a
+draft id across a long compose finds it gone. Neither is in the API description. Suggested:
+rename to `replacesMessageId` (or document it), document the 300 s job, and consider an
+idempotency key on send so a client can retry safely.
+
+**3. An SMTP refusal is invisible.** When the relay refuses (here an SMTP 452 4.3.1,
+"Insufficient system storage", logged as a `Horde_Mime_Exception` from
+`MailTransmission::send`), `POST /api/outbox/{id}` answers 500 "Could not send message", and
+the message stays in the outbox with `status` 10 (`STATUS_SMPT_SEND_FAIL`,
+`LocalMessage.php:75`) and **`failed: false`**. Cron retries it against the same relay. A
+client cannot tell "will retry" from "the relay said no" without knowing the status table.
+Suggested: set `failed`, or expose the SMTP reply, when the transport refuses.
+
+Version: Mail 5.12.0-rc.1 on Nextcloud 36.
+
+## M-10
+
+**Title:** `PUT /api/accounts/{id}` answers a half-empty account, so a client that trusts
+the answer wipes the account's settings
+
+**Body:**
+
+`PUT /api/accounts/{id}` answers with `order`, `editorMode` and every special-mailbox id
+(`draftsMailboxId`, `sentMailboxId`, `trashMailboxId`, `junkMailboxId`, …) as **null**,
+while the stored account keeps them: the next `GET /api/accounts/{id}` has them all.
+
+`AccountsController::update` (`lib/Controller/AccountsController.php:169`) returns
+`SetupService::createNewAccount(…, $id)`, which builds a fresh `MailAccount` from the
+request's connection fields only, saves it, and serialises that object rather than the row
+the update produced. `create` (`:378`) returns the same serialiser's answer.
+
+A client that upserts the answer, which is the obvious thing to do with the body of a PUT,
+loses the account's writing mode and default folders. Ours now re-reads the account with a
+GET after both the PUT and the POST, and trusts only the POST's `id`.
+
+**Suggested fix:** return `accountService->find($userId, $id)` after the save, as `show`
+does.
+
+Version: Mail 5.12.0-rc.1 on Nextcloud 36.
+
+## M-11
+
+**Title:** Two reads a mirroring client cannot rely on: the message list answers 409 during
+any sync, and `dkimValid` is missing from bodies
+
+**Body:**
+
+**1. `GET /api/mailboxes/{id}/messages` answers 409 while any sync of the mailbox runs.**
+`MailSearch::findMessages` throws `MailboxLockedException` ("{id} is already being synced",
+`lib/Service/Search/MailSearch.php:81`) whenever the mailbox holds any of its three sync
+locks, including one taken by another client or the background job, for up to
+`Mailbox::LOCK_TIMEOUT` (300 s, `lib/Db/Mailbox.php:93`). A read that does not touch IMAP is
+refused because a writer is busy, and nothing says when to ask again. Right after a send,
+the client's own sync of Sent and a second reader of Sent collide this way. Suggested: serve
+the cached list while a sync runs, or answer with `Retry-After`.
+
+**2. `dkimValid` is null in every body a mirror fetches.** `getBody` copies the DKIM verdict
+only when it is already cached (`MessagesController.php:253-255`); the verification itself
+is the separate `GET /api/messages/{id}/dkim` (`:298`). The web client shows **Unsubscribe**
+only when `dkimValid` is true, so a mirror that wants the same gate has to make one extra
+request per message. Suggested: verify when the body is built (the verdict is cached
+server-side already), or put it on the envelope.
+
+Version: Mail 5.12.0-rc.1 on Nextcloud 36.
+
+## M-12
+
+**Title:** Sieve and settings routes: three wrapping conventions, an HTML 500, and a trusted
+address that disappears
+
+**Body:**
+
+**1. Three Sieve routes, three conventions.** With ManageSieve on, `GET
+/api/sieve/active/{id}` answers bare `{"scriptName", "script"}`; `GET /api/filter/{id}`
+answers a bare array; `GET /api/out-of-office/{id}` answers the `{"status","data"}` envelope
+around `{"state": …|null, "script", "untouchedScript"}`, where `state` is null until the
+settings were ever saved. With ManageSieve off, all three answer the envelope. A client
+modelled on one recording reads every script as nil or fails every filter list on the other.
+
+**2. With ManageSieve off, the filter routes answer an HTML 500.** `GET`/`PUT
+/api/filter/{accountId}` answer the full Nextcloud HTML error page, while the sibling routes
+answer a clean 400 `{"status":"fail","data":{"message":"ManageSieve is disabled"}}`.
+
+**3. A trusted address hides while its domain is trusted.** Trust `example.org`, then
+`someone@example.org`: both `PUT /api/trustedsenders/…` answer 201, and `GET
+/api/trustedsenders` lists only the domain. Removing the domain brings the address back. A
+settings list that mirrors the listing cannot show, or delete, the individual entry.
+
+**Suggested fix:** the envelope for all three Sieve routes; catch the same
+`ClientException` in the filter routes and answer the siblings' 400; list both trusted
+entries.
+
+The 422 that `PUT /api/sieve/active/{id}` answers for a script that does not parse, with the
+parser's line and column in `message`, is exactly right, and is what a native form shows.
+
+Version: Mail 5.12.0-rc.1 on Nextcloud 36.
+
+## M-13
+
+**Title:** OAuth account setup: let a native client observe completion
+
+**Body:**
+
+The provider redirects to `oauthRedirect` on the user's Nextcloud
+(`lib/Controller/GoogleIntegrationController.php:80`,
+`MicrosoftIntegrationController.php:84`), which stores the token and renders a done page
+whose script tells its opener: `window.opener.postMessage('DONE')`
+(`src/main-oauth-popup.js:22`).
+
+A native client opens the consent page in `ASWebAuthenticationSession` (or the system
+browser). That session completes only on a navigation to a callback scheme or an associated
+domain, and the done page never navigates onward, so the client cannot observe completion.
+Ours polls `GET /api/accounts/{id}/test` every 2 s for up to ten minutes, and cannot tell a
+denied consent from a slow user.
+
+**Suggested fix:** accept an allow-listed custom-scheme return URL when the client starts
+the flow, and have the done page navigate to it after storing the token, with an error
+parameter when consent was denied.
+
+Version: Mail 5.12.0-rc.1 on Nextcloud 36.
+
+---
+
+# For `nextcloud/server`
+
+All three were found by a native client using CalDAV and CardDAV on Nextcloud 36.0.0 dev
+(dav 3.0.0-dev.1), measured against the live server.
+
+## S-1
+
+**Title:** CalDAV: a PUT refused with `no-uid-conflict` has already sent the scheduling REPLY
+
+**Body:**
+
+Scheduling delivers a same-server invitation into the attendee's default calendar as
+`sabredav-<uuid>.ics`. An attendee client that writes its answer under its own resource name
+gets **409 `no-uid-conflict`**, which is correct, but by then the organiser's copy has
+already changed and a REPLY sits in the organiser's schedule inbox. Sabre's scheduling
+handles the object before `CalDavBackend` reaches its UID check
+(`apps/dav/lib/CalDAV/CalDavBackend.php:1546`).
+
+Reproduction: an organiser invites a same-server attendee; the attendee PUTs a copy of the
+event with the same UID, `PARTSTAT=TENTATIVE`, under a new name. Result: 409, the attendee's
+copy is unchanged, and the organiser's copy shows the attendee as TENTATIVE. The client's
+follow-up write onto the existing copy then sends a second, identical REPLY.
+
+So a refused request has a side effect, and organiser and attendee can disagree about the
+attendee's answer.
+
+**Suggested fix:** check UID uniqueness before scheduling, or roll the scheduling back when
+the write is refused.
+
+## S-2
+
+**Title:** CalDAV scheduling: the REPLY drops the attendee's comment
+
+**Body:**
+
+The web Calendar (and our client) writes the participation comment as
+`X-RESPONSE-COMMENT` on the ATTENDEE line and as a COMMENT property. The attendee's copy
+keeps both. The REPLY delivered to the organiser's schedule inbox, and the organiser's copy
+it updates, carry PARTSTAT and CN only, so the organiser never sees "See you there" for a
+same-server invitation.
+
+**Suggested fix:** carry `X-RESPONSE-COMMENT`, and COMMENT per RFC 5546 §3.2.3, into the
+REPLY.
+
+## S-3
+
+**Title:** Three DAV gaps a syncing client meets: no sync for "Recently contacted", a strong
+ETag on a converted vCard, and two missing properties
+
+**Body:**
+
+**1. "Recently contacted" refuses `sync-collection`.**
+`/remote.php/dav/addressbooks/users/{u}/z-app-generated--contactsinteraction--recent/`
+lists no `sync-token` (404 in PROPFIND), and a `sync-collection` REPORT answers **415**
+`Sabre\DAV\Exception\ReportNotSupported`. Multiget works. A client has to re-list the
+whole book by ETag on every pass. Suggested: sync support for the contactsinteraction
+address book (`apps/contactsinteraction/lib/AddressBook.php`), which already keeps per-card
+ETags.
+
+**2. A vCard 4.0 PUT answers a strong ETag, then is served as 3.0.** The ETag is
+`md5($cardData)` of the bytes sent (`apps/dav/lib/CardDAV/CardDavBackend.php:655` and
+`:723`), and a later GET serves sabre-normalised vCard 3.0. RFC 6352 §6.3.2.3 says a server
+that does not store the representation as sent must not answer a strong ETag for the PUT. A
+client that trusts it believes it holds the server's bytes. Suggested: no ETag, or a weak
+one, when the stored or served form differs from the request.
+
+**3. Two properties a client has to probe around.** `schedule-default-calendar-URL` answers
+404 on the schedule inbox, where RFC 6638 §9.2 puts it, and 200 on the principal. The
+birthday calendar is read-only but answers `oc:read-only` 404
+(`apps/dav/lib/CalDAV/Calendar.php:375-376` reads it only from calendar info the birthday
+calendar does not set); only `current-user-privilege-set` without `write-content` tells.
+Suggested: answer the property on the inbox too, and set `oc:read-only` on the birthday
+calendar as on shared read-only ones.
+
+---
+
+# For `nextcloud/circles`
+
+## C-1
+
+**Title:** Members API: a group member is reported as a team, and the level route takes
+`{level}` instead of `{value}`
+
+**Body:**
+
+Against Circles 36.0.0-dev:
+
+`POST /ocs/v2.php/apps/circles/circles/{id}/members {"userId":"admin","type":2}` adds the
+group `admin`. `GET …/members` then reports it with `userType` **16** (team), with the
+group only visible in `basedOn.source` 2. A user and a group with the same name are two
+members whose `userId` is the same string, and a client cannot tell them apart without
+reading `basedOn`.
+
+Separately, every setter takes `{value}` (`name`, `description`, `config`) except `PUT
+…/members/{memberId}/level`, which takes `{level}` and ignores `value`.
+
+**Suggested fix:** report the type the member was added as, or document `basedOn.source` as
+the field to read; accept `value` on the level route like its siblings.
+
+---
+
+# For `nextcloud/contacts`
+
+## K-1
+
+**Title:** The contact panel's shared items need `related_resources`, and say "No shared
+items" when it is absent
+
+**Body:**
+
+The contact details panel's "Media shares / Talk / Calendar / Deck with you" calls `GET
+/ocs/v2.php/apps/related_resources/related/account`. `related_resources` is not shipped with
+the server; on a server without it the route answers OCS 998 "Invalid query", the panels
+hide themselves, and the contact shows "No shared items with this contact" even for a user
+with whom files are shared.
+
+**Suggested fix:** fall back to the `files_sharing` listings (`shared_with_me` and `shares`,
+which every server has) when `related_resources` is absent, or say that the panel needs the
+app.
+
+Version: Contacts 8.10.0-dev on Nextcloud 36.

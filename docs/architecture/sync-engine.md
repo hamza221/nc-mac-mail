@@ -453,13 +453,15 @@ that replaces it.
 | 200 | Fine | Apply |
 | 202 + `fail` envelope | `IncompleteSyncException`; server still working | Retry in 30 s, up to 5 times, then next cycle. Not an error to the user |
 | 400 + `{"status":"error"}` | `MailboxNotCachedException` and friends | Re-prime with `init: true`, then retry once |
+| 401 | App password revoked or gone | `syncFailureCount++` with `lastSyncError = unauthorized`, like any failure. The app watches that column and raises the session-expired modal once per login (`SessionExpiryTrigger`, ux-spec "Errors"). A 401 on a body is recorded on its mailbox the same way, counted against no message, and stops stage 2 for the run |
 | 403 | Delegation or account gone | Mark the account; do not delete local data without asking |
 | 428 | Mailbox not cached (the `sync` route's own code) | Re-prime with `init: true` |
 | 429 / 503 + `Retry-After` | Rate limited or overloaded | Honour the header; halve concurrency for 10 minutes |
 | Timeout | Big mailbox, slow IMAP | Backoff, `syncFailureCount++`, move on. Three consecutive failures marks the mailbox in the UI |
 
 A failing mailbox never blocks another, never clears what is mirrored, and never turns
-into a modal.
+into a modal. The one exception is a 401, which is not the mailbox's failure but the
+login's.
 
 ## Instrumentation
 

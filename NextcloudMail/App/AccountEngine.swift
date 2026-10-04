@@ -80,7 +80,8 @@ final class AccountEngine {
     }
 
     /// The account whose app password the server refused. `AppSession` turns this into the
-    /// one modal the app has.
+    /// one modal the app has. Called once per login until it signs in again, whether the 401
+    /// came from discovery or from a sync later in the session (``SessionExpiryTrigger``).
     var sessionExpired: (@MainActor (AccountSession) -> Void)?
 
     private let store: MailStore
@@ -102,6 +103,7 @@ final class AccountEngine {
     private var failures: [Int64: Int] = [:]
     private var conditions = NetworkConditions()
     private var selectedMailboxId: Int64?
+    private var expiry = SessionExpiryTrigger()
     private var rowObservation: Task<Void, Never>?
 
     nonisolated static let logger = Logger(subsystem: "com.nextcloud.mail.macos", category: "engine")
@@ -128,6 +130,7 @@ final class AccountEngine {
         if sessions[account.id] != nil || logins[account.id] != nil || loginsStarting[account.id] != nil {
             teardown(sessionId: account.id)
         }
+        expiry.reset(sessionId: account.id)
         sessions[account.id] = account
         observeAccountRows()
         startLogin(account)
@@ -142,6 +145,7 @@ final class AccountEngine {
     @discardableResult
     func signOut(sessionId: String) -> Task<Void, Never> {
         sessions[sessionId] = nil
+        expiry.reset(sessionId: sessionId)
         return teardown(sessionId: sessionId)
     }
 
@@ -452,6 +456,7 @@ final class AccountEngine {
             running[id] = nil
             progress[id] = nil
             failures[id] = nil
+            expiry.forget(accountId: id)
             _ = Self.stop(entry.engines.parts, starts: entry.starts, cancelling: entry.tasks)
         }
         for row in newRows where running[row.id] == nil {
@@ -502,7 +507,25 @@ final class AccountEngine {
                 }
             )
         }
+        entry.tasks.append(observeSessionExpiry(accountId: row.id, session: session))
         Self.logger.info("account \(row.id, privacy: .public) running")
+    }
+
+    /// A 401 later in the session lands as `unauthorized` in a mailbox's `lastSyncError`;
+    /// this is how it reaches the modal that discovery's 401 raises.
+    private func observeSessionExpiry(accountId: Int64, session: AccountSession) -> Task<Void, Never> {
+        Task { [weak self, store] in
+            do {
+                for try await failures in store.observeMailboxSyncFailures(accountId: accountId) {
+                    guard let self, !Task.isCancelled else { return }
+                    if expiry.observe(failures, accountId: accountId, sessionId: session.id) {
+                        sessionExpired?(session)
+                    }
+                }
+            } catch {
+                Self.logger.error("sync failure observation stopped: \(String(describing: error), privacy: .public)")
+            }
+        }
     }
 
     // MARK: - Starting and stopping
@@ -545,6 +568,7 @@ final class AccountEngine {
             running[id] = nil
             progress[id] = nil
             failures[id] = nil
+            expiry.forget(accountId: id)
             accountStops.append(Self.stop(entry.engines.parts, starts: entry.starts, cancelling: entry.tasks))
         }
         let login = logins.removeValue(forKey: sessionId)
@@ -571,7 +595,8 @@ final class AccountEngine {
             do {
                 try await discover(store, account)
             } catch MailError.unauthorized {
-                self?.sessionExpired?(account)
+                guard let self, expiry.fire(sessionId: account.id) else { return }
+                sessionExpired?(account)
             } catch {
                 Self.logger.error("account discovery failed: \(String(describing: error), privacy: .public)")
             }

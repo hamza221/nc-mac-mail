@@ -23,49 +23,46 @@ struct AliasesSection: View {
     private var isProvisioned: Bool { account.provisioningId != nil }
 
     var body: some View {
-        Form {
-            Section {
-                HStack {
-                    Text("**\(account.name)** <\(account.emailAddress)>")
-                    Spacer()
-                    if !isProvisioned, model.sections.contains(.mailServer) {
-                        Button(String(localized: "Edit")) { goTo(.mailServer) }
-                            .help(String(localized: "Change the name and address in Mail server"))
-                    }
+        Section {
+            HStack {
+                Text("**\(account.name)** <\(account.emailAddress)>")
+                Spacer()
+                if !isProvisioned, model.sections.contains(.mailServer) {
+                    Button(String(localized: "Edit")) { goTo(.mailServer) }
+                        .help(String(localized: "Change the name and address in Mail server"))
                 }
-                ForEach(model.aliases, id: \.remoteId) { alias in
-                    row(alias)
-                }
-            } header: {
-                Text("Aliases")
             }
-            if !isProvisioned {
-                Section {
-                    if adding {
-                        TextField(String(localized: "Name"), text: $newName)
-                        TextField(String(localized: "Email address"), text: $newEmail)
-                        HStack {
-                            Button(String(localized: "Cancel")) { resetAdd() }
-                            BusyButton(
-                                title: String(localized: "Create alias"),
-                                isDisabled: !Self.isValid(name: newName, email: newEmail)
-                            ) {
-                                if await model.perform(.createAlias(email: trimmed(newEmail), name: trimmed(newName))) {
-                                    resetAdd()
-                                }
+            ForEach(model.aliases, id: \.remoteId) { alias in
+                row(alias)
+            }
+        } header: {
+            Text("Aliases")
+        }
+        if !isProvisioned {
+            Section {
+                if adding {
+                    TextField(String(localized: "Name"), text: $newName)
+                    TextField(String(localized: "Email address"), text: $newEmail)
+                    HStack {
+                        Button(String(localized: "Cancel")) { resetAdd() }
+                        BusyButton(
+                            title: String(localized: "Create alias"),
+                            isDisabled: !Self.isValid(name: newName, email: newEmail)
+                        ) {
+                            if await model.perform(.createAlias(email: trimmed(newEmail), name: trimmed(newName))) {
+                                resetAdd()
                             }
                         }
-                    } else {
-                        Button(String(localized: "Add alias")) {
-                            newName = account.name
-                            newEmail = ""
-                            adding = true
-                        }
+                    }
+                } else {
+                    Button(String(localized: "Add alias")) {
+                        newName = account.name
+                        newEmail = ""
+                        adding = true
                     }
                 }
             }
         }
-        .formStyle(.grouped)
     }
 
     @ViewBuilder
@@ -139,45 +136,42 @@ struct CertificatesSection: View {
     @State private var status: SettingsStatus?
 
     var body: some View {
-        Form {
-            Section {
-                Picker(String(localized: "Select an alias"), selection: $identity) {
-                    Text("Select an alias").tag(Int64??.none)
-                    Text("\(account.name) <\(account.emailAddress)>").tag(Int64??.some(nil))
-                    ForEach(model.aliases, id: \.remoteId) { alias in
-                        Text("\(alias.name ?? alias.email) <\(alias.email)>").tag(Int64??.some(alias.remoteId))
-                    }
+        Section {
+            Picker(String(localized: "Select an alias"), selection: $identity) {
+                Text("Select an alias").tag(Int64??.none)
+                Text("\(account.name) <\(account.emailAddress)>").tag(Int64??.some(nil))
+                ForEach(model.aliases, id: \.remoteId) { alias in
+                    Text("\(alias.name ?? alias.email) <\(alias.email)>").tag(Int64??.some(alias.remoteId))
                 }
-                .onChange(of: identity) { _, _ in
-                    certificate = currentLink
-                    status = nil
-                }
-                if identity != nil {
-                    Picker(String(localized: "Certificate"), selection: $certificate) {
-                        Text("No certificate").tag(Int64?.none)
-                        ForEach(eligible, id: \.remoteId) { certificate in
-                            Text(CertificateRules.label(certificate)).tag(Int64?.some(certificate.remoteId))
-                        }
-                    }
-                    if let chosen = eligible.first(where: { $0.remoteId == certificate }),
-                        !CertificateRules.isChainVerified(chosen)
-                    {
-                        NCNoteCard(.warning) {
-                            Text(
-                                "The selected certificate is not trusted by the server. Recipients might not be "
-                                    + "able to verify your signature.")
-                        }
-                    }
-                    BusyButton(title: String(localized: "Update Certificate"), isDisabled: certificate == currentLink) {
-                        await update()
-                    }
-                    SettingsStatusLine(status: status)
-                }
-            } header: {
-                Text("Alias to S/MIME certificate mapping")
             }
+            .onChange(of: identity) { _, _ in
+                certificate = currentLink
+                status = nil
+            }
+            if identity != nil {
+                Picker(String(localized: "Certificate"), selection: $certificate) {
+                    Text("No certificate").tag(Int64?.none)
+                    ForEach(eligible, id: \.remoteId) { certificate in
+                        Text(CertificateRules.label(certificate)).tag(Int64?.some(certificate.remoteId))
+                    }
+                }
+                if let chosen = eligible.first(where: { $0.remoteId == certificate }),
+                    !CertificateRules.isChainVerified(chosen)
+                {
+                    NCNoteCard(.warning) {
+                        Text(
+                            "The selected certificate is not trusted by the server. Recipients might not be "
+                                + "able to verify your signature.")
+                    }
+                }
+                BusyButton(title: String(localized: "Update Certificate"), isDisabled: certificate == currentLink) {
+                    await update()
+                }
+                SettingsStatusLine(status: status)
+            }
+        } header: {
+            Text("Alias to S/MIME certificate mapping")
         }
-        .formStyle(.grouped)
     }
 
     private var email: String? {

@@ -223,6 +223,32 @@ struct BodyBackfillTests {
         #expect(account.mirrorState != .failed)
     }
 
+    @Test("a 401 on a body is a lost session: recorded on the mailbox, counted against no message, and the stage stops")
+    func anUnauthorizedBodyIsALostSession() async throws {
+        let (store, seed) = try await seededStore(messages: 3)
+        let transport = FakeTransport()
+        try await stubQuietStageOne(transport)
+        await transport.stub(MirrorTest.bodyRoute, with: .status(401))
+
+        let mirror = try coordinator(
+            store: store,
+            transport: transport,
+            configuration: MirrorTest.configuration(bodyConcurrency: 1)
+        )
+        await mirror.start()
+        await mirror.awaitCurrentRun()
+
+        // One request, not one per message and not three strikes each.
+        #expect(await transport.requestPaths.filter { $0.hasSuffix("/body") }.count == 1)
+        let progress = try await store.mirrorProgress(accountId: 1)
+        #expect(progress.bodiesFailed == 0)
+        #expect(progress.bodiesPresent == 0)
+        let mailbox = try #require(try await store.mailbox(id: seed.mailboxId))
+        #expect(mailbox.lastSyncError == "unauthorized")
+        let account = try #require(try await store.accounts().first)
+        #expect(account.mirrorState == .failed)
+    }
+
     @Test("a body that keeps erroring is given up on after three tries rather than retried forever")
     func aRepeatedlyFailingBodyIsGivenUp() async throws {
         let (store, seed) = try await seededStore(messages: 1)

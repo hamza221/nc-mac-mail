@@ -168,8 +168,9 @@ struct EngineFactory {
                 identity: session.identity,
                 onFollowedUp: followedUp
             )
+            let notices = ServerNotificationPoller(store: store, client: session.client, identity: session.identity)
             return LoginEngines(
-                parts: [calendars, contacts, results, files, serverState],
+                parts: [calendars, contacts, results, files, serverState, notices],
                 queueConfiguration: MutationQueueConfiguration(dav: handler),
                 serverState: serverState,
                 results: results,

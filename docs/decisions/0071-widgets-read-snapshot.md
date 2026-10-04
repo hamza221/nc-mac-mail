@@ -5,9 +5,11 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 # ADR-0071: Widgets read a snapshot file in the app group, never the database
 
-**Status:** Proposed
+**Status:** Accepted — confirmed by WS-42 (2026-10-04); the snapshot also carries each item's
+local id (for the widget's `ncmail://message/<id>` link), sent date and unread flag, and the
+app group is the team-prefixed one of [ADR-0100](0100-app-group-and-extension-targets.md)
 **Date:** 2026-10-03
-**Decided by:** v2 roadmap, to be confirmed by the owning workstream
+**Decided by:** v2 roadmap, confirmed by WS-42
 
 ## Context
 

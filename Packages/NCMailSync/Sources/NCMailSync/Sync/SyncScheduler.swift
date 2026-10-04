@@ -486,7 +486,8 @@ public actor SyncScheduler {
 
     /// A mailbox failed. It backs off, it is marked in the row, and **the account carries
     /// on**: `sync-engine.md` is explicit that one failing mailbox never blocks another,
-    /// never clears what is mirrored, and never turns into a modal.
+    /// never clears what is mirrored, and never turns into a modal. A 401 is the one the app
+    /// turns into its session-expired modal, from the `unauthorized` this writes to the row.
     func recordFailure(_ mailbox: MailboxRecord, _ error: any Error) async {
         let description = describeSync(error)
         var entry = metricsStorage.mailboxes[mailbox.id] ?? MailboxSyncMetrics()

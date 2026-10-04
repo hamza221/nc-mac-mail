@@ -25,6 +25,10 @@ struct SettingsScene: View {
 /// The §7 tabs (ux-spec "App settings (WS-38)"), `Form` plus `.formStyle(.grouped)`
 /// throughout. The library's own guidance is that a settings pane needs nothing wrapping
 /// that ([SettingsSections.md](../../../docs/reference/ui-components.md)).
+///
+/// The window's size is set once, here, for every tab: no tab sets its own minimum, so the
+/// window does not jump between tabs, and each tab scrolls inside it. The width is the
+/// Accounts tab's sidebar plus a settings form.
 private struct SettingsRootView: View {
     let session: AppSession
     @State private var settingsStore: SettingsStore
@@ -56,7 +60,7 @@ private struct SettingsRootView: View {
         .environment(settingsStore)
         .environment(appSettings)
         .ncTheme(session.theme)
-        .frame(minWidth: 680, idealWidth: 760, minHeight: 360, idealHeight: 480)
+        .frame(minWidth: 780, idealWidth: 820, minHeight: 520, idealHeight: 580)
         .task {
             settingsStore.start()
             appSettings.start()

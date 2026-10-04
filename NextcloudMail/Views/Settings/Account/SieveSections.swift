@@ -123,44 +123,46 @@ struct SieveServerSection: View {
     @State private var draft: SieveServerDraft?
     @State private var status: SettingsStatus?
 
+    /// The form starts from the rows, so it needs no `onAppear` inside the shared form.
+    init(model: AccountSettingsModel, account: AccountRecord) {
+        self.model = model
+        self.account = account
+        _draft = State(initialValue: SieveServerDraft(account: account, sieve: model.sieve))
+    }
+
     var body: some View {
-        Form {
-            Section {
-                Text(
-                    "Sieve is a powerful language for writing filters for your mailbox. You can manage the sieve "
-                        + "scripts in Mail if your email service supports it. Sieve is also required to use "
-                        + "Autoresponder and Filters."
-                )
-                .foregroundStyle(.secondary)
-                if let draft = Binding($draft) {
-                    Toggle(String(localized: "Enable sieve filter"), isOn: draft.enabled)
-                    if draft.wrappedValue.enabled {
-                        TextField(String(localized: "Sieve host"), text: draft.host)
-                        Picker(String(localized: "Sieve security"), selection: draft.security) {
-                            ForEach(ConnectionSecurity.allCases, id: \.self) { Text($0.title).tag($0) }
-                        }
-                        TextField(String(localized: "Sieve Port"), value: draft.port, format: .number.grouping(.never))
-                        Picker(String(localized: "Sieve credentials"), selection: draft.customCredentials) {
-                            Text("IMAP credentials").tag(false)
-                            Text("Custom").tag(true)
-                        }
-                        if draft.wrappedValue.customCredentials {
-                            TextField(String(localized: "Sieve User"), text: draft.user)
-                            SecureField(String(localized: "Sieve Password"), text: draft.password)
-                        }
+        Section {
+            Text(
+                "Sieve is a powerful language for writing filters for your mailbox. You can manage the sieve "
+                    + "scripts in Mail if your email service supports it. Sieve is also required to use "
+                    + "Autoresponder and Filters."
+            )
+            .foregroundStyle(.secondary)
+            if let draft = Binding($draft) {
+                Toggle(String(localized: "Enable sieve filter"), isOn: draft.enabled)
+                if draft.wrappedValue.enabled {
+                    TextField(String(localized: "Sieve host"), text: draft.host)
+                    Picker(String(localized: "Sieve security"), selection: draft.security) {
+                        ForEach(ConnectionSecurity.allCases, id: \.self) { Text($0.title).tag($0) }
                     }
-                    BusyButton(title: String(localized: "Save sieve settings"), isDisabled: !draft.wrappedValue.isValid)
-                    {
-                        await save()
+                    TextField(String(localized: "Sieve Port"), value: draft.port, format: .number.grouping(.never))
+                    Picker(String(localized: "Sieve credentials"), selection: draft.customCredentials) {
+                        Text("IMAP credentials").tag(false)
+                        Text("Custom").tag(true)
+                    }
+                    if draft.wrappedValue.customCredentials {
+                        TextField(String(localized: "Sieve User"), text: draft.user)
+                        SecureField(String(localized: "Sieve Password"), text: draft.password)
                     }
                 }
-                SettingsStatusLine(status: status)
-            } header: {
-                Text("Sieve server")
+                BusyButton(title: String(localized: "Save sieve settings"), isDisabled: !draft.wrappedValue.isValid) {
+                    await save()
+                }
             }
+            SettingsStatusLine(status: status)
+        } header: {
+            Text("Sieve server")
         }
-        .formStyle(.grouped)
-        .onAppear { draft = SieveServerDraft(account: account, sieve: model.sieve) }
     }
 
     private func save() async {
@@ -188,25 +190,22 @@ struct SieveScriptSection: View {
     @Environment(\.ncTheme) private var theme
 
     var body: some View {
-        Form {
-            Section {
-                TextEditor(text: $script)
-                    .font(.system(.body, design: .monospaced))
-                    .frame(minHeight: 20 * 16)
-                    .disabled(!loaded)
-                    .accessibilityLabel(String(localized: "Sieve script"))
-                BusyButton(title: String(localized: "Save sieve script"), isDisabled: !loaded) {
-                    await save()
+        Section {
+            TextEditor(text: $script)
+                .font(.system(.body, design: .monospaced))
+                .frame(minHeight: 20 * 16)
+                .disabled(!loaded)
+                .accessibilityLabel(String(localized: "Sieve script"))
+                .onAppear(perform: load)
+                .onChange(of: model.sieve?.script) { _, _ in
+                    if !loaded { load() }
                 }
-                SettingsStatusLine(status: status)
-            } header: {
-                Text("Sieve script editor")
+            BusyButton(title: String(localized: "Save sieve script"), isDisabled: !loaded) {
+                await save()
             }
-        }
-        .formStyle(.grouped)
-        .onAppear(perform: load)
-        .onChange(of: model.sieve?.script) { _, _ in
-            if !loaded { load() }
+            SettingsStatusLine(status: status)
+        } header: {
+            Text("Sieve script editor")
         }
     }
 

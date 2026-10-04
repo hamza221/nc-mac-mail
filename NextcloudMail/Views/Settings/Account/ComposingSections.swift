@@ -13,27 +13,24 @@ struct WritingModeSection: View {
     let account: AccountRecord
 
     var body: some View {
-        Form {
-            Section {
-                Picker(
-                    String(localized: "Writing mode"),
-                    selection: Binding(
-                        get: {
-                            account.editorMode == AccountEditorMode.plain
-                                ? AccountEditorMode.plain : AccountEditorMode.rich
-                        },
-                        set: { mode in Task { await model.patch(AccountPatch(editorMode: mode)) } }
-                    )
-                ) {
-                    Text("Plain text").tag(AccountEditorMode.plain)
-                    Text("Rich text").tag(AccountEditorMode.rich)
-                }
-                .pickerStyle(.radioGroup)
-            } header: {
-                Text("Writing mode")
+        Section {
+            Picker(
+                String(localized: "Writing mode"),
+                selection: Binding(
+                    get: {
+                        account.editorMode == AccountEditorMode.plain
+                            ? AccountEditorMode.plain : AccountEditorMode.rich
+                    },
+                    set: { mode in Task { await model.patch(AccountPatch(editorMode: mode)) } }
+                )
+            ) {
+                Text("Plain text").tag(AccountEditorMode.plain)
+                Text("Rich text").tag(AccountEditorMode.rich)
             }
+            .pickerStyle(.radioGroup)
+        } header: {
+            Text("Writing mode")
         }
-        .formStyle(.grouped)
     }
 }
 
@@ -156,28 +153,25 @@ struct DefaultFoldersSection: View {
     @Environment(AppSession.self) private var session
 
     var body: some View {
-        Form {
-            Section {
-                ForEach(DefaultFolder.allCases) { role in
-                    InlineMailboxPicker(
-                        title: role.title,
-                        accountId: account.id,
-                        store: session.store,
-                        selection: Binding(
-                            get: { model.localMailboxId(remote: role.remoteId(in: account)) },
-                            set: { local in Task { await model.setDefaultFolder(role, localMailboxId: local) } }
-                        )
+        Section {
+            ForEach(DefaultFolder.allCases) { role in
+                InlineMailboxPicker(
+                    title: role.title,
+                    accountId: account.id,
+                    store: session.store,
+                    selection: Binding(
+                        get: { model.localMailboxId(remote: role.remoteId(in: account)) },
+                        set: { local in Task { await model.setDefaultFolder(role, localMailboxId: local) } }
                     )
-                }
-            } header: {
-                Text("Default folders")
-            } footer: {
-                Text(
-                    "The folders to use for drafts, sent messages, deleted messages, archived messages, snoozed messages and junk messages."
                 )
             }
+        } header: {
+            Text("Default folders")
+        } footer: {
+            Text(
+                "The folders to use for drafts, sent messages, deleted messages, archived messages, snoozed messages and junk messages."
+            )
         }
-        .formStyle(.grouped)
     }
 }
 
@@ -186,30 +180,33 @@ struct TrashRetentionSection: View {
     let model: AccountSettingsModel
     let account: AccountRecord
 
-    @State private var text = ""
+    @State private var text: String
     @State private var pending: Task<Void, Never>?
 
+    /// The field starts from the row, so it needs no `onAppear` inside the shared form.
+    init(model: AccountSettingsModel, account: AccountRecord) {
+        self.model = model
+        self.account = account
+        _text = State(initialValue: TrashRetention.text(account.trashRetentionDays))
+    }
+
     var body: some View {
-        Form {
-            Section {
-                TextField(
-                    String(localized: "Days after which messages in Trash will automatically be deleted:"), text: $text
-                )
-                .onChange(of: text) { _, value in schedule(value) }
-                if TrashRetention.days(from: text) == nil {
-                    Text("Enter a whole number of days, 0 or more.")
-                        .foregroundStyle(.secondary)
-                }
-            } header: {
-                Text("Automatic trash deletion")
-            } footer: {
-                Text(
-                    "Disable trash retention by leaving the field empty or setting it to 0. Only mails deleted "
-                        + "after enabling trash retention will be processed.")
+        Section {
+            TextField(
+                String(localized: "Days after which messages in Trash will automatically be deleted:"), text: $text
+            )
+            .onChange(of: text) { _, value in schedule(value) }
+            if TrashRetention.days(from: text) == nil {
+                Text("Enter a whole number of days, 0 or more.")
+                    .foregroundStyle(.secondary)
             }
+        } header: {
+            Text("Automatic trash deletion")
+        } footer: {
+            Text(
+                "Disable trash retention by leaving the field empty or setting it to 0. Only mails deleted "
+                    + "after enabling trash retention will be processed.")
         }
-        .formStyle(.grouped)
-        .onAppear { text = TrashRetention.text(account.trashRetentionDays) }
     }
 
     private func schedule(_ value: String) {
@@ -232,14 +229,11 @@ struct SwitchSection: View {
     let section: AccountSettingsSection
 
     var body: some View {
-        Form {
-            Section {
-                Toggle(label, isOn: Binding(get: { value }, set: { save($0) }))
-            } header: {
-                Text(section.title)
-            }
+        Section {
+            Toggle(label, isOn: Binding(get: { value }, set: { save($0) }))
+        } header: {
+            Text(section.title)
         }
-        .formStyle(.grouped)
     }
 
     private var label: String {

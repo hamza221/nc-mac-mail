@@ -59,6 +59,86 @@ struct AccountSettingsSectionTests {
     }
 }
 
+// MARK: - Pages (the Accounts tab's navigation)
+
+@Suite("Account settings pages")
+struct AccountSettingsGroupTests {
+    private let accounts = [
+        account(),
+        account(rawJSON: #"{"imipCreate":false}"#, sieveEnabled: true),
+        account(isDelegated: true),
+        account(provisioningId: 3),
+        account(rawJSON: #"{"imipCreate":true}"#, sieveEnabled: true, provisioningId: 3, isDelegated: true),
+    ]
+
+    @Test func everySectionIsOnExactlyOnePage() {
+        for section in AccountSettingsSection.allCases {
+            let pages = AccountSettingsGroup.allCases.filter { $0.sections.contains(section) }
+            #expect(pages == [AccountSettingsGroup.containing(section)], "\(section)")
+        }
+        let listed = AccountSettingsGroup.allCases.flatMap(\.sections)
+        #expect(listed.count == AccountSettingsSection.allCases.count)
+        #expect(Set(listed) == Set(AccountSettingsSection.allCases))
+    }
+
+    @Test func thePagesGroupTheSectionsAsListed() {
+        let general: [AccountSettingsSection] = [.aliases, .certificates, .writingMode, .classification, .calendar]
+        #expect(AccountSettingsGroup.general.sections == general)
+        #expect(AccountSettingsGroup.signature.sections == [.signature])
+        #expect(AccountSettingsGroup.folders.sections == [.defaultFolders, .trashRetention, .folderSearch])
+        #expect(AccountSettingsGroup.autoresponder.sections == [.autoresponder])
+        #expect(AccountSettingsGroup.filters.sections == [.filters])
+        #expect(AccountSettingsGroup.quickActions.sections == [.quickActions])
+        #expect(AccountSettingsGroup.mailServer.sections == [.mailServer])
+        #expect(AccountSettingsGroup.sieve.sections == [.sieveServer, .sieveScript])
+        #expect(AccountSettingsGroup.delegation.sections == [.delegation])
+    }
+
+    @Test func aSectionWithItsOwnFormIsAloneOnItsPage() {
+        for group in AccountSettingsGroup.allCases where group.sections.contains(where: \.ownsForm) {
+            #expect(group.sections.count == 1, "\(group)")
+        }
+    }
+
+    @Test func theVisiblePagesReachEveryVisibleSectionAndNothingElse() {
+        for account in accounts {
+            let visible = AccountSettingsSection.visible(for: account)
+            let pages = AccountSettingsGroup.visible(for: account)
+            let reached = pages.flatMap { $0.sections.filter(visible.contains) }
+            #expect(reached == pages.flatMap(\.sections).filter(visible.contains))
+            #expect(Set(reached) == Set(visible))
+            for page in pages {
+                #expect(page.sections.contains(where: visible.contains), "\(page) is empty")
+            }
+        }
+    }
+
+    @Test func aPlainAccountShowsEveryPage() {
+        #expect(AccountSettingsGroup.visible(for: account()) == AccountSettingsGroup.allCases)
+    }
+
+    @Test func aDelegatedAccountFallsBackToGeneralForThePagesItLacks() {
+        let delegated = account(isDelegated: true)
+        let pages = AccountSettingsGroup.visible(for: delegated)
+        #expect(!pages.contains(.mailServer) && !pages.contains(.delegation))
+        #expect(AccountSettingsGroup.mailServer.resolved(for: delegated) == .general)
+        #expect(AccountSettingsGroup.delegation.resolved(for: delegated) == .general)
+        #expect(AccountSettingsGroup.sieve.resolved(for: delegated) == .sieve)
+        #expect(AccountSettingsGroup.delegation.resolved(for: account()) == .delegation)
+    }
+
+    @Test func theGoToLinksLandOnAVisiblePage() {
+        // Aliases' "Edit" goes to Mail server; Autoresponder's and Filters' hint to Sieve.
+        #expect(AccountSettingsGroup.containing(.mailServer) == .mailServer)
+        #expect(AccountSettingsGroup.containing(.sieveServer) == .sieve)
+        for account in accounts {
+            let pages = AccountSettingsGroup.visible(for: account)
+            #expect(pages.contains(.sieve))
+            #expect(pages.contains(.mailServer) == AccountSettingsSection.visible(for: account).contains(.mailServer))
+        }
+    }
+}
+
 // MARK: - Quick actions (§8.7)
 
 @Suite("Quick action terminal-step rules")

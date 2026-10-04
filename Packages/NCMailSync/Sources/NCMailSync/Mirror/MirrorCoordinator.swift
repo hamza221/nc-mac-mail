@@ -70,6 +70,8 @@ public actor MirrorCoordinator {
     var inFlightBodyIds: Set<Int64> = []
     var isBodyQueueExhausted = false
     var bodyFailureCounts: [Int64: Int] = [:]
+    /// Set by a 401 on a body; stops every worker of this stage and fails the run.
+    var isBodyStageUnauthorized = false
     var bodiesSincePublish = 0
     /// Unix seconds. While set, body concurrency is halved (etiquette rule 3).
     var throttledUntil: Int64?

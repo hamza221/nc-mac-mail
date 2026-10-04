@@ -74,6 +74,85 @@ enum AccountSettingsSection: String, CaseIterable, Identifiable, Sendable {
         default: false
         }
     }
+
+    /// Whether the section's view is a whole `Form` (it carries sheets or dialogs, which
+    /// must hang off one view, not off a section inside a shared form). Such a section is
+    /// alone on its ``AccountSettingsGroup`` page; the others are form sections that their
+    /// page stacks in one form.
+    var ownsForm: Bool {
+        switch self {
+        case .signature, .autoresponder, .quickActions, .filters, .mailServer, .delegation: true
+        default: false
+        }
+    }
+}
+
+/// One page of an account's settings: the Accounts tab lists these under each account, and
+/// shows one at a time, so the sixteen §8 sections never stack in a single endless form.
+/// Every section belongs to exactly one group; the group's page shows its visible
+/// sections in §8 order.
+enum AccountSettingsGroup: String, CaseIterable, Identifiable, Sendable {
+    case general
+    case signature
+    case folders
+    case autoresponder
+    case filters
+    case quickActions
+    case mailServer
+    case sieve
+    case delegation
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .general: String(localized: "General")
+        case .signature: String(localized: "Signature")
+        case .folders: String(localized: "Folders")
+        case .autoresponder: String(localized: "Autoresponder")
+        case .filters: String(localized: "Filters")
+        case .quickActions: String(localized: "Quick actions")
+        case .mailServer: String(localized: "Mail server")
+        case .sieve: String(localized: "Sieve")
+        case .delegation: String(localized: "Delegation")
+        }
+    }
+
+    /// The §8 sections this page hosts, in §8 order, before visibility.
+    var sections: [AccountSettingsSection] {
+        AccountSettingsSection.allCases.filter { Self.containing($0) == self }
+    }
+
+    /// The page a section lives on: where "Go to Sieve settings" and "Edit" land.
+    static func containing(_ section: AccountSettingsSection) -> AccountSettingsGroup {
+        switch section {
+        case .aliases, .certificates, .writingMode, .classification, .calendar: .general
+        case .signature: .signature
+        case .defaultFolders, .trashRetention, .folderSearch: .folders
+        case .autoresponder: .autoresponder
+        case .filters: .filters
+        case .quickActions: .quickActions
+        case .mailServer: .mailServer
+        case .sieveServer, .sieveScript: .sieve
+        case .delegation: .delegation
+        }
+    }
+
+    /// The pages an account shows: those with at least one visible section, in this
+    /// enum's order.
+    static func visible(for account: AccountRecord) -> [AccountSettingsGroup] {
+        visible(among: AccountSettingsSection.visible(for: account))
+    }
+
+    static func visible(among sections: [AccountSettingsSection]) -> [AccountSettingsGroup] {
+        allCases.filter { group in sections.contains { containing($0) == group } }
+    }
+
+    /// The page to show for `account` when `self` was asked for: itself when the account
+    /// has it, General otherwise (a delegated account has no Mail server or Delegation).
+    func resolved(for account: AccountRecord) -> AccountSettingsGroup {
+        Self.visible(for: account).contains(self) ? self : .general
+    }
 }
 
 /// The fields of the server's account payload the mirror keeps only in `rawJSON`: the

@@ -22,7 +22,7 @@ import OSLog
 /// testable today. The composer takes an item exactly once: its files are moved into the
 /// composer's attachment staging and the item directory is removed.
 nonisolated enum SharedInbox {
-    static let appGroupIdentifier = "group.com.nextcloud.mail.macos"
+    static var appGroupIdentifier: String { AppGroup.identifier }  // WS-42: team-prefixed (ADR-0100)
 
     struct Item: Codable, Equatable, Sendable {
         struct File: Codable, Equatable, Sendable {

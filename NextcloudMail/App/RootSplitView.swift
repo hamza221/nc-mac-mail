@@ -108,6 +108,7 @@ struct RootSplitView: View {
             .environment(contacts)
             .task { listPreferences.start() }
             .undoSendBanner(session: session)
+            .systemRouting(messageList: messageList, contacts: contacts)  // WS-42 exception
             .onChange(of: session.expiredAccount) { _, newValue in
                 isShowingExpiredAlert = newValue != nil
             }

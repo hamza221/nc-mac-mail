@@ -19,6 +19,7 @@ import SwiftUI
 @main
 struct NextcloudMailApp: App {
     @State private var session: AppSession
+    @NSApplicationDelegateAdaptor(SystemAppDelegate.self) private var systemDelegate  // WS-42 exception
 
     init() {
         let (store, isTemporary) = NextcloudMailApp.openStore()
@@ -34,6 +35,8 @@ struct NextcloudMailApp: App {
                 .environment(session)
                 .ncTheme(session.theme)
                 .task { await session.start() }
+                .systemIntegration(session: session)  // WS-42 exception
+                .mailNotifications(session.notifier)  // WS-41 exception
         }
         .commands {
             MailCommands(context: session.triage)
