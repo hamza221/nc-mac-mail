@@ -39,6 +39,22 @@ extension KeyedDecodingContainer {
         )
     }
 
+    /// An identifier that is a string on some rows and an integer on others,
+    /// kept as its string form.
+    ///
+    /// `GET /api/autoComplete` merges sources: contacts and users carry their
+    /// UID or user id as a string, collected addresses carry the database row
+    /// id as an integer (verified live, Mail 5.12).
+    func decodeStringOrInteger(forKey key: Key) throws -> String? {
+        guard contains(key), try !decodeNil(forKey: key) else { return nil }
+        if let value = try? decode(String.self, forKey: key) { return value }
+        if let value = try? decode(Int.self, forKey: key) { return String(value) }
+        throw DecodingError.typeMismatch(
+            String.self,
+            .init(codingPath: codingPath + [key], debugDescription: "not a string and not an integer")
+        )
+    }
+
     /// A dictionary that may arrive as `[]`.
     ///
     /// PHP serialises an empty associative array as a JSON array, so an

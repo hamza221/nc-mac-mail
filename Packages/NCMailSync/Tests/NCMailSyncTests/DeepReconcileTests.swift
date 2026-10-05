@@ -18,9 +18,11 @@ struct DeepReconcileTests {
     @Test("A message missing locally but present on the server is inserted")
     func aHoleIsFilled() async throws {
         let rows = try Recorded.inbox()
-        // Three messages the mirror never got — a crash between two pages of the original
-        // backfill is exactly this shape.
-        let missing = Set([Recorded.id(rows[10]), Recorded.id(rows[40]), Recorded.id(rows[80])])
+        try #require(rows.count >= 8, "the recorded inbox is too small to leave holes in")
+        // Three messages the mirror never got, spread across the inbox — a crash between two
+        // pages of the original backfill is exactly this shape.
+        let missing = Set([rows.count / 8, rows.count / 2, rows.count * 7 / 8].map { Recorded.id(rows[$0]) })
+        #expect(missing.count == 3)
         let seeded = try await SyncTest.seed(messages: rows.filter { !missing.contains(Recorded.id($0)) })
 
         let transport = FakeTransport()
@@ -29,7 +31,7 @@ struct DeepReconcileTests {
             transport: transport,
             configuration: SyncTest.configuration(clock: TestClock())
         )
-        await transport.stub(MirrorTest.messagesRoute(mailboxId: 5), with: try Recorded.page(rows))
+        await transport.stub(MirrorTest.messagesRoute(mailboxId: seeded.inboxRemoteId), with: try Recorded.page(rows))
 
         await scheduler.deepReconcile(mailboxId: seeded.inboxId)
 
@@ -44,7 +46,8 @@ struct DeepReconcileTests {
         // so a message the window never claims can never be reported gone.
         let rows = try Recorded.inbox()
         let seeded = try await SyncTest.seed(messages: rows)
-        let deletedRemotely = Recorded.id(rows[50])
+        // The oldest recorded message: as far outside the window as the inbox allows.
+        let deletedRemotely = Recorded.id(try #require(rows.last))
         let localId = try #require(seeded.localByRemote[deletedRemotely])
         let serverRows = rows.filter { Recorded.id($0) != deletedRemotely }
 
@@ -52,15 +55,17 @@ struct DeepReconcileTests {
         let scheduler = try await SyncTest.scheduler(
             seeded,
             transport: transport,
-            // A window of five, so the message at position 50 is far outside it.
+            // A window of five, so the oldest message is outside it.
             configuration: SyncTest.configuration(clock: TestClock(), windowSize: 5)
         )
+        try #require(rows.count > 5, "the recorded inbox must be larger than the window")
         let claimed = Array(rows.prefix(5))
         await transport.stub(
-            MirrorTest.syncRoute(mailboxId: 5),
+            MirrorTest.syncRoute(mailboxId: seeded.inboxRemoteId),
             with: try Recorded.syncResponse(changed: claimed, total: serverRows.count, unread: 23)
         )
-        await transport.stub(MirrorTest.messagesRoute(mailboxId: 5), with: try Recorded.page(serverRows))
+        await transport.stub(
+            MirrorTest.messagesRoute(mailboxId: seeded.inboxRemoteId), with: try Recorded.page(serverRows))
 
         await scheduler.syncNow(mailboxId: seeded.inboxId)
         #expect(
@@ -75,13 +80,19 @@ struct DeepReconcileTests {
 
     @Test("Pagination sends oldest dateInt + 1, and the walk reaches every message")
     func theCursorIsOnePastTheOldest() async throws {
-        // The blind spot this test exists for: ids 44 and 45 share a `dateInt`, the cursor
-        // comparison is strict, and a page boundary between them makes the second
-        // unreachable. Serving the pages from a model of the server's own `<` rather than
-        // from a fixed list is what makes a wrong cursor fail here rather than pass.
+        // The blind spot this test exists for: two recorded messages share a `dateInt`, the
+        // cursor comparison is strict, and a page boundary between them makes the second
+        // unreachable. The page size puts the boundary exactly there. Serving the pages from
+        // a model of the server's own `<` rather than from a fixed list is what makes a wrong
+        // cursor fail here rather than pass.
         let rows = try Recorded.inbox()
+        let pair = try Recorded.sharedDateIntPair(rows)
+        let boundary = try #require(rows.firstIndex { Recorded.id($0) == Recorded.id(pair.first) })
+        let pageSize = boundary + 1
+        // A page of nothing but the twins could never move the cursor past them, so the
+        // page must hold more than the pair: at least two messages newer than it.
+        try #require(pageSize >= 3, "the recorded pair needs two newer messages above it; re-seed the live account")
         let seeded = try await SyncTest.seed(messages: [])
-        let pageSize = 20
 
         var pages: [StubResponse] = []
         var cursors: [Int64?] = []
@@ -91,9 +102,11 @@ struct DeepReconcileTests {
             cursors.append(cursor)
             pages.append(try Recorded.page(page))
             if page.count < pageSize { break }
+            try #require(pages.count <= rows.count, "the model walk is not making progress")
             let oldest = try #require(page.map(Recorded.dateInt).min())
             cursor = oldest + 1
         }
+        #expect(pages.count > 1, "the boundary is crossed only if there is a second page")
 
         let transport = FakeTransport()
         let scheduler = try await SyncTest.scheduler(
@@ -101,11 +114,11 @@ struct DeepReconcileTests {
             transport: transport,
             configuration: SyncTest.configuration(clock: TestClock(), pageSize: pageSize)
         )
-        await transport.stubSequence(MirrorTest.messagesRoute(mailboxId: 5), pages)
+        await transport.stubSequence(MirrorTest.messagesRoute(mailboxId: seeded.inboxRemoteId), pages)
 
         await scheduler.deepReconcile(mailboxId: seeded.inboxId)
 
-        let asked = await transport.requestURLs.filter { $0.contains("mailboxId=5") }
+        let asked = await transport.requestURLs.filter { $0.contains("mailboxId=\(seeded.inboxRemoteId)") }
         let sent = asked.map { url -> Int64? in
             guard let range = url.range(of: "cursor=") else { return nil }
             return Int64(url[range.upperBound...].prefix { $0.isNumber })
@@ -114,17 +127,21 @@ struct DeepReconcileTests {
 
         let local = try await seeded.store.messages(mailboxId: seeded.inboxId, view: .flat, range: 0..<500)
         #expect(Set(local.map(\.remoteId)) == Set(Recorded.ids(rows)))
-        #expect(local.map(\.remoteId).contains(45), "the message a plain oldest-dateInt cursor would skip")
+        #expect(
+            local.map(\.remoteId).contains(Recorded.id(pair.second)),
+            "the message a plain oldest-dateInt cursor would skip"
+        )
     }
 
     @Test("A walk that did not finish deletes nothing")
     func anIncompleteWalkDeletesNothing() async throws {
         // The one way this routine could destroy a mirror instead of repairing one. The
-        // second page fails, so the enumeration knows about the first twenty ids and nothing
-        // else; treating that as the whole truth would remove seventy-five messages.
+        // second page fails, so the enumeration knows about the first page's ids and nothing
+        // else; treating that as the whole truth would remove the rest of the inbox.
         let rows = try Recorded.inbox()
         let seeded = try await SyncTest.seed(messages: rows)
-        let pageSize = 20
+        let pageSize = rows.count / 2
+        try #require(pageSize >= 1, "the recorded inbox is too small to split into pages")
 
         let transport = FakeTransport()
         let scheduler = try await SyncTest.scheduler(
@@ -133,7 +150,7 @@ struct DeepReconcileTests {
             configuration: SyncTest.configuration(clock: TestClock(), pageSize: pageSize)
         )
         await transport.stubSequence(
-            MirrorTest.messagesRoute(mailboxId: 5),
+            MirrorTest.messagesRoute(mailboxId: seeded.inboxRemoteId),
             [try Recorded.page(Array(rows.prefix(pageSize))), .status(500)]
         )
 
@@ -158,7 +175,7 @@ struct DeepReconcileTests {
             transport: transport,
             configuration: SyncTest.configuration(clock: TestClock())
         )
-        await transport.stub(MirrorTest.messagesRoute(mailboxId: 5), with: try Recorded.page(rows))
+        await transport.stub(MirrorTest.messagesRoute(mailboxId: seeded.inboxRemoteId), with: try Recorded.page(rows))
 
         await scheduler.deepReconcile(mailboxId: seeded.inboxId)
 
@@ -182,7 +199,7 @@ struct DeepReconcileTests {
             transport: transport,
             configuration: SyncTest.configuration(clock: TestClock())
         )
-        await transport.stub(MirrorTest.messagesRoute(mailboxId: 5), with: try Recorded.page(rows))
+        await transport.stub(MirrorTest.messagesRoute(mailboxId: seeded.inboxRemoteId), with: try Recorded.page(rows))
 
         await scheduler.deepReconcile(mailboxId: seeded.inboxId)
 
@@ -201,7 +218,9 @@ struct DeepReconcileTests {
             transport: transport,
             configuration: SyncTest.configuration(clock: TestClock())
         )
-        for mailbox in [3, 4, 5, 6, 7] {
+        let mailboxes = try MirrorTest.recordedMailboxes()
+        try #require(!mailboxes.others.isEmpty, "the test needs a mirrored mailbox besides the inbox")
+        for mailbox in mailboxes.mirrored {
             await transport.stub(
                 MirrorTest.messagesRoute(mailboxId: mailbox),
                 with: try .fixture("messages-inbox-page2.json")
@@ -212,13 +231,13 @@ struct DeepReconcileTests {
         await scheduler.reconcilePass(mailboxIds: nil, skipSelected: true)
 
         let asked = await transport.requestURLs.filter { $0.contains("/messages?") }
-        #expect(!asked.contains { $0.contains("mailboxId=5") })
-        #expect(asked.count == 4, "the other four mirrored mailboxes were walked")
+        #expect(!asked.contains { $0.contains("mailboxId=\(seeded.inboxRemoteId)") })
+        #expect(asked.count == mailboxes.others.count, "every other mirrored mailbox was walked")
 
         // Asked for explicitly, it runs regardless: Settings › Check for missing messages is
         // the user saying they want it now.
         await scheduler.deepReconcile(mailboxId: seeded.inboxId)
-        let afterwards = await transport.requestURLs.filter { $0.contains("mailboxId=5") }
+        let afterwards = await transport.requestURLs.filter { $0.contains("mailboxId=\(seeded.inboxRemoteId)") }
         #expect(!afterwards.isEmpty)
     }
 
@@ -232,7 +251,8 @@ struct DeepReconcileTests {
             transport: transport,
             configuration: SyncTest.configuration(clock: clock)
         )
-        await transport.stub(MirrorTest.messagesRoute(mailboxId: 5), with: try Recorded.page(try Recorded.inbox()))
+        await transport.stub(
+            MirrorTest.messagesRoute(mailboxId: seeded.inboxRemoteId), with: try Recorded.page(try Recorded.inbox()))
 
         await scheduler.deepReconcile(mailboxId: seeded.inboxId)
 
@@ -260,7 +280,7 @@ struct OldestFirstTests {
             sortOrder: "oldest"
         )
         await transport.stub(
-            MirrorTest.syncRoute(mailboxId: 5),
+            MirrorTest.syncRoute(mailboxId: seeded.inboxRemoteId),
             with: try Recorded.syncResponse(changed: rows, total: rows.count, unread: 23)
         )
 
@@ -284,18 +304,21 @@ struct OldestFirstTests {
             sortOrder: "oldest"
         )
         await transport.stub(
-            MirrorTest.syncRoute(mailboxId: 5),
+            MirrorTest.syncRoute(mailboxId: seeded.inboxRemoteId),
             with: try Recorded.syncResponse(changed: rows, total: rows.count, unread: 23)
         )
 
         await scheduler.syncNow(mailboxId: seeded.inboxId)
 
         let body = try #require(
-            await transport.requests.first { $0.url?.path.hasSuffix("/mailboxes/5/sync") == true }?.httpBody
+            await transport.requests.first {
+                $0.url?.path.hasSuffix("/mailboxes/\(seeded.inboxRemoteId)/sync") == true
+            }?.httpBody
         )
         let sent = try #require(try JSONSerialization.jsonObject(with: body) as? [String: Any])
         #expect(sent["sortOrder"] as? String == "oldest")
         #expect(sent["init"] as? Bool == false)
-        #expect((sent["ids"] as? [Any])?.count == 95)
+        // The window claims every seeded id, up to its size.
+        #expect((sent["ids"] as? [Any])?.count == min(rows.count, SyncWindow.size))
     }
 }

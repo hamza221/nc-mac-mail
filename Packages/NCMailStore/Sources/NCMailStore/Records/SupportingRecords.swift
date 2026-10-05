@@ -35,6 +35,22 @@ public struct TagRecord: Codable, FetchableRecord, PersistableRecord, Sendable, 
     }
 }
 
+/// One tag as an envelope payload carries it. No local id: the envelope upsert finds or
+/// creates the `tag` row by `(accountId, remoteId)` (ADR-0033).
+public struct TagWrite: Sendable, Equatable {
+    public var remoteId: Int64
+    public var imapLabel: String
+    public var displayName: String
+    public var color: String?
+
+    public init(remoteId: Int64, imapLabel: String, displayName: String, color: String? = nil) {
+        self.remoteId = remoteId
+        self.imapLabel = imapLabel
+        self.displayName = displayName
+        self.color = color
+    }
+}
+
 /// A row of `messageTag`.
 public struct MessageTagRecord: Codable, FetchableRecord, PersistableRecord, Sendable, Equatable {
     public static let databaseTableName = "messageTag"

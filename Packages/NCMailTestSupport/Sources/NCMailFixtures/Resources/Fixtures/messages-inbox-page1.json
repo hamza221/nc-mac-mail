@@ -1,3380 +1,12 @@
 [
   {
-    "databaseId": 166,
-    "uid": 103,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1789920932,
-    "flags": {
-      "seen": false,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<IbBSj4zaReK1GOa5wHvukA@geopod-ismtpd-72>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<IbBSj4zaReK1GOa5wHvukA@geopod-ismtpd-72>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 165,
-    "uid": 102,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1789775112,
-    "flags": {
-      "seen": false,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<rBpe0vDxTlemAdCajEVUxA@geopod-ismtpd-16>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<rBpe0vDxTlemAdCajEVUxA@geopod-ismtpd-16>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 164,
-    "uid": 101,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1789590490,
-    "flags": {
-      "seen": false,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<n8X5wzuCSUqgabCgIvRp_g@geopod-ismtpd-23>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<n8X5wzuCSUqgabCgIvRp_g@geopod-ismtpd-23>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 154,
-    "uid": 100,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1789407936,
-    "flags": {
-      "seen": false,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<y5gNBrJzTk6Gsp_05SX7Ag@geopod-ismtpd-60>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<y5gNBrJzTk6Gsp_05SX7Ag@geopod-ismtpd-60>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 153,
-    "uid": 99,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1789247411,
-    "flags": {
-      "seen": false,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<4e80ZawkSxGDDp0opF8EyA@geopod-ismtpd-78>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<4e80ZawkSxGDDp0opF8EyA@geopod-ismtpd-78>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 152,
-    "uid": 98,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1789058742,
-    "flags": {
-      "seen": false,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<kOGtUgIzSWe0T25qwy17oQ@geopod-ismtpd-63>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<kOGtUgIzSWe0T25qwy17oQ@geopod-ismtpd-63>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 151,
-    "uid": 97,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1788909063,
-    "flags": {
-      "seen": false,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<I0-66DSTRCSMRxNHGE5hVA@geopod-ismtpd-25>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<I0-66DSTRCSMRxNHGE5hVA@geopod-ismtpd-25>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 150,
-    "uid": 96,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1788712294,
-    "flags": {
-      "seen": false,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<ga36083_QIKzbwTKLaEkOA@geopod-ismtpd-12>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<ga36083_QIKzbwTKLaEkOA@geopod-ismtpd-12>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 149,
-    "uid": 95,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1788543791,
-    "flags": {
-      "seen": false,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<LjS0tYopTVCgMT_InS2VIQ@geopod-ismtpd-66>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<LjS0tYopTVCgMT_InS2VIQ@geopod-ismtpd-66>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 148,
-    "uid": 94,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1788295347,
-    "flags": {
-      "seen": false,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<sTk4uQ6jReCPaeIKVHbTUQ@geopod-ismtpd-92>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<sTk4uQ6jReCPaeIKVHbTUQ@geopod-ismtpd-92>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 147,
-    "uid": 93,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1788112592,
-    "flags": {
-      "seen": false,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<7kGotnYhS8alYywsYNN8Fg@geopod-ismtpd-38>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<7kGotnYhS8alYywsYNN8Fg@geopod-ismtpd-38>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 146,
-    "uid": 92,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1787938351,
-    "flags": {
-      "seen": false,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<cCU2tcjZR92LgYsEWaFfhw@geopod-ismtpd-49>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<cCU2tcjZR92LgYsEWaFfhw@geopod-ismtpd-49>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 106,
-    "uid": 91,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1787746808,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": false,
-      "$mdnsent": false
-    },
-    "tags": [],
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<_EyOM8R7SyqJuWvd4haL8A@geopod-ismtpd-47>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<_EyOM8R7SyqJuWvd4haL8A@geopod-ismtpd-47>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 105,
-    "uid": 90,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1787612229,
-    "flags": {
-      "seen": true,
-      "flagged": true,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": false,
-      "$mdnsent": false
-    },
-    "tags": [],
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<LLZzppraSe-0YwXPZUEGGw@geopod-ismtpd-45>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<LLZzppraSe-0YwXPZUEGGw@geopod-ismtpd-45>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 104,
-    "uid": 89,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1787418296,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": false,
-      "$mdnsent": false
-    },
-    "tags": [],
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<ZhLKYlfsRqu2lbRD1DfdYQ@geopod-ismtpd-24>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<ZhLKYlfsRqu2lbRD1DfdYQ@geopod-ismtpd-24>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 103,
-    "uid": 88,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1787251230,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": false,
-      "$mdnsent": false
-    },
-    "tags": [],
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<Bgs8CQRySu2AX3Ulfd_gMw@geopod-ismtpd-22>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<Bgs8CQRySu2AX3Ulfd_gMw@geopod-ismtpd-22>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 102,
-    "uid": 87,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1787075254,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": false,
-      "$mdnsent": false
-    },
-    "tags": [],
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<P8lhPRDoRZqL9Mld5lDiCg@geopod-ismtpd-64>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<P8lhPRDoRZqL9Mld5lDiCg@geopod-ismtpd-64>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 101,
-    "uid": 86,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1786900981,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<61JqP6RDQgWj-coe1PD5aA@geopod-ismtpd-22>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<61JqP6RDQgWj-coe1PD5aA@geopod-ismtpd-22>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 100,
-    "uid": 85,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1786737922,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<ZtGXggZSSkyv4_q8YRz_og@geopod-ismtpd-23>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<ZtGXggZSSkyv4_q8YRz_og@geopod-ismtpd-23>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 99,
-    "uid": 84,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1786568863,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<7inDRQxKRwS5BMKyNZ9QVQ@geopod-ismtpd-112>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<7inDRQxKRwS5BMKyNZ9QVQ@geopod-ismtpd-112>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 98,
-    "uid": 83,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1786511719,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<1dJEtZvbQbyV2LUdyJjW4g@geopod-ismtpd-27>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<1dJEtZvbQbyV2LUdyJjW4g@geopod-ismtpd-27>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 97,
-    "uid": 82,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1786403133,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<3G47-DmmTju_ddxOmRPeUw@geopod-ismtpd-74>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<3G47-DmmTju_ddxOmRPeUw@geopod-ismtpd-74>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 96,
-    "uid": 81,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1786208834,
-    "flags": {
-      "seen": false,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<kydAmP2TTniYs-K28S_qgQ@geopod-ismtpd-canary-0>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<kydAmP2TTniYs-K28S_qgQ@geopod-ismtpd-canary-0>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 95,
-    "uid": 80,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1786055061,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<sDV-L3EuTLOtgth83zv2sQ@geopod-ismtpd-2>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<sDV-L3EuTLOtgth83zv2sQ@geopod-ismtpd-2>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 94,
-    "uid": 79,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1785881575,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<iEsD1hrHRISBlNGXnvyilw@geopod-ismtpd-80>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<iEsD1hrHRISBlNGXnvyilw@geopod-ismtpd-80>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 93,
-    "uid": 78,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1785727770,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<zGd4amajQgKyXavLSpolRQ@geopod-ismtpd-90>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<zGd4amajQgKyXavLSpolRQ@geopod-ismtpd-90>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 92,
-    "uid": 77,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1785541444,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<TP1hkkonSqmxs6EUIOcABQ@geopod-ismtpd-51>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<TP1hkkonSqmxs6EUIOcABQ@geopod-ismtpd-51>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 91,
-    "uid": 76,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1785261386,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<APQlq43TSJG9meTEP1mRHw@geopod-ismtpd-70>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<APQlq43TSJG9meTEP1mRHw@geopod-ismtpd-70>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 90,
-    "uid": 75,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1785048968,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<hhgmdM2kTZe6x9PtPyzTMw@geopod-ismtpd-61>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<hhgmdM2kTZe6x9PtPyzTMw@geopod-ismtpd-61>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 89,
-    "uid": 74,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1784846180,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<IbBDPHNDSoyP8b6EwjMcPg@geopod-ismtpd-31>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<IbBDPHNDSoyP8b6EwjMcPg@geopod-ismtpd-31>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 87,
-    "uid": 72,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1784473722,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<WfBjIy3DTOyqIkP7P44KhQ@geopod-ismtpd-40>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<WfBjIy3DTOyqIkP7P44KhQ@geopod-ismtpd-40>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 86,
-    "uid": 71,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1784248332,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<ihJMmTbtSDSCQZFjapF1QA@geopod-ismtpd-107>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<ihJMmTbtSDSCQZFjapF1QA@geopod-ismtpd-107>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 85,
-    "uid": 70,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1784115182,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<user@example.com>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<user@example.com>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": false,
-    "attachments": []
-  },
-  {
-    "databaseId": 84,
-    "uid": 66,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1784036947,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<sSFv97xFQBSFZXpVcOJAHQ@geopod-ismtpd-96>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<sSFv97xFQBSFZXpVcOJAHQ@geopod-ismtpd-96>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 83,
-    "uid": 65,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1783950663,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<user@example.com>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<user@example.com>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": false,
-    "attachments": []
-  },
-  {
-    "databaseId": 82,
-    "uid": 64,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1783947933,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<CAOFMF9H2X5_=user@example.com>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<CAOFMF9H2X5_=user@example.com>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": false,
-    "attachments": []
-  },
-  {
-    "databaseId": 81,
-    "uid": 63,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1783946505,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<user@example.com>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<user@example.com>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": false,
-    "attachments": []
-  },
-  {
-    "databaseId": 80,
-    "uid": 62,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1783897055,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<fU2iij82QDGztwZkN3XJEQ@geopod-ismtpd-67>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<fU2iij82QDGztwZkN3XJEQ@geopod-ismtpd-67>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 79,
-    "uid": 61,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1783728529,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<b5E9h0knTRmHpbmskNLdFg@geopod-ismtpd-22>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<b5E9h0knTRmHpbmskNLdFg@geopod-ismtpd-22>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 78,
-    "uid": 60,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1783605498,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<user@example.com>",
-    "inReplyTo": "<CAOFMF9HLZ6rURg+TRACKINGID=user@example.com>",
-    "references": [
-      "<user@example.com>",
-      "<user@example.com>",
-      "<TRACKINGID=user@example.com>",
-      "<user@example.com>",
-      "<user@example.com>",
-      "<CAOFMF9HLZ6rURg+TRACKINGID=user@example.com>"
-    ],
-    "threadRootId": "<user@example.com>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 1,
-    "avatar": null,
-    "fetchAvatarFromClient": false,
-    "attachments": []
-  },
-  {
-    "databaseId": 77,
-    "uid": 59,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1783605363,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": false,
-      "$mdnsent": false
-    },
-    "tags": [],
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<CAOFMF9HLZ6rURg+TRACKINGID=user@example.com>",
-    "inReplyTo": "<user@example.com>",
-    "references": [
-      "<user@example.com>",
-      "<user@example.com>",
-      "<TRACKINGID=user@example.com>",
-      "<user@example.com>",
-      "<user@example.com>"
-    ],
-    "threadRootId": "<user@example.com>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 1,
-    "avatar": null,
-    "fetchAvatarFromClient": false,
-    "attachments": []
-  },
-  {
-    "databaseId": 76,
-    "uid": 58,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1783605137,
-    "flags": {
-      "seen": false,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<user@example.com>",
-    "inReplyTo": "<user@example.com>",
-    "references": [
-      "<user@example.com>",
-      "<user@example.com>",
-      "<TRACKINGID=user@example.com>",
-      "<user@example.com>"
-    ],
-    "threadRootId": "<user@example.com>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 1,
-    "avatar": null,
-    "fetchAvatarFromClient": false,
-    "attachments": []
-  },
-  {
-    "databaseId": 75,
-    "uid": 57,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1783605074,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": false,
-      "$mdnsent": false
-    },
-    "tags": [],
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<user@example.com>",
-    "inReplyTo": "<TRACKINGID=user@example.com>",
-    "references": [
-      "<user@example.com>",
-      "<user@example.com>",
-      "<TRACKINGID=user@example.com>"
-    ],
-    "threadRootId": "<user@example.com>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 1,
-    "avatar": null,
-    "fetchAvatarFromClient": false,
-    "attachments": []
-  },
-  {
-    "databaseId": 74,
-    "uid": 56,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1783556466,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<Fwo-GAQbQ7ysbNmwGwGUOg@geopod-ismtpd-39>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<Fwo-GAQbQ7ysbNmwGwGUOg@geopod-ismtpd-39>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 73,
-    "uid": 55,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1783375719,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<RUzVnhMsSECQxbFqcvZqlw@geopod-ismtpd-51>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<RUzVnhMsSECQxbFqcvZqlw@geopod-ismtpd-51>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 72,
-    "uid": 54,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1783120527,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<YacIPaDGQAKg3NQQriEnog@geopod-ismtpd-35>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<YacIPaDGQAKg3NQQriEnog@geopod-ismtpd-35>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 71,
-    "uid": 53,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1782990722,
-    "flags": {
-      "seen": true,
-      "flagged": true,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<TRACKINGID=user@example.com>",
-    "inReplyTo": "<user@example.com>",
-    "references": [
-      "<user@example.com>",
-      "<user@example.com>"
-    ],
-    "threadRootId": "<user@example.com>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 1,
-    "avatar": null,
-    "fetchAvatarFromClient": false,
-    "attachments": []
-  },
-  {
-    "databaseId": 70,
-    "uid": 52,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1782990390,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": true,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<user@example.com>",
-    "inReplyTo": "<user@example.com>",
-    "references": [
-      "<TRACKINGID=user@example.com>",
-      "<user@example.com>"
-    ],
-    "threadRootId": "<user@example.com>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 1,
-    "avatar": null,
-    "fetchAvatarFromClient": false,
-    "attachments": []
-  },
-  {
-    "databaseId": 69,
-    "uid": 51,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1782990289,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": true,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<TRACKINGID=user@example.com>",
-    "inReplyTo": "<user@example.com>",
-    "references": [
-      "<user@example.com>",
-      "<user@example.com>"
-    ],
-    "threadRootId": "<user@example.com>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 1,
-    "avatar": null,
-    "fetchAvatarFromClient": false,
-    "attachments": []
-  },
-  {
-    "databaseId": 68,
-    "uid": 50,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1782938834,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<aFSOgbOrQaWgo4W0FBXGSw@geopod-ismtpd-98>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<aFSOgbOrQaWgo4W0FBXGSw@geopod-ismtpd-98>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 67,
-    "uid": 49,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1782669909,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": true,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      },
-      "$label1": {
-        "id": 1,
-        "userId": "admin",
-        "displayName": "Important",
-        "imapLabel": "$label1",
-        "color": "#FF7A66",
-        "isDefaultTag": true
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<nwARN4ZhQzyeZ_lT7RWwYw@geopod-ismtpd-55>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<nwARN4ZhQzyeZ_lT7RWwYw@geopod-ismtpd-55>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 66,
-    "uid": 48,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1782480125,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": true,
-      "important": true,
-      "$junk": false,
-      "$notjunk": false,
-      "$mdnsent": false
-    },
-    "tags": {
-      "$label1": {
-        "id": 1,
-        "userId": "admin",
-        "displayName": "Important",
-        "imapLabel": "$label1",
-        "color": "#FF7A66",
-        "isDefaultTag": true
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<CAOFMF9HH7hRsepLY8BA2Yb+ZZY8gYQcnz3gmkdxov=user@example.com>",
-    "inReplyTo": "<user@example.com>",
-    "references": [
-      "<CAOFMF9ER2Kg+BfXZrrb=tSKOkjfF6wi9zo_dWFZ==user@example.com>",
-      "<user@example.com>"
-    ],
-    "threadRootId": "<user@example.com>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 1,
-    "avatar": null,
-    "fetchAvatarFromClient": false,
-    "attachments": [
-      {
-        "id": "2",
-        "fileName": "attachment.docx",
-        "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "downloadUrl": "http://cloud.example.com/index.php/apps/mail/api/messages/66/attachment/2",
-        "mimeUrl": "/index.php/apps/theming/img/core/filetypes/x-office-document.svg?v=dcc46f9a"
-      }
-    ]
-  },
-  {
-    "databaseId": 65,
-    "uid": 47,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1782479411,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": true,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": true,
-      "important": true,
-      "$junk": false,
-      "$notjunk": false,
-      "$mdnsent": false
-    },
-    "tags": {
-      "$label1": {
-        "id": 1,
-        "userId": "admin",
-        "displayName": "Important",
-        "imapLabel": "$label1",
-        "color": "#FF7A66",
-        "isDefaultTag": true
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<CAOFMF9ER2Kg+BfXZrrb=tSKOkjfF6wi9zo_dWFZ==user@example.com>",
-    "inReplyTo": "<user@example.com>",
-    "references": [
-      "<user@example.com>"
-    ],
-    "threadRootId": "<user@example.com>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 1,
-    "avatar": null,
-    "fetchAvatarFromClient": false,
-    "attachments": [
-      {
-        "id": "2",
-        "fileName": "attachment.pdf",
-        "mime": "application/pdf",
-        "downloadUrl": "http://cloud.example.com/index.php/apps/mail/api/messages/65/attachment/2",
-        "mimeUrl": "/index.php/apps/theming/img/core/filetypes/application-pdf.svg?v=dcc46f9a"
-      }
-    ]
-  },
-  {
-    "databaseId": 64,
-    "uid": 46,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1782396597,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<bn_c2IE3QsGuXkLq11LSeA@geopod-ismtpd-100>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<bn_c2IE3QsGuXkLq11LSeA@geopod-ismtpd-100>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 63,
-    "uid": 45,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1782307258,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": true,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": true,
-      "$junk": false,
-      "$notjunk": false,
-      "$mdnsent": false
-    },
-    "tags": {
-      "$label1": {
-        "id": 1,
-        "userId": "admin",
-        "displayName": "Important",
-        "imapLabel": "$label1",
-        "color": "#FF7A66",
-        "isDefaultTag": true
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<user@example.com>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<user@example.com>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": false,
-    "attachments": []
-  },
-  {
-    "databaseId": 62,
-    "uid": 44,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1782248965,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<MABmralvQHqX0WQ-F6k1ug@geopod-ismtpd-61>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<MABmralvQHqX0WQ-F6k1ug@geopod-ismtpd-61>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 61,
-    "uid": 43,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1782223719,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<n7PnRaBiRHSa-eYCMmcDtw@geopod-ismtpd-8>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<n7PnRaBiRHSa-eYCMmcDtw@geopod-ismtpd-8>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 60,
-    "uid": 42,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1782065717,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<L5pRIEomQAyEQ-CHHv7VKg@geopod-ismtpd-10>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<L5pRIEomQAyEQ-CHHv7VKg@geopod-ismtpd-10>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 59,
-    "uid": 41,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1781806698,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": true,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      },
-      "$label1": {
-        "id": 1,
-        "userId": "admin",
-        "displayName": "Important",
-        "imapLabel": "$label1",
-        "color": "#FF7A66",
-        "isDefaultTag": true
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<PhHhvCCOR2-EcMnnvu8P3Q@geopod-ismtpd-110>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<PhHhvCCOR2-EcMnnvu8P3Q@geopod-ismtpd-110>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
     "databaseId": 58,
-    "uid": 40,
+    "uid": 39,
     "remoteId": null,
     "subject": "Subject redacted",
-    "dateInt": 1781641932,
+    "dateInt": 1791062094,
     "flags": {
-      "seen": true,
+      "seen": false,
       "flagged": false,
       "answered": false,
       "deleted": false,
@@ -3383,19 +15,10 @@
       "hasAttachments": false,
       "important": false,
       "$junk": false,
-      "$notjunk": true,
+      "$notjunk": false,
       "$mdnsent": false
     },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
+    "tags": [],
     "from": [
       {
         "label": "Name redacted",
@@ -3410,14 +33,14 @@
     ],
     "cc": [],
     "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<SBUPdnImSGC3oW44ocDsRA@geopod-ismtpd-65>",
+    "mailboxId": 3,
+    "messageId": "<user@example.com>",
     "inReplyTo": null,
     "references": [],
-    "threadRootId": "<SBUPdnImSGC3oW44ocDsRA@geopod-ismtpd-65>",
+    "threadRootId": "<user@example.com>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": "Summary redacted",
+    "summary": null,
     "encrypted": false,
     "mentionsMe": 0,
     "avatar": null,
@@ -3426,41 +49,24 @@
   },
   {
     "databaseId": 57,
-    "uid": 39,
+    "uid": 38,
     "remoteId": null,
     "subject": "Subject redacted",
-    "dateInt": 1781532377,
+    "dateInt": 1791062056,
     "flags": {
-      "seen": true,
+      "seen": false,
       "flagged": false,
       "answered": false,
       "deleted": false,
       "draft": false,
       "forwarded": false,
       "hasAttachments": false,
-      "important": true,
+      "important": false,
       "$junk": false,
-      "$notjunk": true,
+      "$notjunk": false,
       "$mdnsent": false
     },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      },
-      "$label1": {
-        "id": 1,
-        "userId": "admin",
-        "displayName": "Important",
-        "imapLabel": "$label1",
-        "color": "#FF7A66",
-        "isDefaultTag": true
-      }
-    },
+    "tags": [],
     "from": [
       {
         "label": "Name redacted",
@@ -3475,14 +81,14 @@
     ],
     "cc": [],
     "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<xXkU_B-nRt2Zf8jTeF9v9Q@geopod-ismtpd-100>",
+    "mailboxId": 3,
+    "messageId": "<user@example.com>",
     "inReplyTo": null,
     "references": [],
-    "threadRootId": "<xXkU_B-nRt2Zf8jTeF9v9Q@geopod-ismtpd-100>",
+    "threadRootId": "<user@example.com>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": "Summary redacted",
+    "summary": null,
     "encrypted": false,
     "mentionsMe": 0,
     "avatar": null,
@@ -3491,41 +97,24 @@
   },
   {
     "databaseId": 56,
-    "uid": 38,
+    "uid": 37,
     "remoteId": null,
     "subject": "Subject redacted",
-    "dateInt": 1781455519,
+    "dateInt": 1791062055,
     "flags": {
-      "seen": true,
+      "seen": false,
       "flagged": false,
       "answered": false,
       "deleted": false,
       "draft": false,
       "forwarded": false,
       "hasAttachments": false,
-      "important": true,
+      "important": false,
       "$junk": false,
-      "$notjunk": true,
+      "$notjunk": false,
       "$mdnsent": false
     },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      },
-      "$label1": {
-        "id": 1,
-        "userId": "admin",
-        "displayName": "Important",
-        "imapLabel": "$label1",
-        "color": "#FF7A66",
-        "isDefaultTag": true
-      }
-    },
+    "tags": [],
     "from": [
       {
         "label": "Name redacted",
@@ -3540,14 +129,14 @@
     ],
     "cc": [],
     "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<OxRmmeb-TtyHgb-ynclt3A@geopod-ismtpd-25>",
+    "mailboxId": 3,
+    "messageId": "<user@example.com>",
     "inReplyTo": null,
     "references": [],
-    "threadRootId": "<OxRmmeb-TtyHgb-ynclt3A@geopod-ismtpd-25>",
+    "threadRootId": "<user@example.com>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": "Summary redacted",
+    "summary": null,
     "encrypted": false,
     "mentionsMe": 0,
     "avatar": null,
@@ -3556,41 +145,24 @@
   },
   {
     "databaseId": 55,
-    "uid": 37,
+    "uid": 36,
     "remoteId": null,
     "subject": "Subject redacted",
-    "dateInt": 1781194541,
+    "dateInt": 1791062051,
     "flags": {
-      "seen": true,
+      "seen": false,
       "flagged": false,
       "answered": false,
       "deleted": false,
       "draft": false,
       "forwarded": false,
       "hasAttachments": false,
-      "important": true,
+      "important": false,
       "$junk": false,
-      "$notjunk": true,
+      "$notjunk": false,
       "$mdnsent": false
     },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      },
-      "$label1": {
-        "id": 1,
-        "userId": "admin",
-        "displayName": "Important",
-        "imapLabel": "$label1",
-        "color": "#FF7A66",
-        "isDefaultTag": true
-      }
-    },
+    "tags": [],
     "from": [
       {
         "label": "Name redacted",
@@ -3605,14 +177,14 @@
     ],
     "cc": [],
     "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<7p4iDY--RZ-QYcOxUxMqLg@geopod-ismtpd-88>",
+    "mailboxId": 3,
+    "messageId": "<user@example.com>",
     "inReplyTo": null,
     "references": [],
-    "threadRootId": "<7p4iDY--RZ-QYcOxUxMqLg@geopod-ismtpd-88>",
+    "threadRootId": "<user@example.com>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": "Summary redacted",
+    "summary": null,
     "encrypted": false,
     "mentionsMe": 0,
     "avatar": null,
@@ -3621,41 +193,24 @@
   },
   {
     "databaseId": 54,
-    "uid": 36,
+    "uid": 35,
     "remoteId": null,
     "subject": "Subject redacted",
-    "dateInt": 1781053325,
+    "dateInt": 1791062045,
     "flags": {
-      "seen": true,
+      "seen": false,
       "flagged": false,
       "answered": false,
       "deleted": false,
       "draft": false,
       "forwarded": false,
       "hasAttachments": false,
-      "important": true,
+      "important": false,
       "$junk": false,
-      "$notjunk": true,
+      "$notjunk": false,
       "$mdnsent": false
     },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      },
-      "$label1": {
-        "id": 1,
-        "userId": "admin",
-        "displayName": "Important",
-        "imapLabel": "$label1",
-        "color": "#FF7A66",
-        "isDefaultTag": true
-      }
-    },
+    "tags": [],
     "from": [
       {
         "label": "Name redacted",
@@ -3670,14 +225,14 @@
     ],
     "cc": [],
     "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<IYI8XhMjSnGJrmKYZBEFMA@geopod-ismtpd-14>",
+    "mailboxId": 3,
+    "messageId": "<user@example.com>",
     "inReplyTo": null,
     "references": [],
-    "threadRootId": "<IYI8XhMjSnGJrmKYZBEFMA@geopod-ismtpd-14>",
+    "threadRootId": "<user@example.com>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": "Summary redacted",
+    "summary": null,
     "encrypted": false,
     "mentionsMe": 0,
     "avatar": null,
@@ -3686,106 +241,24 @@
   },
   {
     "databaseId": 53,
-    "uid": 35,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1780859292,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": true,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      },
-      "$label1": {
-        "id": 1,
-        "userId": "admin",
-        "displayName": "Important",
-        "imapLabel": "$label1",
-        "color": "#FF7A66",
-        "isDefaultTag": true
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<Q66QUR_9TEqR2kmC9_ztaQ@geopod-ismtpd-94>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<Q66QUR_9TEqR2kmC9_ztaQ@geopod-ismtpd-94>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 52,
     "uid": 34,
     "remoteId": null,
     "subject": "Subject redacted",
-    "dateInt": 1780681122,
+    "dateInt": 1791062033,
     "flags": {
-      "seen": true,
+      "seen": false,
       "flagged": false,
       "answered": false,
       "deleted": false,
       "draft": false,
       "forwarded": false,
-      "hasAttachments": false,
-      "important": true,
+      "hasAttachments": true,
+      "important": false,
       "$junk": false,
-      "$notjunk": true,
+      "$notjunk": false,
       "$mdnsent": false
     },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      },
-      "$label1": {
-        "id": 1,
-        "userId": "admin",
-        "displayName": "Important",
-        "imapLabel": "$label1",
-        "color": "#FF7A66",
-        "isDefaultTag": true
-      }
-    },
+    "tags": [],
     "from": [
       {
         "label": "Name redacted",
@@ -3800,57 +273,48 @@
     ],
     "cc": [],
     "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<PUoVassTQtef8HvmDEUAGw@geopod-ismtpd-3>",
+    "mailboxId": 3,
+    "messageId": "<user@example.com>",
     "inReplyTo": null,
     "references": [],
-    "threadRootId": "<PUoVassTQtef8HvmDEUAGw@geopod-ismtpd-3>",
+    "threadRootId": "<user@example.com>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": "Summary redacted",
+    "summary": null,
     "encrypted": false,
     "mentionsMe": 0,
     "avatar": null,
     "fetchAvatarFromClient": true,
-    "attachments": []
+    "attachments": [
+      {
+        "id": "2",
+        "fileName": "attachment.txt",
+        "mime": "text/plain",
+        "downloadUrl": "http://cloud.example.com/index.php/apps/mail/api/messages/53/attachment/2",
+        "mimeUrl": "/index.php/apps/theming/img/core/filetypes/text.svg?v=30fdf852"
+      }
+    ]
   },
   {
-    "databaseId": 51,
+    "databaseId": 52,
     "uid": 33,
     "remoteId": null,
     "subject": "Subject redacted",
-    "dateInt": 1780426890,
+    "dateInt": 1791062022,
     "flags": {
-      "seen": true,
+      "seen": false,
       "flagged": false,
       "answered": false,
       "deleted": false,
       "draft": false,
       "forwarded": false,
       "hasAttachments": false,
-      "important": true,
+      "important": false,
       "$junk": false,
-      "$notjunk": true,
+      "$notjunk": false,
       "$mdnsent": false
     },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      },
-      "$label1": {
-        "id": 1,
-        "userId": "admin",
-        "displayName": "Important",
-        "imapLabel": "$label1",
-        "color": "#FF7A66",
-        "isDefaultTag": true
-      }
-    },
+    "tags": [],
     "from": [
       {
         "label": "Name redacted",
@@ -3865,14 +329,14 @@
     ],
     "cc": [],
     "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<u8Hk-UdMQR6jaBbDGZ4CyQ@geopod-ismtpd-62>",
+    "mailboxId": 3,
+    "messageId": "<user@example.com>",
     "inReplyTo": null,
     "references": [],
-    "threadRootId": "<u8Hk-UdMQR6jaBbDGZ4CyQ@geopod-ismtpd-62>",
+    "threadRootId": "<user@example.com>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": "Summary redacted",
+    "summary": null,
     "encrypted": false,
     "mentionsMe": 0,
     "avatar": null,
@@ -3881,12 +345,12 @@
   },
   {
     "databaseId": 50,
-    "uid": 28,
+    "uid": 31,
     "remoteId": null,
     "subject": "Subject redacted",
-    "dateInt": 1779466985,
+    "dateInt": 1791061878,
     "flags": {
-      "seen": true,
+      "seen": false,
       "flagged": false,
       "answered": false,
       "deleted": false,
@@ -3895,19 +359,10 @@
       "hasAttachments": false,
       "important": false,
       "$junk": false,
-      "$notjunk": true,
+      "$notjunk": false,
       "$mdnsent": false
     },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
+    "tags": [],
     "from": [
       {
         "label": "Name redacted",
@@ -3922,409 +377,28 @@
     ],
     "cc": [],
     "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<ppbP-VsyTz6Ys-PQ7ztHUQ@geopod-ismtpd-94>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<ppbP-VsyTz6Ys-PQ7ztHUQ@geopod-ismtpd-94>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 49,
-    "uid": 27,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1779319842,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<7YBy41N_SJqW52aFWNEnsg@geopod-ismtpd-14>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<7YBy41N_SJqW52aFWNEnsg@geopod-ismtpd-14>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 48,
-    "uid": 26,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1779047117,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<By2Ebe0yQ_KBAMk3TaLjlg@geopod-ismtpd-87>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<By2Ebe0yQ_KBAMk3TaLjlg@geopod-ismtpd-87>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 47,
-    "uid": 25,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1778892183,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<3IZa5V0cTiK_lInVo661gw@geopod-ismtpd-39>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<3IZa5V0cTiK_lInVo661gw@geopod-ismtpd-39>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 46,
-    "uid": 24,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1778629514,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<ltyiUdHxRjS1SY3duWmhsQ@geopod-ismtpd-55>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<ltyiUdHxRjS1SY3duWmhsQ@geopod-ismtpd-55>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 44,
-    "uid": 22,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1778515439,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      },
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      },
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      },
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      },
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      },
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      },
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      },
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      },
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      },
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      },
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      },
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      },
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      },
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      },
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      },
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      },
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      },
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      },
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      },
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      },
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      },
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      },
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      },
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      },
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
+    "mailboxId": 3,
     "messageId": "<user@example.com>",
     "inReplyTo": null,
     "references": [],
     "threadRootId": "<user@example.com>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": "Summary redacted",
+    "summary": null,
     "encrypted": false,
     "mentionsMe": 0,
     "avatar": null,
-    "fetchAvatarFromClient": false,
+    "fetchAvatarFromClient": true,
     "attachments": []
   },
   {
     "databaseId": 45,
-    "uid": 23,
+    "uid": 29,
     "remoteId": null,
     "subject": "Subject redacted",
-    "dateInt": 1778515439,
+    "dateInt": 1791061877,
     "flags": {
-      "seen": true,
+      "seen": false,
       "flagged": false,
       "answered": false,
       "deleted": false,
@@ -4333,19 +407,10 @@
       "hasAttachments": false,
       "important": false,
       "$junk": false,
-      "$notjunk": true,
+      "$notjunk": false,
       "$mdnsent": false
     },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
+    "tags": [],
     "from": [
       {
         "label": "Name redacted",
@@ -4360,14 +425,62 @@
     ],
     "cc": [],
     "bcc": [],
-    "mailboxId": 5,
+    "mailboxId": 3,
     "messageId": "<user@example.com>",
     "inReplyTo": null,
     "references": [],
     "threadRootId": "<user@example.com>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": "Summary redacted",
+    "summary": null,
+    "encrypted": false,
+    "mentionsMe": 0,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
+    "attachments": []
+  },
+  {
+    "databaseId": 51,
+    "uid": 32,
+    "remoteId": null,
+    "subject": "Subject redacted",
+    "dateInt": 1791061877,
+    "flags": {
+      "seen": false,
+      "flagged": false,
+      "answered": false,
+      "deleted": false,
+      "draft": false,
+      "forwarded": false,
+      "hasAttachments": false,
+      "important": false,
+      "$junk": false,
+      "$notjunk": false,
+      "$mdnsent": false
+    },
+    "tags": [],
+    "from": [
+      {
+        "label": "Name redacted",
+        "email": "user@example.com"
+      }
+    ],
+    "to": [
+      {
+        "label": "Name redacted",
+        "email": "user@example.com"
+      }
+    ],
+    "cc": [],
+    "bcc": [],
+    "mailboxId": 3,
+    "messageId": "<user@example.com>",
+    "inReplyTo": null,
+    "references": [],
+    "threadRootId": "<user@example.com>",
+    "imipMessage": false,
+    "previewText": "Preview redacted",
+    "summary": null,
     "encrypted": false,
     "mentionsMe": 0,
     "avatar": null,
@@ -4376,41 +489,24 @@
   },
   {
     "databaseId": 43,
-    "uid": 21,
+    "uid": 27,
     "remoteId": null,
     "subject": "Subject redacted",
-    "dateInt": 1778460315,
+    "dateInt": 1791061115,
     "flags": {
-      "seen": true,
+      "seen": false,
       "flagged": false,
       "answered": false,
       "deleted": false,
       "draft": false,
       "forwarded": false,
       "hasAttachments": false,
-      "important": true,
+      "important": false,
       "$junk": false,
-      "$notjunk": true,
+      "$notjunk": false,
       "$mdnsent": false
     },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      },
-      "$label1": {
-        "id": 1,
-        "userId": "admin",
-        "displayName": "Important",
-        "imapLabel": "$label1",
-        "color": "#FF7A66",
-        "isDefaultTag": true
-      }
-    },
+    "tags": [],
     "from": [
       {
         "label": "Name redacted",
@@ -4425,14 +521,14 @@
     ],
     "cc": [],
     "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<IlNz8BJeTjmXXgT2lt4_LA@geopod-ismtpd-142>",
+    "mailboxId": 3,
+    "messageId": "<user@example.com>",
     "inReplyTo": null,
     "references": [],
-    "threadRootId": "<IlNz8BJeTjmXXgT2lt4_LA@geopod-ismtpd-142>",
+    "threadRootId": "<user@example.com>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": "Summary redacted",
+    "summary": null,
     "encrypted": false,
     "mentionsMe": 0,
     "avatar": null,
@@ -4441,98 +537,24 @@
   },
   {
     "databaseId": 42,
-    "uid": 20,
+    "uid": 26,
     "remoteId": null,
     "subject": "Subject redacted",
-    "dateInt": 1778270864,
+    "dateInt": 1791061072,
     "flags": {
-      "seen": true,
+      "seen": false,
       "flagged": false,
       "answered": false,
       "deleted": false,
       "draft": false,
       "forwarded": false,
-      "hasAttachments": false,
-      "important": true,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      },
-      "$label1": {
-        "id": 1,
-        "userId": "admin",
-        "displayName": "Important",
-        "imapLabel": "$label1",
-        "color": "#FF7A66",
-        "isDefaultTag": true
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<3ZpkQFKISxuFJEy26Vz4ng@geopod-ismtpd-85>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<3ZpkQFKISxuFJEy26Vz4ng@geopod-ismtpd-85>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 41,
-    "uid": 19,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1778180152,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": true,
+      "hasAttachments": true,
+      "important": false,
       "$junk": false,
       "$notjunk": false,
       "$mdnsent": false
     },
-    "tags": {
-      "$label1": {
-        "id": 1,
-        "userId": "admin",
-        "displayName": "Important",
-        "imapLabel": "$label1",
-        "color": "#FF7A66",
-        "isDefaultTag": true
-      }
-    },
+    "tags": [],
     "from": [
       {
         "label": "Name redacted",
@@ -4547,28 +569,36 @@
     ],
     "cc": [],
     "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<UD890UHF7TU4.561LEW9MXVV13@sn1pepf0003b6eb>",
+    "mailboxId": 3,
+    "messageId": "<user@example.com>",
     "inReplyTo": null,
     "references": [],
-    "threadRootId": "<UD890UHF7TU4.561LEW9MXVV13@sn1pepf0003b6eb>",
+    "threadRootId": "<user@example.com>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": "Summary redacted",
+    "summary": null,
     "encrypted": false,
     "mentionsMe": 0,
     "avatar": null,
     "fetchAvatarFromClient": true,
-    "attachments": []
+    "attachments": [
+      {
+        "id": "2",
+        "fileName": "attachment.txt",
+        "mime": "text/plain",
+        "downloadUrl": "http://cloud.example.com/index.php/apps/mail/api/messages/42/attachment/2",
+        "mimeUrl": "/index.php/apps/theming/img/core/filetypes/text.svg?v=30fdf852"
+      }
+    ]
   },
   {
-    "databaseId": 40,
-    "uid": 18,
+    "databaseId": 41,
+    "uid": 25,
     "remoteId": null,
     "subject": "Subject redacted",
-    "dateInt": 1778108969,
+    "dateInt": 1791061061,
     "flags": {
-      "seen": true,
+      "seen": false,
       "flagged": false,
       "answered": false,
       "deleted": false,
@@ -4577,19 +607,10 @@
       "hasAttachments": false,
       "important": false,
       "$junk": false,
-      "$notjunk": true,
+      "$notjunk": false,
       "$mdnsent": false
     },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
+    "tags": [],
     "from": [
       {
         "label": "Name redacted",
@@ -4604,14 +625,14 @@
     ],
     "cc": [],
     "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<TjA1yl2PTPC3dBFdQDOHXg@geopod-ismtpd-67>",
+    "mailboxId": 3,
+    "messageId": "<user@example.com>",
     "inReplyTo": null,
     "references": [],
-    "threadRootId": "<TjA1yl2PTPC3dBFdQDOHXg@geopod-ismtpd-67>",
+    "threadRootId": "<user@example.com>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": "Summary redacted",
+    "summary": null,
     "encrypted": false,
     "mentionsMe": 0,
     "avatar": null,
@@ -4620,179 +641,24 @@
   },
   {
     "databaseId": 39,
-    "uid": 17,
+    "uid": 23,
     "remoteId": null,
     "subject": "Subject redacted",
-    "dateInt": 1777939094,
+    "dateInt": 1791060921,
     "flags": {
-      "seen": true,
+      "seen": false,
       "flagged": false,
       "answered": false,
       "deleted": false,
       "draft": false,
       "forwarded": false,
       "hasAttachments": false,
-      "important": true,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      },
-      "$label1": {
-        "id": 1,
-        "userId": "admin",
-        "displayName": "Important",
-        "imapLabel": "$label1",
-        "color": "#FF7A66",
-        "isDefaultTag": true
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<LEfVDf6wS7u9kT88Aj8Wbg@geopod-ismtpd-11>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<LEfVDf6wS7u9kT88Aj8Wbg@geopod-ismtpd-11>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 38,
-    "uid": 16,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1777907853,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": true,
+      "important": false,
       "$junk": false,
       "$notjunk": false,
       "$mdnsent": false
     },
-    "tags": {
-      "$label1": {
-        "id": 1,
-        "userId": "admin",
-        "displayName": "Important",
-        "imapLabel": "$label1",
-        "color": "#FF7A66",
-        "isDefaultTag": true
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      },
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      },
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      },
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      },
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      },
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      },
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<TRACKINGID=user@example.com>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<TRACKINGID=user@example.com>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": false,
-    "attachments": []
-  },
-  {
-    "databaseId": 37,
-    "uid": 15,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1777763039,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
+    "tags": [],
     "from": [
       {
         "label": "Name redacted",
@@ -4807,14 +673,14 @@
     ],
     "cc": [],
     "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<HX49WkKwR8-XKZeDp13Z1g@geopod-ismtpd-20>",
+    "mailboxId": 3,
+    "messageId": "<user@example.com>",
     "inReplyTo": null,
     "references": [],
-    "threadRootId": "<HX49WkKwR8-XKZeDp13Z1g@geopod-ismtpd-20>",
+    "threadRootId": "<user@example.com>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": "Summary redacted",
+    "summary": null,
     "encrypted": false,
     "mentionsMe": 0,
     "avatar": null,
@@ -4822,68 +688,11 @@
     "attachments": []
   },
   {
-    "databaseId": 36,
-    "uid": 14,
+    "databaseId": 40,
+    "uid": 24,
     "remoteId": null,
     "subject": "Subject redacted",
-    "dateInt": 1777589054,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<OSxRdlUpSp-ajJQXsZ2Thw@geopod-ismtpd-50>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<OSxRdlUpSp-ajJQXsZ2Thw@geopod-ismtpd-50>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 35,
-    "uid": 13,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1777420513,
+    "dateInt": 1791060879,
     "flags": {
       "seen": false,
       "flagged": false,
@@ -4891,30 +700,13 @@
       "deleted": false,
       "draft": false,
       "forwarded": false,
-      "hasAttachments": false,
-      "important": true,
+      "hasAttachments": true,
+      "important": false,
       "$junk": false,
-      "$notjunk": true,
+      "$notjunk": false,
       "$mdnsent": false
     },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      },
-      "$label1": {
-        "id": 1,
-        "userId": "admin",
-        "displayName": "Important",
-        "imapLabel": "$label1",
-        "color": "#FF7A66",
-        "isDefaultTag": true
-      }
-    },
+    "tags": [],
     "from": [
       {
         "label": "Name redacted",
@@ -4929,91 +721,34 @@
     ],
     "cc": [],
     "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<brkqBfgHQ-Cb8p5MzxZ0qw@geopod-ismtpd-36>",
+    "mailboxId": 3,
+    "messageId": "<user@example.com>",
     "inReplyTo": null,
     "references": [],
-    "threadRootId": "<brkqBfgHQ-Cb8p5MzxZ0qw@geopod-ismtpd-36>",
+    "threadRootId": "<user@example.com>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": "Summary redacted",
+    "summary": null,
     "encrypted": false,
     "mentionsMe": 0,
     "avatar": null,
     "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 34,
-    "uid": 12,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1777220209,
-    "flags": {
-      "seen": false,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": true,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      },
-      "$label1": {
-        "id": 1,
-        "userId": "admin",
-        "displayName": "Important",
-        "imapLabel": "$label1",
-        "color": "#FF7A66",
-        "isDefaultTag": true
-      }
-    },
-    "from": [
+    "attachments": [
       {
-        "label": "Name redacted",
-        "email": "user@example.com"
+        "id": "2",
+        "fileName": "attachment.txt",
+        "mime": "text/plain",
+        "downloadUrl": "http://cloud.example.com/index.php/apps/mail/api/messages/40/attachment/2",
+        "mimeUrl": "/index.php/apps/theming/img/core/filetypes/text.svg?v=30fdf852"
       }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<8J0g01MgRtuPj5PQEg9RnQ@geopod-ismtpd-56>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<8J0g01MgRtuPj5PQEg9RnQ@geopod-ismtpd-56>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
+    ]
   },
   {
     "databaseId": 33,
-    "uid": 11,
+    "uid": 20,
     "remoteId": null,
     "subject": "Subject redacted",
-    "dateInt": 1777138223,
+    "dateInt": 1791060868,
     "flags": {
       "seen": false,
       "flagged": false,
@@ -5022,86 +757,12 @@
       "draft": false,
       "forwarded": false,
       "hasAttachments": false,
-      "important": true,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      },
-      "$label1": {
-        "id": 1,
-        "userId": "admin",
-        "displayName": "Important",
-        "imapLabel": "$label1",
-        "color": "#FF7A66",
-        "isDefaultTag": true
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<7G9t6q7VRKy7pCD2o6woyg@geopod-ismtpd-94>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<7G9t6q7VRKy7pCD2o6woyg@geopod-ismtpd-94>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 32,
-    "uid": 10,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1776813790,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
       "important": false,
       "$junk": false,
-      "$notjunk": true,
+      "$notjunk": false,
       "$mdnsent": false
     },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
+    "tags": [],
     "from": [
       {
         "label": "Name redacted",
@@ -5116,14 +777,14 @@
     ],
     "cc": [],
     "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<2JQ1Y9rYQcCyHfWt62q2bw@geopod-ismtpd-63>",
+    "mailboxId": 3,
+    "messageId": "<user@example.com>",
     "inReplyTo": null,
     "references": [],
-    "threadRootId": "<2JQ1Y9rYQcCyHfWt62q2bw@geopod-ismtpd-63>",
+    "threadRootId": "<user@example.com>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": "Summary redacted",
+    "summary": null,
     "encrypted": false,
     "mentionsMe": 0,
     "avatar": null,
@@ -5132,67 +793,10 @@
   },
   {
     "databaseId": 31,
-    "uid": 9,
+    "uid": 18,
     "remoteId": null,
     "subject": "Subject redacted",
-    "dateInt": 1776630105,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": false,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<kK8p8HbSQXCMVNG16_pCwQ@geopod-ismtpd-10>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<kK8p8HbSQXCMVNG16_pCwQ@geopod-ismtpd-10>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 30,
-    "uid": 8,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1776627915,
+    "dateInt": 1791060663,
     "flags": {
       "seen": false,
       "flagged": false,
@@ -5203,19 +807,10 @@
       "hasAttachments": false,
       "important": false,
       "$junk": false,
-      "$notjunk": true,
+      "$notjunk": false,
       "$mdnsent": false
     },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
+    "tags": [],
     "from": [
       {
         "label": "Name redacted",
@@ -5230,14 +825,14 @@
     ],
     "cc": [],
     "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<ViPeQchgQLm1R7Uzpmu8lQ@geopod-ismtpd-71>",
+    "mailboxId": 3,
+    "messageId": "<user@example.com>",
     "inReplyTo": null,
     "references": [],
-    "threadRootId": "<ViPeQchgQLm1R7Uzpmu8lQ@geopod-ismtpd-71>",
+    "threadRootId": "<user@example.com>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": "Summary redacted",
+    "summary": null,
     "encrypted": false,
     "mentionsMe": 0,
     "avatar": null,
@@ -5245,11 +840,11 @@
     "attachments": []
   },
   {
-    "databaseId": 29,
-    "uid": 7,
+    "databaseId": 32,
+    "uid": 19,
     "remoteId": null,
     "subject": "Subject redacted",
-    "dateInt": 1776543882,
+    "dateInt": 1791060623,
     "flags": {
       "seen": false,
       "flagged": false,
@@ -5257,22 +852,13 @@
       "deleted": false,
       "draft": false,
       "forwarded": false,
-      "hasAttachments": false,
+      "hasAttachments": true,
       "important": false,
       "$junk": false,
-      "$notjunk": true,
+      "$notjunk": false,
       "$mdnsent": false
     },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      }
-    },
+    "tags": [],
     "from": [
       {
         "label": "Name redacted",
@@ -5287,221 +873,34 @@
     ],
     "cc": [],
     "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<vpHg_Q_JT7aNtRC9XBON0g@geopod-ismtpd-74>",
+    "mailboxId": 3,
+    "messageId": "<user@example.com>",
     "inReplyTo": null,
     "references": [],
-    "threadRootId": "<vpHg_Q_JT7aNtRC9XBON0g@geopod-ismtpd-74>",
+    "threadRootId": "<user@example.com>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": "Summary redacted",
+    "summary": null,
     "encrypted": false,
     "mentionsMe": 0,
     "avatar": null,
     "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 28,
-    "uid": 6,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1776429030,
-    "flags": {
-      "seen": false,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": true,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      },
-      "$label1": {
-        "id": 1,
-        "userId": "admin",
-        "displayName": "Important",
-        "imapLabel": "$label1",
-        "color": "#FF7A66",
-        "isDefaultTag": true
-      }
-    },
-    "from": [
+    "attachments": [
       {
-        "label": "Name redacted",
-        "email": "user@example.com"
+        "id": "2",
+        "fileName": "attachment.txt",
+        "mime": "text/plain",
+        "downloadUrl": "http://cloud.example.com/index.php/apps/mail/api/messages/32/attachment/2",
+        "mimeUrl": "/index.php/apps/theming/img/core/filetypes/text.svg?v=30fdf852"
       }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<mmLHBUGTQVaB3uCXZfGVhQ@geopod-ismtpd-16>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<mmLHBUGTQVaB3uCXZfGVhQ@geopod-ismtpd-16>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 27,
-    "uid": 5,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1776370932,
-    "flags": {
-      "seen": false,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": true,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      },
-      "$label1": {
-        "id": 1,
-        "userId": "admin",
-        "displayName": "Important",
-        "imapLabel": "$label1",
-        "color": "#FF7A66",
-        "isDefaultTag": true
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<w_Gs__kkSveZCO7OrGkueA@geopod-ismtpd-10>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<w_Gs__kkSveZCO7OrGkueA@geopod-ismtpd-10>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 26,
-    "uid": 4,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1776284522,
-    "flags": {
-      "seen": false,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": true,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      },
-      "$label1": {
-        "id": 1,
-        "userId": "admin",
-        "displayName": "Important",
-        "imapLabel": "$label1",
-        "color": "#FF7A66",
-        "isDefaultTag": true
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<ZKcmsFe7S1eAsOwCRam5dw@geopod-ismtpd-93>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<ZKcmsFe7S1eAsOwCRam5dw@geopod-ismtpd-93>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
+    ]
   },
   {
     "databaseId": 25,
-    "uid": 3,
+    "uid": 15,
     "remoteId": null,
     "subject": "Subject redacted",
-    "dateInt": 1776227811,
+    "dateInt": 1791060606,
     "flags": {
       "seen": false,
       "flagged": false,
@@ -5510,29 +909,12 @@
       "draft": false,
       "forwarded": false,
       "hasAttachments": false,
-      "important": true,
+      "important": false,
       "$junk": false,
-      "$notjunk": true,
+      "$notjunk": false,
       "$mdnsent": false
     },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      },
-      "$label1": {
-        "id": 1,
-        "userId": "admin",
-        "displayName": "Important",
-        "imapLabel": "$label1",
-        "color": "#FF7A66",
-        "isDefaultTag": true
-      }
-    },
+    "tags": [],
     "from": [
       {
         "label": "Name redacted",
@@ -5547,79 +929,14 @@
     ],
     "cc": [],
     "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<vlRUfyHHR1abiGm1-9RSqA@geopod-ismtpd-23>",
+    "mailboxId": 3,
+    "messageId": "<user@example.com>",
     "inReplyTo": null,
     "references": [],
-    "threadRootId": "<vlRUfyHHR1abiGm1-9RSqA@geopod-ismtpd-23>",
+    "threadRootId": "<user@example.com>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": "Summary redacted",
-    "encrypted": false,
-    "mentionsMe": 0,
-    "avatar": null,
-    "fetchAvatarFromClient": true,
-    "attachments": []
-  },
-  {
-    "databaseId": 24,
-    "uid": 2,
-    "remoteId": null,
-    "subject": "Subject redacted",
-    "dateInt": 1776199029,
-    "flags": {
-      "seen": true,
-      "flagged": false,
-      "answered": false,
-      "deleted": false,
-      "draft": false,
-      "forwarded": false,
-      "hasAttachments": false,
-      "important": true,
-      "$junk": false,
-      "$notjunk": true,
-      "$mdnsent": false
-    },
-    "tags": {
-      "notjunk": {
-        "id": 6,
-        "userId": "admin",
-        "displayName": "Notjunk",
-        "imapLabel": "notjunk",
-        "color": "#fff",
-        "isDefaultTag": false
-      },
-      "$label1": {
-        "id": 1,
-        "userId": "admin",
-        "displayName": "Important",
-        "imapLabel": "$label1",
-        "color": "#FF7A66",
-        "isDefaultTag": true
-      }
-    },
-    "from": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "to": [
-      {
-        "label": "Name redacted",
-        "email": "user@example.com"
-      }
-    ],
-    "cc": [],
-    "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<13nOyfjyQN2i93zgAQCoiw@geopod-ismtpd-47>",
-    "inReplyTo": null,
-    "references": [],
-    "threadRootId": "<13nOyfjyQN2i93zgAQCoiw@geopod-ismtpd-47>",
-    "imipMessage": false,
-    "previewText": "Preview redacted",
-    "summary": "Summary redacted",
+    "summary": null,
     "encrypted": false,
     "mentionsMe": 0,
     "avatar": null,
@@ -5628,10 +945,410 @@
   },
   {
     "databaseId": 23,
-    "uid": 1,
+    "uid": 13,
     "remoteId": null,
     "subject": "Subject redacted",
-    "dateInt": 1776198096,
+    "dateInt": 1791060223,
+    "flags": {
+      "seen": false,
+      "flagged": false,
+      "answered": false,
+      "deleted": false,
+      "draft": false,
+      "forwarded": false,
+      "hasAttachments": false,
+      "important": false,
+      "$junk": false,
+      "$notjunk": false,
+      "$mdnsent": false
+    },
+    "tags": [],
+    "from": [
+      {
+        "label": "Name redacted",
+        "email": "user@example.com"
+      }
+    ],
+    "to": [
+      {
+        "label": "Name redacted",
+        "email": "user@example.com"
+      }
+    ],
+    "cc": [],
+    "bcc": [],
+    "mailboxId": 3,
+    "messageId": "<user@example.com>",
+    "inReplyTo": null,
+    "references": [],
+    "threadRootId": "<user@example.com>",
+    "imipMessage": false,
+    "previewText": "Preview redacted",
+    "summary": null,
+    "encrypted": false,
+    "mentionsMe": 0,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
+    "attachments": []
+  },
+  {
+    "databaseId": 24,
+    "uid": 14,
+    "remoteId": null,
+    "subject": "Subject redacted",
+    "dateInt": 1791060173,
+    "flags": {
+      "seen": false,
+      "flagged": false,
+      "answered": false,
+      "deleted": false,
+      "draft": false,
+      "forwarded": false,
+      "hasAttachments": true,
+      "important": false,
+      "$junk": false,
+      "$notjunk": false,
+      "$mdnsent": false
+    },
+    "tags": [],
+    "from": [
+      {
+        "label": "Name redacted",
+        "email": "user@example.com"
+      }
+    ],
+    "to": [
+      {
+        "label": "Name redacted",
+        "email": "user@example.com"
+      }
+    ],
+    "cc": [],
+    "bcc": [],
+    "mailboxId": 3,
+    "messageId": "<user@example.com>",
+    "inReplyTo": null,
+    "references": [],
+    "threadRootId": "<user@example.com>",
+    "imipMessage": false,
+    "previewText": "Preview redacted",
+    "summary": null,
+    "encrypted": false,
+    "mentionsMe": 0,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
+    "attachments": [
+      {
+        "id": "2",
+        "fileName": "attachment.txt",
+        "mime": "text/plain",
+        "downloadUrl": "http://cloud.example.com/index.php/apps/mail/api/messages/24/attachment/2",
+        "mimeUrl": "/index.php/apps/theming/img/core/filetypes/text.svg?v=30fdf852"
+      }
+    ]
+  },
+  {
+    "databaseId": 15,
+    "uid": 10,
+    "remoteId": null,
+    "subject": "Subject redacted",
+    "dateInt": 1791060168,
+    "flags": {
+      "seen": false,
+      "flagged": false,
+      "answered": false,
+      "deleted": false,
+      "draft": false,
+      "forwarded": false,
+      "hasAttachments": false,
+      "important": false,
+      "$junk": false,
+      "$notjunk": false,
+      "$mdnsent": false
+    },
+    "tags": [],
+    "from": [
+      {
+        "label": "Name redacted",
+        "email": "user@example.com"
+      }
+    ],
+    "to": [
+      {
+        "label": "Name redacted",
+        "email": "user@example.com"
+      }
+    ],
+    "cc": [],
+    "bcc": [],
+    "mailboxId": 3,
+    "messageId": "<user@example.com>",
+    "inReplyTo": null,
+    "references": [],
+    "threadRootId": "<user@example.com>",
+    "imipMessage": false,
+    "previewText": "Preview redacted",
+    "summary": null,
+    "encrypted": false,
+    "mentionsMe": 0,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
+    "attachments": []
+  },
+  {
+    "databaseId": 14,
+    "uid": 9,
+    "remoteId": null,
+    "subject": "Subject redacted",
+    "dateInt": 1791060085,
+    "flags": {
+      "seen": false,
+      "flagged": false,
+      "answered": false,
+      "deleted": false,
+      "draft": false,
+      "forwarded": false,
+      "hasAttachments": false,
+      "important": false,
+      "$junk": false,
+      "$notjunk": false,
+      "$mdnsent": false
+    },
+    "tags": [],
+    "from": [
+      {
+        "label": "Name redacted",
+        "email": "user@example.com"
+      }
+    ],
+    "to": [
+      {
+        "label": "Name redacted",
+        "email": "user@example.com"
+      }
+    ],
+    "cc": [],
+    "bcc": [],
+    "mailboxId": 3,
+    "messageId": "<user@example.com>",
+    "inReplyTo": null,
+    "references": [],
+    "threadRootId": "<user@example.com>",
+    "imipMessage": false,
+    "previewText": "Preview redacted",
+    "summary": null,
+    "encrypted": false,
+    "mentionsMe": 0,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
+    "attachments": []
+  },
+  {
+    "databaseId": 13,
+    "uid": 8,
+    "remoteId": null,
+    "subject": "Subject redacted",
+    "dateInt": 1791060039,
+    "flags": {
+      "seen": false,
+      "flagged": false,
+      "answered": false,
+      "deleted": false,
+      "draft": false,
+      "forwarded": false,
+      "hasAttachments": true,
+      "important": false,
+      "$junk": false,
+      "$notjunk": false,
+      "$mdnsent": false
+    },
+    "tags": [],
+    "from": [
+      {
+        "label": "Name redacted",
+        "email": "user@example.com"
+      }
+    ],
+    "to": [
+      {
+        "label": "Name redacted",
+        "email": "user@example.com"
+      }
+    ],
+    "cc": [],
+    "bcc": [],
+    "mailboxId": 3,
+    "messageId": "<user@example.com>",
+    "inReplyTo": null,
+    "references": [],
+    "threadRootId": "<user@example.com>",
+    "imipMessage": false,
+    "previewText": "Preview redacted",
+    "summary": null,
+    "encrypted": false,
+    "mentionsMe": 0,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
+    "attachments": [
+      {
+        "id": "2",
+        "fileName": "attachment.txt",
+        "mime": "text/plain",
+        "downloadUrl": "http://cloud.example.com/index.php/apps/mail/api/messages/13/attachment/2",
+        "mimeUrl": "/index.php/apps/theming/img/core/filetypes/text.svg?v=30fdf852"
+      }
+    ]
+  },
+  {
+    "databaseId": 12,
+    "uid": 7,
+    "remoteId": null,
+    "subject": "Subject redacted",
+    "dateInt": 1791060035,
+    "flags": {
+      "seen": false,
+      "flagged": false,
+      "answered": false,
+      "deleted": false,
+      "draft": false,
+      "forwarded": false,
+      "hasAttachments": false,
+      "important": false,
+      "$junk": false,
+      "$notjunk": false,
+      "$mdnsent": false
+    },
+    "tags": [],
+    "from": [
+      {
+        "label": "Name redacted",
+        "email": "user@example.com"
+      }
+    ],
+    "to": [
+      {
+        "label": "Name redacted",
+        "email": "user@example.com"
+      }
+    ],
+    "cc": [],
+    "bcc": [],
+    "mailboxId": 3,
+    "messageId": "<user@example.com>",
+    "inReplyTo": null,
+    "references": [],
+    "threadRootId": "<user@example.com>",
+    "imipMessage": false,
+    "previewText": "Preview redacted",
+    "summary": null,
+    "encrypted": false,
+    "mentionsMe": 0,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
+    "attachments": []
+  },
+  {
+    "databaseId": 6,
+    "uid": 4,
+    "remoteId": null,
+    "subject": "Subject redacted",
+    "dateInt": 1791059508,
+    "flags": {
+      "seen": false,
+      "flagged": false,
+      "answered": false,
+      "deleted": false,
+      "draft": false,
+      "forwarded": false,
+      "hasAttachments": false,
+      "important": false,
+      "$junk": false,
+      "$notjunk": false,
+      "$mdnsent": false
+    },
+    "tags": [],
+    "from": [
+      {
+        "label": "Name redacted",
+        "email": "user@example.com"
+      }
+    ],
+    "to": [
+      {
+        "label": "Name redacted",
+        "email": "user@example.com"
+      }
+    ],
+    "cc": [],
+    "bcc": [],
+    "mailboxId": 3,
+    "messageId": "<user@example.com>",
+    "inReplyTo": null,
+    "references": [],
+    "threadRootId": "<user@example.com>",
+    "imipMessage": false,
+    "previewText": "Preview redacted",
+    "summary": null,
+    "encrypted": false,
+    "mentionsMe": 0,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
+    "attachments": []
+  },
+  {
+    "databaseId": 5,
+    "uid": 3,
+    "remoteId": null,
+    "subject": "Subject redacted",
+    "dateInt": 1791059480,
+    "flags": {
+      "seen": false,
+      "flagged": false,
+      "answered": false,
+      "deleted": false,
+      "draft": false,
+      "forwarded": false,
+      "hasAttachments": false,
+      "important": false,
+      "$junk": false,
+      "$notjunk": false,
+      "$mdnsent": false
+    },
+    "tags": [],
+    "from": [
+      {
+        "label": "Name redacted",
+        "email": "user@example.com"
+      }
+    ],
+    "to": [
+      {
+        "label": "Name redacted",
+        "email": "user@example.com"
+      }
+    ],
+    "cc": [],
+    "bcc": [],
+    "mailboxId": 3,
+    "messageId": "<user@example.com>",
+    "inReplyTo": null,
+    "references": [],
+    "threadRootId": "<user@example.com>",
+    "imipMessage": false,
+    "previewText": "Preview redacted",
+    "summary": null,
+    "encrypted": false,
+    "mentionsMe": 0,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
+    "attachments": []
+  },
+  {
+    "databaseId": 10,
+    "uid": 5,
+    "remoteId": null,
+    "subject": "Subject redacted",
+    "dateInt": 1790855258,
     "flags": {
       "seen": true,
       "flagged": false,
@@ -5669,14 +1386,71 @@
     ],
     "cc": [],
     "bcc": [],
-    "mailboxId": 5,
-    "messageId": "<aCQAM97ZSKW8zi23NqsUfA@geopod-ismtpd-9>",
+    "mailboxId": 3,
+    "messageId": "<user@example.com>",
     "inReplyTo": null,
     "references": [],
-    "threadRootId": "<aCQAM97ZSKW8zi23NqsUfA@geopod-ismtpd-9>",
+    "threadRootId": "<user@example.com>",
     "imipMessage": false,
     "previewText": "Preview redacted",
-    "summary": "Summary redacted",
+    "summary": null,
+    "encrypted": false,
+    "mentionsMe": 0,
+    "avatar": null,
+    "fetchAvatarFromClient": true,
+    "attachments": []
+  },
+  {
+    "databaseId": 11,
+    "uid": 6,
+    "remoteId": null,
+    "subject": "Subject redacted",
+    "dateInt": 1790855155,
+    "flags": {
+      "seen": true,
+      "flagged": false,
+      "answered": false,
+      "deleted": false,
+      "draft": false,
+      "forwarded": false,
+      "hasAttachments": false,
+      "important": true,
+      "$junk": false,
+      "$notjunk": false,
+      "$mdnsent": false
+    },
+    "tags": {
+      "$label1": {
+        "id": 1,
+        "userId": "admin",
+        "displayName": "Important",
+        "imapLabel": "$label1",
+        "color": "#FF7A66",
+        "isDefaultTag": true
+      }
+    },
+    "from": [
+      {
+        "label": "Name redacted",
+        "email": "user@example.com"
+      }
+    ],
+    "to": [
+      {
+        "label": "Name redacted",
+        "email": "user@example.com"
+      }
+    ],
+    "cc": [],
+    "bcc": [],
+    "mailboxId": 3,
+    "messageId": "<user@example.com>",
+    "inReplyTo": null,
+    "references": [],
+    "threadRootId": "<user@example.com>",
+    "imipMessage": false,
+    "previewText": "Preview redacted",
+    "summary": null,
     "encrypted": false,
     "mentionsMe": 0,
     "avatar": null,

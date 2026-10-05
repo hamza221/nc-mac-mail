@@ -78,8 +78,10 @@ public struct MailClient: Sendable {
     public func get<T: Decodable & Sendable>(_ endpoint: Endpoint<T>) async throws -> T
     public func post<T: Decodable & Sendable>(_ endpoint: Endpoint<T>, body: (some Encodable & Sendable)?) async throws -> T
     public func put<T: Decodable & Sendable>(_ endpoint: Endpoint<T>, body: (some Encodable & Sendable)?) async throws -> T
+    public func patch<T: Decodable & Sendable>(_ endpoint: Endpoint<T>, body: (some Encodable & Sendable)?) async throws -> T
     public func delete<T: Decodable & Sendable>(_ endpoint: Endpoint<T>) async throws -> T
     public func bytes(_ endpoint: Endpoint<Data>) async throws -> (Data, HTTPURLResponse)
+    public func upload<T: Decodable & Sendable>(_ endpoint: Endpoint<T>, multipart: MultipartForm) async throws -> T
 }
 ```
 
@@ -96,10 +98,32 @@ relative to `{server}/index.php/apps/mail/api/`; OCS endpoints and
 `/ocs/v2.php/cloud/capabilities` take an absolute form.
 
 `Endpoint<T>` is a small struct — method, path, query, response type — defined once per
-endpoint in `Endpoints.swift`. Call sites read as `try await client.get(.mailboxes(accountId: 3))`,
-which keeps URL construction and its escaping in one reviewable file. Address-keyed paths
+endpoint: the v1 routes in `Endpoints.swift`, the v2 surface (WS-16) in
+`Endpoints+Accounts.swift`, `+Mailboxes`, `+Messages`, `+Compose`, `+Settings` and `+OCS`,
+one file per `plan/API.md` area. Call sites read as `try await client.get(.mailboxes(accountId: 3))`,
+which keeps URL construction and its escaping in reviewable files. Address-keyed paths
 (`/api/avatars/image/{email}`) percent-encode the address; `+` in an address is a real
 character and a real bug waiting to happen.
+
+v2 additions (WS-16):
+
+- **`patch`** for `PATCH /api/accounts/{id}` and `PATCH /api/mailboxes/{id}`; nil fields
+  are omitted from the body so only what was sent changes.
+- **`upload(_:multipart:)`** for the two `multipart/form-data` routes, `POST
+  /api/attachments` and `POST /api/smime/certificates`. `MultipartForm` is hand-rolled
+  (RFC 7578, random boundary per form). Both are mutations and go out once.
+- **A response type is what the route really answers**, verified live, not `EmptyResponse`
+  by default: tag add/remove answer the tag, mailbox PATCH the mailbox, delegation grant the
+  delegation. `EmptyResponse` is kept for routes whose body is `[]`, `data: null` or a
+  status string.
+- **`EmptyBodyRepresentable`** — a 204 or an empty 200 never reaches `JSONDecoder`; a
+  type that can say "nothing there" opts in (`EmptyResponse`, `JSONEnvelope<T?>`, the LLM
+  responses, which answer 204 when the server has no provider).
+- **`JSONEnvelope<T>`** models Mail's `{"status","data"}` wrapper, with `status` optional
+  because `GET /api/accounts/{id}/test` omits it.
+- OCS routes outside Mail use `base: .server` and the `OCSResponse<T>` wrapper.
+
+Per-route shapes and statuses: [api-payloads.md](../reference/api-payloads.md#v2-mail-routes-what-the-live-server-answers-ws-16).
 
 ### Transport seam
 
@@ -126,9 +150,11 @@ The Mail app answers failures in two different shapes, and both must be handled:
 ```
 
 Statuses with meaning in this app (full table in
-[sync-engine.md](sync-engine.md#errors)): **202** work in progress, **400** often
-`MailboxNotCachedException`, **403** delegation or account gone, **412** the CSRF path
-went wrong, **428** mailbox not cached, **429** rate limited.
+[sync-engine.md](sync-engine.md#errors)): **202** work in progress — *unless* the body is
+the success envelope, which is how drafts and outbox answer update, delete, move and send
+([ADR-0077](../decisions/0077-a-202-with-the-success-envelope-is-success.md)) — **400**
+often `MailboxNotCachedException`, **403** delegation or account gone, **412** the CSRF
+path went wrong, **428** mailbox not cached, **429** rate limited.
 
 ```swift
 public enum MailError: Error, Sendable {
@@ -136,7 +162,7 @@ public enum MailError: Error, Sendable {
     case forbidden                          // 403
     case notFound                           // 404/410 → the thing is gone
     case mailboxNotCached                   // 400 with that shape, or 428
-    case syncInProgress                     // 202
+    case syncInProgress                     // 202 without the success envelope
     case rateLimited(retryAfter: Duration?)  // 429/503
     case server(status: Int, message: String?)
     case transport(any Error)               // offline, TLS, timeout
@@ -155,6 +181,10 @@ question worth answering first.
   Full jitter: each wait is a uniform pick between zero and the figure above, which spreads
   a herd better than adding a small random tail. Retryability is a property of the endpoint
   rather than of the verb, because `POST …/sync` retries and `POST …/move` must not.
+  v2 adds one more read dressed as a POST, `POST /api/follow-up/check-message-ids`, which
+  retries; and one GET that deliberately does not: the account connection test
+  (`GET /api/accounts/{id}/test`), whose answer *is* the diagnostic — a silent retry would
+  hide the flakiness the user asked about.
 - **Retry only what another attempt could fix**: a transport failure, a 429 or 503, or a
   5xx. A 403 or a 404 will answer the same way forever, and a **202 is not retried by the
   client** — it surfaces as `.syncInProgress` and the sync engine decides when to ask again,
@@ -178,6 +208,7 @@ question worth answering first.
 | Interactive fetch (user opened something) | Unlimited, and it preempts a backfill slot |
 | Mutation drain | 1 per account |
 | Avatars | 4 total, lowest priority |
+| Server-state refresh (settings, lists, quota, outbox) | 4 per login, once per trigger ([sync-engine.md](sync-engine.md)) |
 
 One `URLSession` for the app, `httpMaximumConnectionsPerHost = 6`, `waitsForConnectivity`
 off (we manage that ourselves), `timeoutIntervalForRequest = 60`,
@@ -189,3 +220,74 @@ System defaults. No certificate pinning: users run self-hosted instances with ev
 imaginable certificate arrangement, and pinning breaks them for no attacker we are
 defending against ([security.md](security.md)). A self-signed certificate fails, visibly,
 with an explanation — we do not offer "trust anyway" in v1.
+
+## DAV (WS-17)
+
+CardDAV, CalDAV and the WebDAV verbs live in `NCMailNet/DAV`, behind the same
+`MailTransport` seam as `MailClient`. The DAV routes are `{server}/remote.php/dav/…`; they
+take the same Basic auth, the same cookie rules, and the same User-Agent as every other
+request. XML is parsed with Foundation's `XMLParser` — no new dependency.
+
+```swift
+public struct DAVClient: Sendable {
+    public init(server: URL, credentials: any MailCredentials,
+                transport: any MailTransport = URLSessionTransport())
+
+    public func propfind(_ url: URL, depth: DAVDepth, properties: [DAVQualifiedName]) async throws -> [DAVResource]
+    public func report(_ url: URL, body: Data, depth: DAVDepth) async throws -> DAVMultistatus
+    public func syncCollection(_ url: URL, token: String?) async throws -> DAVSyncChanges
+    public func addressbookMultiget(_ url: URL, hrefs: [String]) async throws -> [DAVResource]
+    public func calendarMultiget(_ url: URL, hrefs: [String]) async throws -> [DAVResource]
+    public func put(_ url: URL, data: Data, contentType: String, ifMatch: String?) async throws -> String?
+    public func delete(_ url: URL, ifMatch: String?) async throws
+    public func mkcolExtended(_ url: URL, resourceTypes: [DAVQualifiedName], properties: [DAVProposedProperty]) async throws
+    public func proppatch(_ url: URL, set: [DAVProposedProperty], remove: [DAVQualifiedName]) async throws
+    public func share(_ url: URL, with principal: String, readOnly: Bool) async throws
+    public func currentUserPrincipal() async throws -> URL
+    public func homeSets(of principal: URL) async throws -> DAVHomeSets
+}
+```
+
+Behaviour, as measured against Nextcloud 36 (sabre/dav):
+
+- **Principal discovery** is two PROPFINDs: `current-user-principal` on `/remote.php/dav/`
+  (Depth 0), then `card:addressbook-home-set` and `cal:calendar-home-set` on the principal.
+  Hrefs come back host-relative and are resolved against the server root. Observed live
+  for `admin`: principal `/remote.php/dav/principals/users/admin/`, addressbook home
+  `/remote.php/dav/addressbooks/users/admin/`, calendar home
+  `/remote.php/dav/calendars/admin/` — note no `users/` segment on the calendar side, so
+  never derive one home from the other; always ask the principal. The addressbook home
+  also lists Nextcloud's synthetic books (`z-server-generated--system`,
+  `z-app-generated--contactsinteraction--recent`). `DAVLiveTests.discoversTheLivePrincipal`
+  keeps this runnable (`NCMAIL_LIVE_DAV=…`).
+- **`syncCollection`** is RFC 6578. An empty `<d:sync-token/>` is the initial sync. The
+  answer separates changed resources (propstat with `getetag`) from removed ones (a bare
+  `<d:response>` whose status is 404). A **truncated** sync is *not* an HTTP 507: the
+  server answers 207 with one extra `<d:response>` for the collection itself carrying
+  `HTTP/1.1 507 Insufficient Storage`, plus a token that resumes where it stopped.
+  `DAVSyncChanges.truncated` surfaces that; the sync engine (WS-24) loops until it clears
+  (ADR-0076). The recorded truncation was provoked with `<d:limit><d:nresults>1`; the
+  client itself sends no limit.
+- **`put` returns the new ETag when the header is present and nil when it is not.** RFC
+  4791 §5.3.4 and RFC 6352 §6.3.2.3 forbid a strong ETag when the stored body differs
+  from the one sent. Nextcloud returns one anyway — measured live: a vCard 4.0 PUT is
+  re-served as sabre-normalised vCard 3.0, yet the PUT answers
+  `ETag: "<md5 of the bytes we sent>"` and
+  a later GET carries the same ETag over the converted bytes. So a present ETag is valid
+  for `If-Match`, but it does **not** prove the server holds our bytes: the caller must
+  re-read (multiget) any card it did not write as 3.0 before treating its local copy as
+  the stored one. A nil ETag means the same, unconditionally.
+- **Writes carry `If-Match`** when the caller holds an ETag. A 412 surfaces as
+  `DAVError.preconditionFailed`; the recovery (refetch, reapply edited properties) is the
+  sync engine's, per ADR-0069.
+- **`share`** is the Nextcloud `oc:share` POST against the collection URL, with
+  `<d:href>principal:principals/users/…</d:href>` and `<o:read-write/>` unless read-only.
+  The server answers 200 with an empty body.
+- **No automatic retry.** Unlike `MailClient`, `DAVClient` never retries: the contacts and
+  calendar sync engine owns its own schedule and a multistatus is too expensive to repeat
+  on a guess. Failures map to `DAVError`, which parses sabre's `d:error`
+  (`s:exception`/`s:message`) body when one is present.
+
+Fixtures for all of this are recorded from a live server by `Scripts/record-fixtures.sh`
+(the `dav-*.xml`, `contact-*.vcf` and `*.ics` files); the vCard and iCalendar bytes are
+stored verbatim because the format round-trip tests compare bytes.

@@ -1,0 +1,11 @@
+{
+  "status": "success",
+  "data": [
+    {
+      "id": 12,
+      "address": "example.org",
+      "uid": "admin",
+      "type": "domain"
+    }
+  ]
+}

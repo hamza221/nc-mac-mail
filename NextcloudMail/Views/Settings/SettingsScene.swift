@@ -22,38 +22,79 @@ struct SettingsScene: View {
     }
 }
 
-/// Three tabs, `Form` plus `.formStyle(.grouped)` throughout. The library's own guidance is
-/// that a settings pane needs nothing wrapping that
-/// ([SettingsSections.md](../../../docs/reference/ui-components.md)).
+/// The §7 tabs (ux-spec "App settings (WS-38)"), `Form` plus `.formStyle(.grouped)`
+/// throughout. The library's own guidance is that a settings pane needs nothing wrapping
+/// that ([SettingsSections.md](../../../docs/reference/ui-components.md)).
+///
+/// The window's size is set once, here, for every tab: no tab sets its own minimum, so the
+/// window does not jump between tabs, and each tab scrolls inside it. The width is the
+/// Accounts tab's sidebar plus a settings form.
 private struct SettingsRootView: View {
     let session: AppSession
     @State private var settingsStore: SettingsStore
+    @State private var appSettings: AppSettingsModel
     @AppStorage(SettingsTab.preferredTabKey) private var selectedTab = SettingsTab.general
 
     init(session: AppSession) {
         self.session = session
-        _settingsStore = State(initialValue: SettingsStore(store: session.store, sessions: session.accounts))
+        let settingsStore = SettingsStore(store: session.store, sessions: session.accounts)
+        settingsStore.signedOut = { [weak session] account, removeLocalCopies in
+            await session?.signedOut(account: account, removeLocalCopies: removeLocalCopies)
+        }
+        _settingsStore = State(initialValue: settingsStore)
+        let engine = session.engine
+        let listPreferences = MessageListPreferenceStore(store: session.store) { engine.mutationQueue(accountId: $0) }
+        _appSettings = State(
+            initialValue: AppSettingsModel(
+                store: session.store, listPreferences: listPreferences, services: .live(session)))
     }
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            GeneralSettingsView()
-                .tabItem { Text("General") }
-                .tag(SettingsTab.general)
-            AccountsSettingsView()
-                .tabItem { Text("Accounts") }
-                .tag(SettingsTab.accounts)
-            StorageSettingsView()
-                .tabItem { Text("Storage") }
-                .tag(SettingsTab.storage)
+            ForEach(SettingsTab.allCases, id: \.self) { tab in
+                content(for: tab)
+                    .tabItem {
+                        Label {
+                            Text(tab.title)
+                        } icon: {
+                            tab.symbol.tabImage
+                        }
+                    }
+                    .tag(tab)
+            }
         }
         .environment(settingsStore)
+        .environment(appSettings)
         .ncTheme(session.theme)
-        .frame(minWidth: 480, idealWidth: 560, minHeight: 320, idealHeight: 420)
-        .task { settingsStore.start() }
-        .onDisappear { settingsStore.stop() }
+        .frame(minWidth: 780, idealWidth: 820, minHeight: 520, idealHeight: 580)
+        .task {
+            settingsStore.start()
+            appSettings.start()
+            session.settingsOpened()
+        }
+        .onDisappear {
+            settingsStore.stop()
+            appSettings.stop()
+        }
         .onChange(of: session.accounts) { _, newValue in
             settingsStore.updateSessions(newValue)
+        }
+    }
+
+    @ViewBuilder
+    private func content(for tab: SettingsTab) -> some View {
+        switch tab {
+        case .general: GeneralSettingsView()
+        case .accounts: AccountsSettingsView()
+        case .appearance: AppearanceSettingsView()
+        case .messages: MessagesSettingsView()
+        case .privacy: PrivacySettingsView()
+        case .security: SecuritySettingsView()
+        case .assistance: AssistanceSettingsView()
+        case .contextChat: ContextChatSettingsView()
+        case .shortcuts: ShortcutsSettingsView()
+        case .storage: StorageSettingsView()
+        case .about: AboutSettingsView()
         }
     }
 }
@@ -65,15 +106,72 @@ private struct SettingsRootView: View {
 /// when it is already open, and reopens on the tab last used
 /// ([ThemeCache](../Theme/ThemeCache.swift) is the precedent for a small, non-sensitive
 /// value living in `UserDefaults` rather than the database).
-enum SettingsTab: String {
+enum SettingsTab: String, CaseIterable {
     case general
     case accounts
+    case appearance
+    case messages
+    case privacy
+    case security
+    case assistance
+    case contextChat
+    case shortcuts
     case storage
+    case about
+
+    var title: String {
+        switch self {
+        case .general: String(localized: "General")
+        case .accounts: String(localized: "Accounts")
+        case .appearance: String(localized: "Appearance")
+        case .messages: String(localized: "Messages")
+        case .privacy: String(localized: "Privacy")
+        case .security: String(localized: "Security")
+        case .assistance: String(localized: "Assistance")
+        case .contextChat: String(localized: "Context Chat")
+        case .shortcuts: String(localized: "Shortcuts")
+        case .storage: String(localized: "Storage")
+        case .about: String(localized: "About")
+        }
+    }
+
+    /// The tab header's glyph, macOS Settings-window convention.
+    var symbol: MailSymbol {
+        switch self {
+        case .general: .settingsGeneral
+        case .accounts: .settingsAccounts
+        case .appearance: .settingsAppearance
+        case .messages: .settingsMessages
+        case .privacy: .settingsPrivacy
+        case .security: .settingsSecurity
+        case .assistance: .settingsAssistance
+        case .contextChat: .settingsContextChat
+        case .shortcuts: .settingsShortcuts
+        case .storage: .settingsStorage
+        case .about: .info
+        }
+    }
 
     static let preferredTabKey = "settings.preferredTab"
 
     static var preferredTab: SettingsTab {
         get { SettingsTab(rawValue: UserDefaults.standard.string(forKey: preferredTabKey) ?? "") ?? .general }
         set { UserDefaults.standard.set(newValue.rawValue, forKey: preferredTabKey) }
+    }
+
+    static let preferredAccountIDKey = "settings.preferredAccountId"
+
+    /// The account the Accounts tab shows, written by anything that deep-links to one
+    /// account's settings (the sidebar's "Account settings…", General's account rows) before
+    /// it selects ``accounts``. Nil when nothing asked for one.
+    static var preferredAccountID: Int64? {
+        get { (UserDefaults.standard.object(forKey: preferredAccountIDKey) as? NSNumber)?.int64Value }
+        set {
+            if let newValue {
+                UserDefaults.standard.set(NSNumber(value: newValue), forKey: preferredAccountIDKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: preferredAccountIDKey)
+            }
+        }
     }
 }

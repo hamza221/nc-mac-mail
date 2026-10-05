@@ -40,6 +40,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 - [ ] Any decision another agent could have made differently has an ADR.
 - [ ] Any document this work proved wrong is corrected **in the same pull request**.
+- [ ] v2: every row of docs/product/parity.md that the brief owns is Done with evidence, or Excluded with an ADR.
 - [ ] `docs/feedback/library-feedback.md` has an entry, or the report says "nothing new"
       and means it.
 - [ ] Public types have doc comments saying *why*, not restating the signature.

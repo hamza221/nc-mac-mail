@@ -1,0 +1,11 @@
+{
+  "status": "success",
+  "data": {
+    "id": 14,
+    "name": "markAsRead",
+    "order": 1,
+    "actionId": 10,
+    "tagId": null,
+    "mailboxId": null
+  }
+}

@@ -43,13 +43,16 @@ enum SyncTest {
         )
     }
 
-    /// A store holding one account, the seven recorded mailboxes, and `messages` of the
-    /// recorded inbox page written into the inbox — through the real write path, so the
-    /// addresses table and the search index are populated exactly as a live sync leaves them.
+    /// A store holding one account, every recorded mailbox, and `messages` of the recorded
+    /// inbox page written into the inbox — through the real write path, so the addresses
+    /// table and the search index are populated exactly as a live sync leaves them.
     struct Seeded {
         var store: MailStore
         var accountId: Int64
         var inboxId: Int64
+        /// The server's id for the inbox, which is what every route is keyed by. Read from
+        /// the recording, because the recorder tracks whatever the dev server holds.
+        var inboxRemoteId: Int
         /// The mirror's ids of the seeded messages, keyed by the server's.
         var localByRemote: [Int64: Int64]
     }
@@ -62,7 +65,7 @@ enum SyncTest {
             mailboxes: try list.entries.map { try MirrorMapping.mailboxWrite($0, accountId: accountId) },
             accountId: accountId
         )
-        let inbox = try #require(mailboxes.first { $0.remoteId == 5 })
+        let inbox = try #require(mailboxes.first { $0.specialRole == "inbox" })
 
         var localByRemote: [Int64: Int64] = [:]
         if !messages.isEmpty {
@@ -79,7 +82,13 @@ enum SyncTest {
                 uniquingKeysWith: { first, _ in first }
             )
         }
-        return Seeded(store: store, accountId: accountId, inboxId: inbox.id, localByRemote: localByRemote)
+        return Seeded(
+            store: store,
+            accountId: accountId,
+            inboxId: inbox.id,
+            inboxRemoteId: Int(inbox.remoteId),
+            localByRemote: localByRemote
+        )
     }
 
     /// A scheduler over `seeded`, with every route the first pass touches already answered:
@@ -124,11 +133,11 @@ enum SyncTest {
     /// can subtract what it did not ask about.
     static let boilerplateRequests = 3
 
-    /// The four mailboxes that are mirrored, selectable and *not* the inbox. Answered with
-    /// recordings that carry nothing, so a test can say what the inbox does without
-    /// describing the rest of the account.
+    /// Every mirrored, selectable mailbox that is *not* the inbox. Answered with recordings
+    /// that carry nothing, so a test can say what the inbox does without describing the
+    /// rest of the account.
     static func stubQuietMailboxes(_ transport: FakeTransport) async throws {
-        for other in [3, 4, 6, 7] {
+        for other in try MirrorTest.recordedMailboxes().others {
             await transport.stub(MirrorTest.syncRoute(mailboxId: other), with: try .fixture("sync-incremental.json"))
             await transport.stub(
                 MirrorTest.messagesRoute(mailboxId: other),
@@ -144,8 +153,8 @@ enum SyncTest {
 /// object goes back out exactly as it came in, including the fields no Swift type names.
 /// Nothing here crosses an `await`.
 enum Recorded {
-    /// The 95 recorded envelopes, newest first — the order the server returns them in under
-    /// the default `newest` sort.
+    /// The recorded envelopes, newest first — the order the server returns them in under the
+    /// default `newest` sort.
     static func inbox() throws -> [[String: Any]] {
         let raw = try JSONSerialization.jsonObject(with: try FixtureBytes.data("messages-inbox-page1.json"))
         let rows = try #require(raw as? [[String: Any]])
@@ -162,6 +171,20 @@ enum Recorded {
 
     static func ids(_ rows: [[String: Any]]) -> [Int64] {
         rows.map(id)
+    }
+
+    /// The first two recorded envelopes that share a `dateInt`, newest-first order kept.
+    ///
+    /// The premise of every cursor test: a page boundary between these two is the one the
+    /// strict `<` makes unreachable. The live account is seeded with such a pair (two
+    /// self-sends in the same second) so the recording carries it; a recording without one
+    /// fails here, loudly, rather than letting those tests pass about nothing.
+    static func sharedDateIntPair(_ rows: [[String: Any]]) throws -> (first: [String: Any], second: [String: Any]) {
+        let index = try #require(
+            rows.indices.dropLast().first { dateInt(rows[$0]) == dateInt(rows[$0 + 1]) },
+            "the recorded inbox holds no two messages sharing a dateInt; re-seed the live account"
+        )
+        return (rows[index], rows[index + 1])
     }
 
     /// The page a server with this sort order would answer for `cursor`: strictly older than

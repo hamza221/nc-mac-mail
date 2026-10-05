@@ -38,10 +38,10 @@ struct OperationSyncConflictTests {
             rows.filter { Recorded.id($0) != target }
             + Recorded.settingFlag("seen", to: false, on: rows.filter { Recorded.id($0) == target })
         await transport.stub(
-            MirrorTest.syncRoute(mailboxId: 5),
+            MirrorTest.syncRoute(mailboxId: seeded.inboxRemoteId),
             with: try Recorded.syncResponse(changed: serverView, total: rows.count, unread: 23)
         )
-        await transport.stub(MirrorTest.messagesRoute(mailboxId: 5), with: try Recorded.page(rows))
+        await transport.stub(MirrorTest.messagesRoute(mailboxId: seeded.inboxRemoteId), with: try Recorded.page(rows))
 
         let scheduler = try await SyncTest.scheduler(
             seeded,
@@ -78,10 +78,10 @@ struct OperationSyncConflictTests {
             rows.filter { Recorded.id($0) != target }
             + Recorded.settingFlag("seen", to: false, on: rows.filter { Recorded.id($0) == target })
         await transport.stub(
-            MirrorTest.syncRoute(mailboxId: 5),
+            MirrorTest.syncRoute(mailboxId: seeded.inboxRemoteId),
             with: try Recorded.syncResponse(changed: serverView, total: rows.count, unread: 23)
         )
-        await transport.stub(MirrorTest.messagesRoute(mailboxId: 5), with: try Recorded.page(rows))
+        await transport.stub(MirrorTest.messagesRoute(mailboxId: seeded.inboxRemoteId), with: try Recorded.page(rows))
 
         let scheduler = try await SyncTest.scheduler(
             seeded,

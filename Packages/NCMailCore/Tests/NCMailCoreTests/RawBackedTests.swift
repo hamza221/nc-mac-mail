@@ -35,7 +35,8 @@ struct RawBackedTests {
     func sortsKeys() throws {
         let stats = try Fixture.decode(RawBacked<MailboxStats>.self, from: "mailbox-stats.json")
         let text = try String(decoding: stats.rawJSON(), as: UTF8.self)
-        #expect(text == #"{"total":95,"unread":23}"#)
+        // "total" sorts before "unread" whatever the counts were that day.
+        #expect(text == #"{"total":\#(stats.value.total),"unread":\#(stats.value.unread)}"#)
     }
 
     @Test("AnyJSON keeps booleans and numbers apart")

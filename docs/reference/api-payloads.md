@@ -131,6 +131,16 @@ null against a server that has been in use for months. Triage actions that
 depend on one (archive, junk) must be disabled rather than crash — and that state is worth
 a decent empty-state message, not a greyed button with no explanation.
 
+**Create/update refused by IMAP or SMTP** (`POST /api/accounts`, `PUT /api/accounts/{id}`;
+`CouldNotConnectException`, recorded live 2026-10-04 as
+`error-account-create-wrong-password.json` / `error-account-create-unreachable.json`):
+HTTP 400, `{"status":"fail","data":{"error":"AUTHENTICATION_WRONG_PASSWORD","service":"IMAP","host":"…","port":993}}`.
+`error` is one of `CONNECTION_ERROR`, `AUTHENTICATION`, `AUTHENTICATION_WRONG_PASSWORD`,
+`AUTHENTICATION_DENIED`, `OTHER`; `service` is `IMAP` or `SMTP`. `MailClient` maps it to
+`MailError.connectFailed(service:reason:)`; the setup sheet's §1.5 strings key off both.
+An `authMethod: "xoauth2"` create is not connection-tested: it succeeds, and
+`GET /api/accounts/{id}/test` answers `{"data":false}` until the OAuth token lands.
+
 ## Mailbox
 
 `GET /api/mailboxes?accountId=` →
@@ -461,3 +471,230 @@ default", so `sort-order` unset is `newest`. Do not treat the null as a failure.
 `GET /api/trustedsenders` is the other read v1 makes, and it answers with the
 `JsonResponse::success` envelope, `{"status": "success", "data": [...]}`, rather than a bare
 array. The element shape is unverified: the test server's list is empty.
+
+## v2 Mail routes: what the live server answers (WS-16)
+
+*Verified against Mail 5.12.0-rc.1 on Nextcloud 36, 2026-10-03. Every row has a recorded
+fixture and a replay test in `NCMailNetTests/V2EndpointDecodingTests.swift`, except where
+marked "source". The factories are in `NCMailNet/Endpoints/Endpoints+*.swift`.*
+
+Where this table disagrees with `plan/API.md`, the table is what the server does.
+
+| Route | Answer | Note |
+| --- | --- | --- |
+| `POST /api/accounts`, `PUT /api/accounts/{id}` | 201 / 200, **success envelope** around the account | source (`AccountsController::create`/`update`); not recorded — it needs a second real mailbox |
+| `PATCH /api/accounts/{id}` | 200, the **bare** account | unlike create and update |
+| `PUT /api/accounts/{id}/signature` | `[]` | |
+| `PUT /api/accounts/{id}/smime-certificate` | `{"status":"success","data":null}` | |
+| `GET /api/accounts/{id}/quota` | envelope, `{"usage","limit"}` | |
+| `GET /api/accounts/{id}/test` | `{"data": true}` — **no `status` key** | the only envelope without one |
+| `GET/POST/PUT/DELETE /api/accounts/{id}/aliases[/{id}]` | bare alias (array for GET); create is 201; DELETE echoes the deleted alias | a fresh alias has `signature` and `signatureMode` null |
+| `GET /api/autoconfig/ispdb/{host}/{email}`, `/mx/{email}`, `/test` | envelope; ISPDB `{imapConfig, smtpConfig}`, MX `[host]`, test `true` | rate limited |
+| `GET/POST/DELETE /api/delegations/{accountId}[/{userId}]` | bare `[{id, accountId, userId, displayName}]`; POST 201 with one; DELETE `[]` | self-delegation 400 `{"message": …}`, duplicate 409, provisioned 403 |
+| `POST /api/oauth/state` | envelope `{"state": …}` | |
+| `GET /ocs/v2.php/apps/mail/account/list` | OCS, `[{id, email, isDelegated, aliases: [{id, email, name}]}]` | the aliases are trimmed too: `email`, not `alias` |
+| `POST /api/mailboxes` | the **bare** mailbox | `specialRole` is the integer 0 for a plain folder |
+| `PATCH /api/mailboxes/{id}` | the **bare** updated mailbox | plan says nothing about the answer |
+| `DELETE`, `POST …/clear`, `…/read`, `…/repair` on `/api/mailboxes/{id}` | `[]` | repair: 10 per 600 s |
+| `GET /api/messages/{id}/source` | `{"source": "<RFC 822>"}` | |
+| `GET /api/messages/{id}/itineraries` | bare array (KItinerary JSON-LD) | empty on the dev server |
+| `GET /api/messages/{id}/dkim` | `{"valid": bool}` | |
+| `GET /api/messages/{id}/export`, `/attachments` | bytes (`.eml`, `.zip`) | |
+| `PUT`/`DELETE /api/messages/{id}/tags/{imapLabel}` | the **bare tag** | |
+| `POST /api/messages/{id}/snooze`, `/unsnooze`, `/api/thread/{id}/snooze`, `/unsnooze` | `[]` | |
+| `POST /api/messages/{id}/mdn` | **500** error envelope when the message asked for no receipt | not a 4xx |
+| `POST /api/messages/{id}/attachment/{attachmentId}`, `/file` | `[]` | |
+| `POST /api/list/unsubscribe/{id}` | **403** `{"status":"fail","data":null}` without a one-click header | |
+| `GET /api/messages/{id}/smartreply`, `/api/thread/{id}/summary` | **204, empty body** with no LLM provider | `EmptyBodyRepresentable` |
+| `GET /api/messages/{id}/smartreply` with a provider | **bare array** of reply strings, no envelope (live 2026-10-04) | `message-smartreply-populated.json` |
+| `GET /api/thread/{id}/summary` with a provider | `{"data": "<summary text>"}` (live 2026-10-04) | `thread-summary-populated.json` |
+| `GET /api/thread/{id}/eventdata` | `{"data": null}` when nothing is found; `{"data": {"summary", "description"}}` with a provider | `thread-eventdata-populated.json` |
+| `POST /api/drafts` | 201, envelope around the local message (`type` 1) | |
+| `PUT /api/drafts/{id}`, `DELETE /api/drafts/{id}`, `POST /api/drafts/move/{id}` | **202** with the *success* envelope | see below |
+| `GET /api/outbox` | envelope `{"messages": [...]}` — one level deeper than the draft answers | |
+| `GET /api/outbox/{id}`, `POST /api/outbox`, `POST /api/outbox/from-draft/{id}` | envelope around the local message (`type` 0) | |
+| `PUT /api/outbox/{id}`, `POST /api/outbox/{id}` (send), `DELETE /api/outbox/{id}` | **202** with the *success* envelope | |
+| `POST /api/attachments` | 201, the bare local attachment, integer `id` | multipart field `attachment` |
+| `POST /api/tags`, `PUT /api/tags/{id}` | the bare tag, server-derived `imapLabel` | |
+| `DELETE /api/tags/{accountId}/delete/{id}` | `[id]` | |
+| `GET /api/autoComplete?term=` | bare array; `id` is a **string or an integer** (collected addresses carry their row id) | |
+| `GET /api/contactIntegration/autoComplete/{term}`, `/match/{mail}` | bare array, `email` is an **array** here | |
+| `PUT /api/contactIntegration/add`, `/new` | the contact as Sabre JSON (`URI`, `UID`, `FN`, …) | |
+| `PUT /api/preferences/{key}` | `{"value": …}`, like the GET | |
+| `GET/PUT/DELETE /api/internalAddress[/{address}?type=]` | envelope; PUT echoes `{id, address, uid, type}` | |
+| `PUT/DELETE /api/trustedsenders/{email}?type=domain` | `{"status":"success","data":null}` | |
+| `GET /api/sieve/active/{id}`, `GET`/`POST /api/out-of-office/{id}[/follow-system]` | **400** `{"status":"fail","data":{"message":"ManageSieve is disabled"}}` with Sieve off | |
+| `GET /api/sieve/active/{id}` (Sieve on) | **bare** `{"scriptName":null,"script":""}` — no envelope | `Endpoint<SieveScript>`; fixture `sieve-active-enabled.json` |
+| `GET /api/out-of-office/{id}` (Sieve on) | envelope `{"state":null,"script":"","untouchedScript":""}` | `JSONEnvelope<OutOfOfficeFetch>`; `state` is the `OutOfOfficeState`, null until set |
+| `PUT /api/sieve/account/{id}` | `{"sieveEnabled": …}` | |
+| `GET`/`PUT /api/filter/{accountId}` | **500 with an HTML error page** with Sieve off | no message to show |
+| `GET /api/filter/{accountId}` (Sieve on) | **bare** array, `[]` with no filters — no envelope | `Endpoint<[MailFilter]>`; fixture `filters-enabled.json` |
+| `POST /api/follow-up/check-message-ids` | envelope `{"wasFollowedUp": [ids]}` | a read; retried |
+| quick actions, action steps | envelope around the object; DELETE `data: null` | |
+| `GET /api/textBlocks`, create, update, `…/{id}/shares` | envelope | |
+| `GET /api/textBlockshares` | envelope around **text blocks** shared with the user | plan says "lists all shares"; it lists blocks |
+| `POST`/`DELETE /api/textBlockshares` | `{"status":"success","data":null}` | |
+| `GET/POST/DELETE /api/smime/certificates` | envelope; the parsed metadata sits in a nested `info` | import is multipart |
+
+**202 is not always "sync in progress".** v1 read every 202 as `IncompleteSyncException`.
+Drafts and outbox answer 202 to update, delete, move and send, with the success envelope.
+`MailClient` now treats a 202 as success when the body's `status` is `success` and as
+`syncInProgress` otherwise (ADR-0077).
+
+## Drafts, the outbox and what a send does on the server (WS-23)
+
+*Verified by `OutboxLiveTests` on 2026-10-04 (every send to the account's own address,
+ADR-0080) and read from the nextcloud/mail source where noted.*
+
+- **`draftId` is an IMAP message id, not a `/api/drafts` id.** On `POST /api/drafts` and
+  `POST /api/outbox` it names a mirrored message in the Drafts folder, which
+  `DeleteDraftListener` flags `\Deleted` and expunges. Verified: a draft closed to IMAP,
+  then a new draft sent with `draftId` = that message's id — the Drafts copy was gone
+  within the next cache sync (`sendingADraftFromTheDraftsFolderExpungesIt`).
+- **The server moves idle drafts by itself.** Its job (`DraftsService::flush`, source)
+  moves every `/api/drafts` row untouched for 300 s *with `sendAt` NULL* to the IMAP Drafts
+  folder and deletes the row. Afterwards `PUT /api/drafts/{id}` answers **404**
+  `{"status":"fail","data":[]}` (verified with a missing id).
+- **`POST /api/drafts/move/{id}`** does the same move now (202, success envelope); the
+  server row is deleted, so the id is dead afterwards.
+- **`POST /api/outbox/from-draft/{id}` keeps the id.** The draft becomes an outbox message
+  (`type` 0) with the same `id`. The routes are typed: `PUT /api/drafts/{id}` 404s on an
+  outbox message, `GET /api/outbox/{id}` 404s on a draft, and both 404 once sent.
+- **Draft cleanup on send:** after `from-draft` + `POST /api/outbox/{id}` the server draft
+  is gone (`PUT /api/drafts/{id}` → 404) and `GET /api/outbox` is empty — the send chain
+  deletes the row and its local attachments when it reaches `STATUS_PROCESSED`. There is no
+  second object to clean up. A draft that had been moved to IMAP is only removed if its
+  message id is passed as `draftId` (above).
+- **`POST /api/outbox/{id}` failure** is HTTP 500 with
+  `{"status":"error", …, "data":[<the message>]}` (source); the row stays in the outbox
+  with its `status`. Status 11 (`STATUS_IMAP_SENT_MAILBOX_FAIL`) means SMTP succeeded and
+  only the Sent copy failed; the web client's "Copy to Sent" is the same
+  `POST /api/outbox/{id}`, and the chain resumes at the copy step.
+- **Recently contacted:** each send made from a user request dispatches
+  `ContactInteractedWithEvent` for every recipient, and the `contactsinteraction` app
+  updates its address book `z-app-generated--contactsinteraction--recent`. Verified: the
+  card for the account's own address there changed ETag and `Last-Modified` to the second of
+  each live send (09:46:09 and 09:47:09 UTC). The listener needs a user session (source), so
+  a scheduled message sent by the server's background job does **not** record an
+  interaction. `GET /api/autoComplete?term=` (Basic auth) stayed `[]` for the address
+  afterwards; the address collector's table was not inspected.
+- **Timing (live, nextcloud.local):** `send()` to dispatch complete 13.5 s, of which 10 s is
+  the undo window and ~3.5 s the three requests (`PUT` draft, `from-draft`, send); the
+  message was in the Sent cache 9.8 s later.
+
+## Non-Mail OCS routes
+
+*The five integrations the brief listed as unverified, each confirmed with curl against the
+live server (Basic auth, `OCS-APIRequest: true`, `Accept: application/json`). All take the
+OCS envelope `{"ocs": {"meta": {status, statuscode, message}, "data": …}}`.*
+
+### Translation
+
+- `GET /ocs/v2.php/translation/languages` → 200,
+  `{"languages": [], "languageDetection": false}` on a server with no provider. The route
+  exists either way; an empty list is the "translation unavailable" signal.
+- `POST /ocs/v2.php/translation/translate`, body `{"text", "fromLanguage": null,
+  "toLanguage"}` → with no provider, **HTTP 412**, OCS 412,
+  `data.message: "No translation provider available"`.
+- TaskProcessing is offered too: `GET /ocs/v2.php/taskprocessing/tasktypes` → 200,
+  `{"types": []}` (PHP's empty map; an object keyed by task type id when a provider
+  exists). Mail's own `llm_translation_enabled` checks `core:text2text:translate` there.
+  The client calls the dedicated translation API for translating and reads TaskProcessing
+  for flags only ([server-flags.md](server-flags.md)).
+
+### Smart Picker
+
+- `GET /ocs/v2.php/references/providers` → 200, array of
+  `{id, title, icon_url, order, search_providers_ids?}`. `search_providers_ids` is absent
+  for providers that are not search-backed (calendar, polls).
+- `GET /ocs/v2.php/search/providers/{providerId}/search?term=&limit=&cursor=` → 200,
+  `{name, isPaginated, cursor, entries: [{thumbnailUrl, title, subline, resourceUrl, icon,
+  rounded, attributes}]}`. `cursor` is echoed back verbatim for the next page (an integer
+  for `files`).
+- `core.reference-api: true` in capabilities says the reference API exists.
+
+### Notifications
+
+- `GET /ocs/v2.php/apps/notifications/api/v2/notifications` and
+  `DELETE …/notifications/{id}` → **HTTP 404**, OCS 998 "Invalid query", `data: []` on the
+  live server, because the notifications app is not installed (no `notifications`
+  capability). That 404 is the "no notifications surface" signal, not an error to show.
+  The success shape is not verifiable here; the model's fields are optional.
+
+### Files sharing — public links
+
+- `POST /ocs/v2.php/apps/files_sharing/api/v1/shares`, body `{"path": "/file", "shareType":
+  3}` → 200, the share: `id` is a **string**, `share_type` 3, `token`, `url` (the public
+  link), plus ~35 more keys. Verified by creating and deleting a link.
+- `DELETE /ocs/v2.php/apps/files_sharing/api/v1/shares/{id}` → 200, `data: []`.
+
+### Circles / Teams
+
+- `GET /ocs/v2.php/apps/circles/circles` → 200, array of
+  `{id, name, displayName, sanitizedName, source, population, populationInherited, config,
+  description, url, creation, initiator, owner, settings, invitationCode}`. `id` is the
+  circle's string id. `initiator` is the asking user's own membership (`level`, `singleId`);
+  the list holds only teams the user belongs to (alice saw none of admin's).
+- Confirmed live by WS-37 (Nextcloud 36; fixtures `circle-*-ws37.json`), each answering the
+  OCS wrapper with the changed circle or member under `data` (`[]` for a member removal):
+  - `POST …/circles` `{name, personal, local}` → the new circle (`creation` 0 until listed).
+  - `PUT …/circles/{id}/name|description|config` `{value}`; `config` is the whole bit field
+    (8 visible, 16 open, 32 invite, 64 request, 128 friend, 8192 root, 32768 federated).
+  - `DELETE …/circles/{id}`; `PUT …/circles/{id}/leave` (refused for the owner).
+  - `GET …/circles/{id}/members` → `[{id, singleId, userId, userType, level, status,
+    displayName, basedOn: {source, …}, …}]`. A **group** member comes back with `userType`
+    16 and `basedOn.source` 2; an address with `userType` 4 and `userId` = the address.
+  - `POST …/circles/{id}/members` `{userId, type}` (1 user, 2 group, 4 email, 8 contact,
+    16 team — the team's id).
+  - `PUT …/circles/{id}/members/{memberId}/level` `{level}` — **`level`**, not `value`
+    (1 member, 4 moderator, 8 admin, 9 owner).
+  - `PUT …/circles/{id}/members/{memberId}` (no body) accepts a join request (a member at
+    level 0, status `Requesting`); `DELETE` the same path removes or rejects.
+- Circles is present when `GET /ocs/v2.php/cloud/capabilities` lists `circles` (with
+  `settings.frontendEnabled`, `allowedCircles` …). That is how the client gates Teams
+  (ADR-0097).
+
+### Files shares (Shared items, WS-37)
+
+- `GET /ocs/v2.php/apps/files_sharing/api/v1/shares` → the login's shares;
+  `?shared_with_me=true` → shares it received. Each `{id: "18" (string), share_type (0 user),
+  uid_owner, share_with, path, file_target, item_type, mimetype, file_source, stime, …}`.
+  Fixtures `shares-mine-ws37.json`, `shares-with-me-ws37.json`.
+
+## Contacts app extras: favourites and social avatars (WS-35)
+
+*Measured against the dev server on 2026-10-04 with the scratch book `ws35-temp-fav`
+(`Scripts/record-fixtures.sh`, "DAV: WS-35 favourites and social avatar"), and again by
+`ContactsLiveTests` through the queue.*
+
+### The favourite star is a DAV property, not vCard
+
+- Web Contacts' star is the dead property **`{http://nextcloud.com/ns}favorite`** on the card
+  resource — the `.com` namespace, unlike every other Nextcloud DAV property (`.org`). It is
+  not in the vCard at all.
+- Set: `PROPPATCH <card>` with `<d:set><d:prop><nc:favorite>1</nc:favorite>…` → 207, the
+  property echoed in a 200 propstat (`dav-ws35-favorite-proppatch.xml`). Unset:
+  `<d:remove><d:prop><nc:favorite/>…` → 207 with a **204** propstat
+  (`dav-ws35-favorite-unproppatch.xml`).
+- Read: a Depth-1 `PROPFIND {getetag, nc:favorite}` on the book answers `1` for a starred card
+  and a **404 propstat** for every other (`dav-ws35-favorites.xml`); `addressbook-multiget`
+  answers it beside `address-data` the same way (`dav-ws35-multiget-favorite.xml`).
+- The PROPPATCH moves **neither the card's ETag nor the book's sync-token** (live:
+  `favouriteRoundTripsBothWays` — "sync-token moved false, ETag moved false"), so
+  `sync-collection` never reports a toggle. The mirror lists favourites each pass
+  ([ADR-0092](../decisions/0092-contact-favourites-are-a-dav-dead-property-refreshed-each-pass.md)).
+
+### Social avatar
+
+- `PUT /index.php/apps/contacts/api/v1/social/avatar/{network}/{addressBookURI}/{UID}` with
+  Basic auth and `OCS-APIRequest: true` (which passes the CSRF check) → **200 `[]`**
+  (`contacts-social-avatar.json`). The route was "unverified" in the plan; this settles it.
+  `{addressBookURI}` is the book's last path segment (`contacts`), `{UID}` the vCard `UID`.
+- The server downloads the picture itself and rewrites the card's `PHOTO`; the change moves
+  the ETag and the token like any edit, so the next pass brings it in (live: "PHOTO present
+  after next pass: true" for `gravatar`). The web client treats 304 as "Avatar already up to
+  date".
+- Networks: the Contacts page's `supportedNetworks` initial state on this server is
+  `["instagram","mastodon","tumblr","diaspora","xing","telegram","gravatar"]`; web Contacts
+  offers those the card has an `X-SOCIALPROFILE`/`IMPP` of that type for, plus `gravatar`
+  when it has an `EMAIL`. There is no API for the list, so the app carries it.

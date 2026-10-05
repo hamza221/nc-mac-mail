@@ -38,6 +38,35 @@ Every brief has the same shape:
 | [WS-13](WS-13-app-shell.md) | App shell, theme, restoration | 3 |
 | [WS-14](WS-14-test-harness.md) | Fake transport, fixtures, CI | 1→ |
 | [WS-15](WS-15-feedback.md) | Library and server feedback | ∞ |
+| [WS-16](WS-16-api-surface.md) | Mail API surface: endpoints, models, flag discovery | 1 |
+| [WS-17](WS-17-dav-and-formats.md) | DAV client, vCard and iCalendar | 1 |
+| [WS-18](WS-18-store-v2.md) | Store v2: migrations, DAOs, observations | 1 |
+| [WS-19](WS-19-test-harness-v2.md) | Test harness v2 | 1 |
+| [WS-20](WS-20-rich-text-editor.md) | Rich text editor | 1 |
+| [WS-21](WS-21-server-state-mirror.md) | Server-state mirror | 2 |
+| [WS-22](WS-22-queue-v2-and-commands.md) | Queue v2 and settings commands | 2 |
+| [WS-23](WS-23-drafts-and-outbox.md) | Drafts and outbox engine | 2 |
+| [WS-24](WS-24-contacts-and-calendars-mirror.md) | Contacts and calendars mirror | 2 |
+| [WS-25](WS-25-app-shell-v2.md) | App shell v2 | 2 |
+| [WS-26](WS-26-people.md) | People: recipient suggestions and contact cards | 3 |
+| [WS-27](WS-27-composer.md) | Composer and outbox view | 3 |
+| [WS-28](WS-28-sidebar-v2.md) | Sidebar and mailbox management | 3 |
+| [WS-29](WS-29-message-list-v2.md) | Message list parity | 3 |
+| [WS-30](WS-30-message-view-v2.md) | Message view parity | 3 |
+| [WS-31](WS-31-triage-v2.md) | Triage parity: tags, snooze, quick actions, shortcuts | 3 |
+| [WS-32](WS-32-search-v2.md) | Search parity | 3 |
+| [WS-33](WS-33-files.md) | Files picker and Files actions | 3 |
+| [WS-34](WS-34-calendar.md) | Calendar integration | 4 |
+| [WS-35](WS-35-contacts.md) | Contacts: browse, view, edit | 4 |
+| [WS-36](WS-36-address-books.md) | Address books, import/export, merge, batch | 4 |
+| [WS-37](WS-37-teams.md) | Teams, shared items, org chart | 4 |
+| [WS-38](WS-38-app-settings.md) | App settings parity | 4 |
+| [WS-39](WS-39-account-settings.md) | Account settings parity | 4 |
+| [WS-40](WS-40-account-setup.md) | Mail account setup | 4 |
+| [WS-41](WS-41-notifications.md) | Notifications, dock badge, Nextcloud notifications | 5 |
+| [WS-42](WS-42-system-integration.md) | System integration: default mail app, mailto, Spotlight, widgets, Share extension, Services | 5 |
+| [WS-43](WS-43-feedback-v2.md) | Feedback v2 | ∞ |
+| [WS-44](WS-44-parity-audit.md) | Parity audit | end |
 
 ## Rules that apply to every brief
 
@@ -51,3 +80,5 @@ Every brief has the same shape:
    or says "nothing new" and means it.
 6. **[../definition-of-done.md](../definition-of-done.md) is the gate.** Read it before you
    start, not when you think you are finished.
+7. **Server-computed results are rows** (ADR-0067); **server-validated settings are commands**
+   (ADR-0068).

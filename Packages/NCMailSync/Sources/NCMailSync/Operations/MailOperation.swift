@@ -30,6 +30,95 @@ public enum MailOperation: Sendable, Equatable {
     /// Image trust for one sender, account-wide. Absolute, like the flags: `trusted: false`
     /// is the untrust route, not a toggle.
     case trustSender(email: String, trusted: Bool)
+
+    // MARK: v2 — tags (ADR-0081: settings rows are named by server id)
+
+    /// The label is the IMAP keyword (`$label1`), which is what the route takes.
+    case setTag(messageIds: [Int64], imapLabel: String)
+    case unsetTag(messageIds: [Int64], imapLabel: String)
+    case createTag(displayName: String, color: String)
+    /// `tagRemoteId` may be a placeholder from an offline ``createTag(displayName:color:)``.
+    case updateTag(tagRemoteId: Int64, displayName: String, color: String)
+    case deleteTag(tagRemoteId: Int64)
+
+    // MARK: v2 — snooze
+
+    /// Unix seconds. Moves the messages into the account's snooze mailbox.
+    case snooze(messageIds: [Int64], until: Int64)
+    case unsnooze(messageIds: [Int64])
+    case snoozeThread(rootId: String, until: Int64)
+    case unsnoozeThread(rootId: String)
+
+    // MARK: v2 — mailboxes (local `mailbox.id`, as v1)
+
+    /// `name` is the full path, delimiter included, as the server names mailboxes.
+    case createMailbox(name: String)
+    case renameMailbox(mailboxId: Int64, name: String)
+    /// A rename to the leaf under `parentMailboxId`'s path; nil moves it to the top level.
+    case moveMailbox(mailboxId: Int64, parentMailboxId: Int64?)
+    case deleteMailbox(mailboxId: Int64)
+    case setMailboxSubscribed(mailboxId: Int64, subscribed: Bool)
+    case setMailboxSyncInBackground(mailboxId: Int64, enabled: Bool)
+    case clearMailbox(mailboxId: Int64)
+    case markMailboxRead(mailboxId: Int64)
+
+    // MARK: v2 — settings
+
+    /// Login-scoped. The value is stored and sent as a string, which is what every
+    /// preference the web client writes is.
+    case setPreference(key: String, value: String)
+    case patchAccount(AccountPatch)
+    /// Nil clears.
+    case setSignature(String?)
+    case createAlias(email: String, name: String)
+    case updateAlias(aliasRemoteId: Int64, email: String, name: String)
+    case deleteAlias(aliasRemoteId: Int64)
+    case setAliasSignature(aliasRemoteId: Int64, signature: String?)
+
+    // MARK: v2 — text blocks (login-scoped)
+
+    case createTextBlock(title: String, content: String)
+    case updateTextBlock(textBlockRemoteId: Int64, title: String, content: String)
+    case deleteTextBlock(textBlockRemoteId: Int64)
+    /// `type` is the server's share type: `user` or `group`.
+    case shareTextBlock(textBlockRemoteId: Int64, shareWith: String, type: String)
+    case unshareTextBlock(textBlockRemoteId: Int64, shareWith: String)
+
+    // MARK: v2 — quick actions
+
+    case createQuickAction(name: String)
+    case updateQuickAction(quickActionRemoteId: Int64, name: String)
+    case deleteQuickAction(quickActionRemoteId: Int64)
+    case upsertActionStep(ActionStepIntent)
+    case deleteActionStep(quickActionRemoteId: Int64, stepRemoteId: Int64)
+
+    // MARK: v2 — addresses (login-scoped)
+
+    /// `type` is `individual` or `domain`.
+    case addInternalAddress(address: String, type: String)
+    case removeInternalAddress(address: String, type: String)
+    case trustDomain(domain: String, trusted: Bool)
+
+    // MARK: v2 — mail actions
+
+    case sendMDN(messageId: Int64)
+    case unsubscribe(messageId: Int64)
+    /// The whole message as `.eml` when `attachmentId` is nil.
+    case saveToFiles(messageId: Int64, attachmentId: String?, targetPath: String)
+
+    // MARK: v2 — contacts and calendars, executed by `DAVWriteHandling`
+
+    case contactPut(DAVWritePayload)
+    case contactDelete(DAVWritePayload)
+    case addressBookCreate(DAVWritePayload)
+    case addressBookUpdate(DAVWritePayload)
+    case addressBookDelete(DAVWritePayload)
+    case addressBookShare(DAVWritePayload)
+    case calendarPut(DAVWritePayload)
+    /// Web Contacts' favourite marker: PROPPATCH `nc:favorite` on the card (ADR-0092).
+    case contactFavorite(DAVWritePayload)
+    /// The Contacts app's server-side social-avatar fetch for one card (WS-35).
+    case contactSocialAvatar(DAVWritePayload)
 }
 
 /// What one queue row does, which is not quite the same list as ``MailOperation``.
@@ -44,9 +133,91 @@ public enum OperationKind: String, Sendable, Codable, CaseIterable {
     case deleteThread
     case trustSender
 
-    /// Whether this kind ends the message's life locally, which is what makes it absorb
-    /// everything queued before it for the same message.
-    var isTerminal: Bool { self == .delete || self == .deleteThread }
+    case setTag
+    case unsetTag
+    case createTag
+    case updateTag
+    case deleteTag
+    case snooze
+    case unsnooze
+    case snoozeThread
+    case unsnoozeThread
+    case createMailbox
+    case renameMailbox
+    case moveMailbox
+    case deleteMailbox
+    case setMailboxSubscribed
+    case setMailboxSyncInBackground
+    case clearMailbox
+    case markMailboxRead
+    case setPreference
+    case patchAccount
+    case setSignature
+    case createAlias
+    case updateAlias
+    case deleteAlias
+    case setAliasSignature
+    case createTextBlock
+    case updateTextBlock
+    case deleteTextBlock
+    case shareTextBlock
+    case unshareTextBlock
+    case createQuickAction
+    case updateQuickAction
+    case deleteQuickAction
+    case upsertActionStep
+    case deleteActionStep
+    case addInternalAddress
+    case removeInternalAddress
+    case trustDomain
+    case sendMDN
+    case unsubscribe
+    case saveToFiles
+    case contactPut
+    case contactDelete
+    case addressBookCreate
+    case addressBookUpdate
+    case addressBookDelete
+    case addressBookShare
+    case calendarPut
+    case contactFavorite
+    case contactSocialAvatar
+
+    /// Whether this kind ends its subject's life, which is what makes it absorb everything
+    /// queued before it for the same subject.
+    var isTerminal: Bool {
+        switch self {
+        case .delete, .deleteThread, .deleteTag, .deleteMailbox, .deleteAlias, .deleteTextBlock,
+            .deleteQuickAction, .deleteActionStep, .contactDelete, .addressBookDelete:
+            true
+        default:
+            false
+        }
+    }
+
+    /// Kinds whose intent is absolute state of one subject, so two in a row are one request.
+    var mergesWithItself: Bool {
+        switch self {
+        case .setFlags, .move, .moveThread, .trustSender, .updateTag, .renameMailbox, .moveMailbox,
+            .setMailboxSubscribed, .setMailboxSyncInBackground, .setPreference, .patchAccount,
+            .setSignature, .updateAlias, .setAliasSignature, .updateTextBlock, .updateQuickAction,
+            .upsertActionStep, .trustDomain, .contactPut, .addressBookUpdate, .calendarPut, .contactFavorite:
+            true
+        default:
+            false
+        }
+    }
+
+    /// Executed by ``DAVWriteHandling`` rather than through `MailClient`.
+    public var isDAV: Bool {
+        switch self {
+        case .contactPut, .contactDelete, .addressBookCreate, .addressBookUpdate, .addressBookDelete,
+            .addressBookShare, .calendarPut, .contactFavorite, .contactSocialAvatar:
+            true
+        default:
+            false
+        }
+    }
 }
 
 /// One of the three mailboxes a triage action names by role rather than by id.
@@ -88,6 +259,10 @@ struct OperationPayload: Codable, Sendable, Equatable {
     /// `trustSender`'s intent: PUT when true, DELETE when false.
     var trusted: Bool?
     var before = OperationSnapshot()
+    /// A v2 settings/mailbox/tag/snooze kind's intent. Optional so a v1 row still decodes.
+    var intent: OperationIntent?
+    /// A DAV kind's intent and `before`, which ``DAVWriteHandling`` applies and reverts.
+    var dav: DAVWritePayload?
 }
 
 /// The rows an operation touched and what they held first.
@@ -102,6 +277,9 @@ struct OperationSnapshot: Codable, Sendable, Equatable {
     /// Previous `messageBody.isSenderTrusted`, keyed by local message id, for a
     /// `trustSender`. Nil for every other kind.
     var senderTrusted: [Int64: Bool]?
+    /// What a v2 kind's row effects overwrote. Nil for v1 kinds and for kinds with no
+    /// local effect.
+    var rows: RowSnapshot?
 }
 
 extension OperationPayload {

@@ -1,0 +1,85 @@
+{
+  "status": "success",
+  "data": [
+    {
+      "id": 1,
+      "name": "jhgjhj",
+      "accountId": 1,
+      "actionSteps": [
+        {
+          "id": 1,
+          "name": "markAsUnread",
+          "order": 1,
+          "actionId": 1,
+          "tagId": null,
+          "mailboxId": null
+        },
+        {
+          "id": 2,
+          "name": "moveThread",
+          "order": 2,
+          "actionId": 1,
+          "tagId": null,
+          "mailboxId": 3
+        }
+      ],
+      "icon": "markAsUnread"
+    },
+    {
+      "id": 2,
+      "name": "m,",
+      "accountId": 1,
+      "actionSteps": [
+        {
+          "id": 6,
+          "name": "markAsFavorite",
+          "order": 1,
+          "actionId": 2,
+          "tagId": null,
+          "mailboxId": null
+        },
+        {
+          "id": 5,
+          "name": "markAsUnread",
+          "order": 2,
+          "actionId": 2,
+          "tagId": null,
+          "mailboxId": null
+        },
+        {
+          "id": 4,
+          "name": "markAsUnread",
+          "order": 3,
+          "actionId": 2,
+          "tagId": null,
+          "mailboxId": null
+        },
+        {
+          "id": 3,
+          "name": "markAsRead",
+          "order": 4,
+          "actionId": 2,
+          "tagId": null,
+          "mailboxId": null
+        }
+      ],
+      "icon": "markAsFavorite"
+    },
+    {
+      "id": 10,
+      "name": "Fixture action renamed",
+      "accountId": 1,
+      "actionSteps": [
+        {
+          "id": 14,
+          "name": "markAsUnread",
+          "order": 1,
+          "actionId": 10,
+          "tagId": null,
+          "mailboxId": null
+        }
+      ],
+      "icon": "markAsUnread"
+    }
+  ]
+}

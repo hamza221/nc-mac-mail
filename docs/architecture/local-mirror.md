@@ -388,3 +388,70 @@ shown whenever its 600-second server-side cache expires. The one-time backfill i
 whole cost, and it is bounded, resumable and pausable. If Nextcloud wants a server-side
 guard, the honest ask is a bulk-body endpoint — noted in
 [../feedback/server-findings.md](../feedback/server-findings.md).
+
+## What v2 adds to the mirror (WS-18)
+
+Version 2 of the schema widens "mirror" from mail to everything the app shows: settings,
+drafts, the outbox, contacts, calendars, teams, and cached server answers. The shape of the
+rule does not change — views read these tables, sync writes them — but the tables fall into
+four behavioural groups, and each group has one write discipline.
+
+### Who owns a row: login or account
+
+v2 introduces a `login` row per signed-in identity — the `(serverURL, loginName)` pair the
+Keychain item is keyed by. Everything that belongs to the Nextcloud *user* rather than to
+one of their mail accounts hangs off it with `ON DELETE CASCADE`: preferences, text blocks
+and their shares, trusted senders, internal addresses, S/MIME certificates, cached server
+results, recipient suggestions, Files listings, Smart Picker results, address books (and
+the whole contacts mirror under them), calendars and teams. The instance flags the web
+client gets as initial state (`disable-snooze`, `attachment-size-limit`, …) are nullable
+columns on `login`: NULL means undiscovered, and the UI treats the feature as on.
+
+Account-scoped state — aliases, quick actions and their steps, delegations, Sieve state,
+drafts, the mirrored outbox — cascades from `account` exactly as mail does. Sign-out is
+`MailStore.deleteLogin(_:)`: the identity's account rows and its login row in one
+transaction, with the schema doing the rest ([ADR-0079](../decisions/0079-a-login-table-roots-instance-state.md)).
+`LoginCascadeTests` counts every table in the file to prove it.
+
+### Server-owned lists are replaced, not merged
+
+Aliases, preferences, text blocks, quick actions, trusted senders, internal addresses,
+delegations, certificates, calendars, teams and the outbox are settings-sized lists the
+server owns completely. Each sync writes them wholesale — delete the scope, insert the
+listing — because a row deleted on the server must disappear here and no column in them is
+the mirror's own. Where children need their parents' local ids (text block shares, quick
+action steps, team members), the replace call answers with the inserted rows.
+
+The two exceptions carry mirror bookkeeping and are reconciled instead: `addressBook`
+keeps `syncToken`, `lastSyncAt` and the user's own `isEnabled` toggle across listing
+refreshes (losing the token would force a full CardDAV re-sync of every book), and
+`sieveState` is a one-row-per-account upsert.
+
+### Contacts are a real mirror, like mail
+
+Contacts sync incrementally (RFC 6578), so `contact` rows are upserted by
+`(addressBookId, href)` and keep their local ids across updates — observations of one card
+keep firing. The raw vCard is the authoritative column (ADR-0069); display columns, the
+`contactEmail`/`contactPhone` rows and the group-member rows are derived from it and
+rewritten on every write, the same argument as v1's address rewrite. `contactSearch` is a
+standalone FTS5 table keyed by `rowid = contact.id`, written in the same transaction as the
+card and deleted by trigger ([ADR-0024](../decisions/0024-fts-deletes-in-a-trigger.md)).
+Group membership is stored by member UID, not foreign key, because the member's card may
+arrive after the group's.
+
+### Drafts are local-first; the outbox and server results are caches
+
+`draft` rows are authoritative on this machine (ADR-0066): the composer writes them,
+recipients and attachments are child tables because they are edited individually, and the
+flush to the server's draft API stamps `remoteId`/`savedAt` after the fact. `outboxMessage`
+is the opposite — a plain mirror of `GET /api/outbox`, recipients as JSON, replaced on
+every poll. Server-computed answers (summaries, translations, quota, autocomplete
+supplements, Files listings, Smart Picker results) are cached rows per
+[ADR-0067](../decisions/0067-server-results-are-rows.md), keyed by kind and a kind-specific
+key, each with `fetchedAt` so the owning feature can expire them. `snooze` is one row per
+hidden message; the list excludes snoozed rows by anti-join and a sweep wakes the due ones
+through the `until` index.
+
+Every v2 table is a rowid table, deliberately: each of them can end up behind a view, and
+a `WITHOUT ROWID` table is invisible to `ValueObservation`
+([ADR-0025](../decisions/0025-rowid-tables-for-anything-observed.md)).

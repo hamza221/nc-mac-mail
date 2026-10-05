@@ -1,0 +1,9 @@
+{
+  "status": "success",
+  "data": {
+    "id": 8,
+    "address": "example.org",
+    "uid": "admin",
+    "type": "domain"
+  }
+}

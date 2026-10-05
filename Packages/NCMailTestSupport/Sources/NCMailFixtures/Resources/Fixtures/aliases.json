@@ -1,0 +1,20 @@
+[
+  {
+    "id": 3,
+    "name": "Fixture Alias",
+    "alias": "user@example.com",
+    "signature": "",
+    "provisioned": false,
+    "signatureMode": 0,
+    "smimeCertificateId": null
+  },
+  {
+    "id": 11,
+    "name": "Fixture Alias",
+    "alias": "user@example.com",
+    "signature": "",
+    "provisioned": false,
+    "signatureMode": 0,
+    "smimeCertificateId": null
+  }
+]

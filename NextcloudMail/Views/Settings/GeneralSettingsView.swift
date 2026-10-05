@@ -1,68 +1,111 @@
 // SPDX-FileCopyrightText: Hamza Mahjoubi
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import AppKit
 import NCMailStore
 import NextcloudUI
 import SwiftUI
 
-/// The General tab: the two reading preferences the brief asks for, plus a line about
-/// appearance that has nothing to configure.
+/// The General tab: "Set as default mail app", the mail accounts with a way into each one's
+/// settings, and "Add mail account" for every login whose server allows it.
 struct GeneralSettingsView: View {
     @Environment(AppSession.self) private var session
     @Environment(SettingsStore.self) private var settingsStore
 
-    @State private var markAsReadDelay = MarkAsReadDelay.immediately
-    @State private var hasLoadedMarkAsReadDelay = false
+    @AppStorage(SettingsTab.preferredTabKey) private var selectedTab = SettingsTab.general
+    @AppStorage(SettingsTab.preferredAccountIDKey) private var preferredAccountID: Int?
+
+    @State private var isDefaultMailApp = false
+    @State private var defaultAppError: String?
 
     var body: some View {
         Form {
             Section {
-                Picker(String(localized: "Message list"), selection: listViewBinding) {
-                    Text("Threaded").tag(ListView.threaded)
-                    Text("Flat").tag(ListView.flat)
-                }
-                .accessibilityHint(Text("Whether the message list groups replies into one row per thread."))
-
-                Picker(String(localized: "Mark as read"), selection: markAsReadBinding) {
-                    ForEach(MarkAsReadDelay.offeredDelays, id: \.self) { delay in
-                        Text(delay.label).tag(delay)
+                LabeledContent(String(localized: "Mail app")) {
+                    Button(DefaultMailAppCheck.label(isDefault: isDefaultMailApp)) {
+                        Task { await setAsDefault() }
                     }
+                    .disabled(isDefaultMailApp)
                 }
-                .accessibilityHint(Text("When an opened message is marked read."))
-            } header: {
-                Text("Reading")
+                if let defaultAppError {
+                    NCNoteCard(.error) { Text(defaultAppError) }
+                }
             }
 
             Section {
-                NCNoteCard(.info) {
-                    Text("Appearance follows the system's Light, Dark or Auto setting.")
+                if settingsStore.accounts.isEmpty {
+                    Text("No accounts are mirrored yet.")
+                        .foregroundStyle(.secondary)
                 }
+                ForEach(settingsStore.accounts) { account in
+                    Button {
+                        preferredAccountID = Int(account.id)
+                        selectedTab = .accounts
+                    } label: {
+                        HStack {
+                            Text(Self.accountTitle(account))
+                            Spacer()
+                            Text("Account settings")
+                                .foregroundStyle(.secondary)
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint(Text("Opens this account's settings."))
+                }
+                ForEach(session.accounts) { login in
+                    HStack {
+                        if session.accounts.count > 1 {
+                            Text(
+                                String(
+                                    format: String(localized: "%@ on %@"), login.loginName, login.server.host() ?? "")
+                            )
+                            .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        AddMailAccountButton(sessionId: login.id)
+                    }
+                }
+            } header: {
+                Text("Account settings")
             }
         }
         .formStyle(.grouped)
-        .task { await loadMarkAsReadDelay() }
+        .onAppear(perform: refreshDefault)
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            refreshDefault()
+        }
     }
 
-    private var listViewBinding: Binding<ListView> {
-        Binding(
-            get: { session.navigation.listView },
-            set: { session.navigation.setListView($0) }
-        )
+    /// `{email}`, or `{email} (delegated)` for an account someone else delegated.
+    static func accountTitle(_ account: AccountRecord) -> String {
+        account.isDelegated
+            ? String(format: String(localized: "%@ (delegated)"), account.emailAddress)
+            : account.emailAddress
     }
 
-    private var markAsReadBinding: Binding<MarkAsReadDelay> {
-        Binding(
-            get: { markAsReadDelay },
-            set: { newValue in
-                markAsReadDelay = newValue
-                Task { await settingsStore.setMarkAsReadDelay(newValue) }
-            }
-        )
+    private static var liveCheck: DefaultMailAppCheck {
+        DefaultMailAppCheck(
+            handler: {
+                guard let mailto = URL(string: "mailto:") else { return nil }
+                return NSWorkspace.shared.urlForApplication(toOpen: mailto)
+            },
+            bundleURL: Bundle.main.bundleURL)
     }
 
-    private func loadMarkAsReadDelay() async {
-        guard !hasLoadedMarkAsReadDelay else { return }
-        hasLoadedMarkAsReadDelay = true
-        markAsReadDelay = await settingsStore.markAsReadDelay()
+    private func refreshDefault() {
+        isDefaultMailApp = Self.liveCheck.isDefault()
+    }
+
+    /// Launch Services asks the user to confirm; declining is an error, shown as such.
+    private func setAsDefault() async {
+        defaultAppError = nil
+        do {
+            try await NSWorkspace.shared.setDefaultApplication(
+                at: Bundle.main.bundleURL, toOpenURLsWithScheme: "mailto")
+        } catch {
+            defaultAppError = String(localized: "Could not set this app as the default mail app.")
+        }
+        refreshDefault()
     }
 }

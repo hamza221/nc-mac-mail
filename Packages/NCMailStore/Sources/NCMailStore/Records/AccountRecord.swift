@@ -36,6 +36,20 @@ public struct AccountRecord: Codable, FetchableRecord, PersistableRecord, Sendab
     public var lastSyncAt: Int64?
     public var lastDeepReconcileAt: Int64?
     public var rawJSON: String
+    // v2 settings columns, mirrored from the account payload (WS-18). The server's
+    // `order` is `sortOrder` above, not a thirteenth column.
+    public var editorMode: String?
+    public var signatureAboveQuote: Bool
+    public var trashRetentionDays: Int?
+    public var searchBody: Bool
+    public var classificationEnabled: Bool
+    public var imipCreate: Bool
+    public var sieveEnabled: Bool
+    public var signatureMode: Int?
+    public var smimeCertificateRemoteId: Int64?
+    public var outOfOfficeFollowsSystem: Bool
+    public var provisioningId: Int64?
+    public var isDelegated: Bool
 
     /// Where this account's credentials live, and what makes ``remoteId`` mean something.
     public var identity: ServerIdentity {
@@ -61,7 +75,19 @@ public struct AccountRecord: Codable, FetchableRecord, PersistableRecord, Sendab
         mirrorState: MirrorState = .idle,
         lastSyncAt: Int64? = nil,
         lastDeepReconcileAt: Int64? = nil,
-        rawJSON: String = "{}"
+        rawJSON: String = "{}",
+        editorMode: String? = nil,
+        signatureAboveQuote: Bool = false,
+        trashRetentionDays: Int? = nil,
+        searchBody: Bool = false,
+        classificationEnabled: Bool = false,
+        imipCreate: Bool = false,
+        sieveEnabled: Bool = false,
+        signatureMode: Int? = nil,
+        smimeCertificateRemoteId: Int64? = nil,
+        outOfOfficeFollowsSystem: Bool = false,
+        provisioningId: Int64? = nil,
+        isDelegated: Bool = false
     ) {
         self.id = id
         serverURL = identity.serverURL
@@ -83,6 +109,18 @@ public struct AccountRecord: Codable, FetchableRecord, PersistableRecord, Sendab
         self.lastSyncAt = lastSyncAt
         self.lastDeepReconcileAt = lastDeepReconcileAt
         self.rawJSON = rawJSON
+        self.editorMode = editorMode
+        self.signatureAboveQuote = signatureAboveQuote
+        self.trashRetentionDays = trashRetentionDays
+        self.searchBody = searchBody
+        self.classificationEnabled = classificationEnabled
+        self.imipCreate = imipCreate
+        self.sieveEnabled = sieveEnabled
+        self.signatureMode = signatureMode
+        self.smimeCertificateRemoteId = smimeCertificateRemoteId
+        self.outOfOfficeFollowsSystem = outOfOfficeFollowsSystem
+        self.provisioningId = provisioningId
+        self.isDelegated = isDelegated
     }
 }
 
@@ -113,6 +151,21 @@ public struct AccountWrite: Codable, PersistableRecord, Sendable, Equatable {
     public var quotaPercentage: Int?
     public var signature: String?
     public var rawJSON: String
+    // v2: the PATCH settings surface. Part of the write because every GET /api/accounts
+    // payload carries them, so a sync always has real values in hand (ADR-0023 is about
+    // columns the server does not own; these it does).
+    public var editorMode: String?
+    public var signatureAboveQuote: Bool
+    public var trashRetentionDays: Int?
+    public var searchBody: Bool
+    public var classificationEnabled: Bool
+    public var imipCreate: Bool
+    public var sieveEnabled: Bool
+    public var signatureMode: Int?
+    public var smimeCertificateRemoteId: Int64?
+    public var outOfOfficeFollowsSystem: Bool
+    public var provisioningId: Int64?
+    public var isDelegated: Bool
 
     public init(
         identity: ServerIdentity,
@@ -129,7 +182,19 @@ public struct AccountWrite: Codable, PersistableRecord, Sendable, Equatable {
         showSubscribedOnly: Bool = false,
         quotaPercentage: Int? = nil,
         signature: String? = nil,
-        rawJSON: String = "{}"
+        rawJSON: String = "{}",
+        editorMode: String? = nil,
+        signatureAboveQuote: Bool = false,
+        trashRetentionDays: Int? = nil,
+        searchBody: Bool = false,
+        classificationEnabled: Bool = false,
+        imipCreate: Bool = false,
+        sieveEnabled: Bool = false,
+        signatureMode: Int? = nil,
+        smimeCertificateRemoteId: Int64? = nil,
+        outOfOfficeFollowsSystem: Bool = false,
+        provisioningId: Int64? = nil,
+        isDelegated: Bool = false
     ) {
         serverURL = identity.serverURL
         loginName = identity.loginName
@@ -147,5 +212,17 @@ public struct AccountWrite: Codable, PersistableRecord, Sendable, Equatable {
         self.quotaPercentage = quotaPercentage
         self.signature = signature
         self.rawJSON = rawJSON
+        self.editorMode = editorMode
+        self.signatureAboveQuote = signatureAboveQuote
+        self.trashRetentionDays = trashRetentionDays
+        self.searchBody = searchBody
+        self.classificationEnabled = classificationEnabled
+        self.imipCreate = imipCreate
+        self.sieveEnabled = sieveEnabled
+        self.signatureMode = signatureMode
+        self.smimeCertificateRemoteId = smimeCertificateRemoteId
+        self.outOfOfficeFollowsSystem = outOfOfficeFollowsSystem
+        self.provisioningId = provisioningId
+        self.isDelegated = isDelegated
     }
 }

@@ -12,8 +12,12 @@
 /// The rule is therefore: **nothing the user types is ever a token of the grammar.** The
 /// input is reduced to the words `unicode61` would have kept — letters and digits, nothing
 /// else — and each of those becomes an FTS5 string literal, so `-`, `(`, `*`, `NOT` and an
-/// emoji are all just separators. The only two things this builds out of the grammar are the
-/// `*` that makes a term a prefix and the `AND` between terms.
+/// emoji are all just separators. The only things this builds out of the grammar are the
+/// `*` that makes a term a prefix, the `AND` between terms, and a column filter whose name
+/// comes from ``Column`` — never from the input.
+///
+/// A term needs at least ``minimumTermLength`` token characters; shorter ones are dropped
+/// as if they had not been typed.
 enum FTS5MatchExpression {
     /// The most terms one expression will carry.
     ///
@@ -23,13 +27,38 @@ enum FTS5MatchExpression {
     /// past anything anybody types and well short of that limit.
     static let maximumTerms = 32
 
+    /// The fewest token characters a term needs to count. One letter matches nearly every
+    /// message as a prefix, which is noise rather than a search; the brief's rule is two.
+    static let minimumTermLength = 2
+
+    /// The index columns a term can be confined to. A closed set, so a column filter in the
+    /// expression is always one of these names and never anything typed.
+    enum Column: String, CaseIterable {
+        case subject
+        case body
+    }
+
     /// The expression for `text`, or nil when there is nothing to search for.
     ///
-    /// Nil is the answer for empty input, whitespace, and for input that holds no character
-    /// the tokeniser would keep — `---` or a lone emoji. The caller returns no results for
-    /// nil, which is the point: an empty field must not match every message.
+    /// Nil is the answer for empty input, whitespace, and for input that holds no term the
+    /// tokeniser would keep at least two characters of — `---`, a lone emoji, a single `a`.
+    /// The caller returns no results for nil, which is the point: an empty field must not
+    /// match every message.
     static func build(from text: String) -> String? {
-        let terms = self.terms(in: text).prefix(maximumTerms).compactMap(render)
+        build([(text, nil)])
+    }
+
+    /// One expression for several inputs, each searching every column (`nil`) or one.
+    ///
+    /// Every rendered term is joined with `AND`, so no grouping is ever needed and the cap
+    /// on terms counts across all of them.
+    static func build(_ parts: [(text: String, column: Column?)]) -> String? {
+        let terms = parts.flatMap { part in
+            self.terms(in: part.text).compactMap(render).map { rendered in
+                part.column.map { "\($0.rawValue) : \(rendered)" } ?? rendered
+            }
+        }
+        .prefix(maximumTerms)
         guard !terms.isEmpty else { return nil }
         return terms.joined(separator: " AND ")
     }
@@ -89,7 +118,7 @@ enum FTS5MatchExpression {
     /// types a bare `-` or `(`.
     private static func render(_ term: Term) -> String? {
         let tokens = self.tokens(in: term.text)
-        guard !tokens.isEmpty else { return nil }
+        guard tokens.reduce(0, { $0 + $1.count }) >= minimumTermLength else { return nil }
         let body = tokens.joined(separator: " ")
         return term.isPrefix ? "\"\(body)\"*" : "\"\(body)\""
     }

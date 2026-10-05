@@ -14,22 +14,26 @@ extension MailStore {
     public func upsert(mailboxes: [MailboxWrite], accountId: Int64) async throws -> [MailboxRecord] {
         guard !mailboxes.isEmpty else { return [] }
         return try await dbQueue.write { db in
-            try mailboxes.map { write in
-                var mailbox = write
-                mailbox.accountId = accountId
-                // `upsertAndFetch` rather than `upsert`: the local id is assigned here and
-                // the caller has no other way to learn it (ADR-0033).
-                let record = try mailbox.upsertAndFetch(db, as: MailboxRecord.self)
-                guard mailbox.isSubscribed, !record.isMirrored else { return record }
-                try db.execute(
-                    sql: "UPDATE mailbox SET isMirrored = 1 WHERE id = ?",
-                    arguments: [record.id]
-                )
-                var mirrored = record
-                mirrored.isMirrored = true
-                return mirrored
-            }
+            try mailboxes.map { try Self.upsertMailbox($0, accountId: accountId, in: db) }
         }
+    }
+
+    /// One mailbox's upsert, shared by ``upsert(mailboxes:accountId:)`` and
+    /// ``RowEffect/upsertMailbox(_:)``.
+    static func upsertMailbox(_ write: MailboxWrite, accountId: Int64, in db: Database) throws -> MailboxRecord {
+        var mailbox = write
+        mailbox.accountId = accountId
+        // `upsertAndFetch` rather than `upsert`: the local id is assigned here and
+        // the caller has no other way to learn it (ADR-0033).
+        let record = try mailbox.upsertAndFetch(db, as: MailboxRecord.self)
+        guard mailbox.isSubscribed, !record.isMirrored else { return record }
+        try db.execute(
+            sql: "UPDATE mailbox SET isMirrored = 1 WHERE id = ?",
+            arguments: [record.id]
+        )
+        var mirrored = record
+        mirrored.isMirrored = true
+        return mirrored
     }
 
     /// One mailbox by its local id.
@@ -61,6 +65,23 @@ extension MailStore {
     public func observeMailbox(id: Int64) -> StoreObservation<MailboxRecord?> {
         observation { db in
             try MailboxRecord.fetchOne(db, sql: "SELECT * FROM mailbox WHERE id = ?", arguments: [id])
+        }
+    }
+
+    /// The mailboxes of one account whose last sync failed, live, by id. Reads the
+    /// `mailbox` table alone, so only a recorded failure or a success that clears one
+    /// wakes it (WS-25's session-expiry trigger).
+    public func observeMailboxSyncFailures(accountId: Int64) -> StoreObservation<[MailboxSyncFailure]> {
+        observation { db in
+            try MailboxSyncFailure.fetchAll(
+                db,
+                sql: """
+                    SELECT id, syncFailureCount, lastSyncError FROM mailbox
+                     WHERE accountId = ? AND lastSyncError IS NOT NULL
+                     ORDER BY id
+                    """,
+                arguments: [accountId]
+            )
         }
     }
 

@@ -4,70 +4,145 @@
 import Foundation
 import NCMailStore
 
-/// The four buckets a message list is read in.
+/// The web client's date buckets (`groupEnvelopesByDate`), so a mailbox reads the same in
+/// both clients: Last hour, Today, Yesterday, Last week, Last month, then this year's
+/// earlier months by name, then earlier years.
 ///
-/// Not a formatted date: people scan a mailbox by recency, and "Tuesday" is a fact about a
-/// calendar while "This week" is a fact about how far back they are looking.
-enum MessageDateGroup: Int, CaseIterable, Sendable {
+/// The year rule is the web's and it is deliberate parity, not an oversight: anything from a
+/// previous year goes in its year's bucket even when it is only days old, so on 2 January
+/// December's mail reads "2025" rather than "Last month" (ux-spec.md, WS-29).
+enum MessageDateGroup: Hashable, Sendable {
+    case lastHour
     case today
     case yesterday
-    case thisWeek
-    case earlier
+    case lastWeek
+    case lastMonth
+    /// A month of the current year, 1–12.
+    case month(Int)
+    case year(Int)
 
-    var title: String {
+    func title(calendar: Calendar = .autoupdatingCurrent) -> String {
         switch self {
+        case .lastHour: String(localized: "Last hour")
         case .today: String(localized: "Today")
         case .yesterday: String(localized: "Yesterday")
-        case .thisWeek: String(localized: "This week")
-        case .earlier: String(localized: "Earlier")
+        case .lastWeek: String(localized: "Last week")
+        case .lastMonth: String(localized: "Last month")
+        case .month(let month):
+            calendar.standaloneMonthSymbols.indices.contains(month - 1)
+                ? calendar.standaloneMonthSymbols[month - 1] : String(month)
+        // Not `formatted()`: a year is a name here, and "2,025" is not one.
+        case .year(let year): String(year)
+        }
+    }
+
+    /// Newest-first position. Months and years count down, so a larger key is older.
+    var rank: (Int, Int) {
+        switch self {
+        case .lastHour: (0, 0)
+        case .today: (1, 0)
+        case .yesterday: (2, 0)
+        case .lastWeek: (3, 0)
+        case .lastMonth: (4, 0)
+        case .month(let month): (5, -month)
+        case .year(let year): (6, -year)
+        }
+    }
+
+    /// Which bucket `date` falls in, by the web client's thresholds.
+    ///
+    /// A future date (server clock skew) is "Last hour": it is the newest thing there is,
+    /// and a bucket holding one message from the future is a bug report.
+    static func of(_ date: Date, now: Date, calendar: Calendar) -> MessageDateGroup {
+        if date >= now.addingTimeInterval(-3_600) { return .lastHour }
+        let startOfToday = calendar.startOfDay(for: now)
+        if date >= startOfToday { return .today }
+        if let startOfYesterday = calendar.date(byAdding: .day, value: -1, to: startOfToday),
+            date >= startOfYesterday
+        {
+            return .yesterday
+        }
+        if let weekAgo = calendar.date(byAdding: .day, value: -7, to: now), date >= weekAgo { return .lastWeek }
+        // Calendar clamps 31 March minus a month to 28 February; JavaScript's `setMonth`
+        // overflows to 3 March. The clamp is the answer a person would give.
+        if let monthAgo = calendar.date(byAdding: .month, value: -1, to: now), date >= monthAgo { return .lastMonth }
+        let year = calendar.component(.year, from: date)
+        if year == calendar.component(.year, from: now) {
+            return .month(calendar.component(.month, from: date))
+        }
+        return .year(year)
+    }
+}
+
+/// Which part of a list a section belongs to: the whole list, or one of the sections Priority
+/// inbox and "favorites on top" split a list into.
+enum MessageListBucket: String, Hashable, Sendable {
+    case all
+    case favorites
+    case followUp
+    case important
+    case other
+
+    /// Nil for ``all``, whose rows are headed by their date groups instead.
+    var title: String? {
+        switch self {
+        case .all: nil
+        case .favorites: String(localized: "Favorites")
+        case .followUp: String(localized: "Follow up")
+        case .important: String(localized: "Important")
+        case .other: String(localized: "Other")
         }
     }
 }
 
-/// One `Section` of the list: a date bucket and the rows in it.
+/// One `Section` of the list.
 struct MessageListSection: Identifiable, Equatable {
-    let group: MessageDateGroup
+    let bucket: MessageListBucket
+    /// Set for a date-grouped part of a list, nil for a bucket shown whole.
+    let dateGroup: MessageDateGroup?
     let rows: [MessageRow]
+    let title: String?
 
-    var id: Int { group.rawValue }
-    var title: String { group.title }
+    var id: String {
+        guard let dateGroup else { return bucket.rawValue }
+        return "\(bucket.rawValue).\(dateGroup)"
+    }
 
-    /// Buckets `rows`, keeping ``MessageDateGroup``'s order and dropping empty buckets.
+    init(
+        bucket: MessageListBucket, dateGroup: MessageDateGroup? = nil, rows: [MessageRow],
+        calendar: Calendar = .autoupdatingCurrent
+    ) {
+        self.bucket = bucket
+        self.dateGroup = dateGroup
+        self.rows = rows
+        self.title = dateGroup?.title(calendar: calendar) ?? bucket.title
+    }
+
+    /// Splits one bucket's rows into date groups, in the order `order` reads them, dropping
+    /// empty groups.
     ///
-    /// The rows arrive newest first, so bucketing and then emitting in case order gives the
-    /// same result as a single pass over consecutive runs — and stays correct if the sort
-    /// ever reverses, which a run-based pass would not.
+    /// Rows keep the order the query gave them inside each group; only the groups are put in
+    /// order, which stays correct whichever way the query sorted.
     ///
     /// - Parameters:
-    ///   - now: Injected rather than read here, so the tests do not depend on the wall clock.
-    ///   - calendar: Injected for the same reason, and because "this week" starts on a
-    ///     different day depending on the locale.
-    static func sections(
-        for rows: [MessageRow],
+    ///   - now: Injected so tests do not depend on the wall clock.
+    ///   - calendar: Injected for the same reason, and because "today" depends on the zone.
+    static func dateGrouped(
+        _ rows: [MessageRow],
+        bucket: MessageListBucket = .all,
+        order: MessageSortOrder = .newest,
         now: Date = .now,
         calendar: Calendar = .autoupdatingCurrent
     ) -> [MessageListSection] {
         var buckets: [MessageDateGroup: [MessageRow]] = [:]
         for row in rows {
             let sentAt = Date(timeIntervalSince1970: TimeInterval(row.sentAt))
-            buckets[group(of: sentAt, now: now, calendar: calendar), default: []].append(row)
+            buckets[MessageDateGroup.of(sentAt, now: now, calendar: calendar), default: []].append(row)
         }
-        return MessageDateGroup.allCases.compactMap { group in
+        let groups = buckets.keys.sorted { $0.rank < $1.rank }
+        return (order == .newest ? groups : groups.reversed()).compactMap { group in
             guard let rows = buckets[group], !rows.isEmpty else { return nil }
-            return MessageListSection(group: group, rows: rows)
+            return MessageListSection(bucket: bucket, dateGroup: group, rows: rows, calendar: calendar)
         }
-    }
-
-    /// Which bucket `date` falls in.
-    ///
-    /// A date in the future is "today". Clock skew between a server and this machine puts a
-    /// message a few seconds ahead, and a "Later" section that holds one message is a bug
-    /// report rather than a feature.
-    static func group(of date: Date, now: Date, calendar: Calendar) -> MessageDateGroup {
-        if date > now || calendar.isDate(date, inSameDayAs: now) { return .today }
-        guard let yesterday = calendar.date(byAdding: .day, value: -1, to: now) else { return .earlier }
-        if calendar.isDate(date, inSameDayAs: yesterday) { return .yesterday }
-        if calendar.isDate(date, equalTo: now, toGranularity: .weekOfYear) { return .thisWeek }
-        return .earlier
     }
 }

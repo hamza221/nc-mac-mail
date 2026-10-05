@@ -15,6 +15,9 @@ struct PrintableMessage: Equatable {
     enum Body: Equatable {
         case html(RenderedMessage, MailAssetSchemeHandler.Context)
         case plain(text: String, signature: String?)
+        /// The header alone, with a line saying why: a body not mirrored yet in a whole-thread
+        /// printout, or a PGP message, which prints its header and nothing else (ADR-0064).
+        case headerOnly(note: String)
 
         /// Only a body that is actually drawn prints. Waiting and failed have nothing to put
         /// on paper, and a blocked body is one the protections refused to draw — printing it
@@ -23,6 +26,8 @@ struct PrintableMessage: Equatable {
             switch presentation {
             case .html(let rendered, let context): self = .html(rendered, context)
             case .plain(let text, let signature): self = .plain(text: text, signature: signature)
+            // A PGP message prints its header and the notice, as the web client prints it.
+            case .encrypted: self = .headerOnly(note: MessagePGPNotice.text)
             case .waiting, .failed, .blocked: return nil
             }
         }
@@ -47,18 +52,31 @@ final class MessagePrintController {
     /// The store, client and server the scheme handler serves images from. Not observed: it
     /// changes only with `current`.
     @ObservationIgnored private var services: MessageViewServices?
+    /// Every message of the conversation the pane shows, collapsed ones included, read from
+    /// the mirror when `⌘P` asks — the web client's `⌘P` prints the whole thread
+    /// ([ADR-0085](../../docs/decisions/0085-thread-mode-expands-one-message-at-a-time.md)).
+    /// Nil prints `current` alone.
+    @ObservationIgnored private var thread: (@MainActor () async -> [PrintableMessage])?
     /// The view that registered `current`, so a pane that disappears after its replacement
     /// appeared cannot withdraw the replacement's message.
     @ObservationIgnored private var owner: ObjectIdentifier?
     /// The print in flight. Holding it is what keeps its web view alive until the sheet is
     /// dismissed; a second `⌘P` while it is up is ignored rather than stacked.
     private var job: MessagePrintJob?
+    /// Between `⌘P` and the job existing, while the thread's bodies are read and rewritten.
+    private var isPreparing = false
 
-    var canPrint: Bool { current != nil && job == nil }
+    var canPrint: Bool { current != nil && job == nil && !isPreparing }
 
-    func show(_ message: PrintableMessage?, services: MessageViewServices, from owner: AnyObject) {
+    func show(
+        _ message: PrintableMessage?,
+        services: MessageViewServices,
+        thread: (@MainActor () async -> [PrintableMessage])? = nil,
+        from owner: AnyObject
+    ) {
         current = message
         self.services = message == nil ? nil : services
+        self.thread = message == nil ? nil : thread
         self.owner = ObjectIdentifier(owner)
     }
 
@@ -66,21 +84,40 @@ final class MessagePrintController {
         guard self.owner == ObjectIdentifier(owner) else { return }
         current = nil
         services = nil
+        thread = nil
         self.owner = nil
     }
 
+    /// `⌘P`: the whole conversation when the pane registered one, else the message on screen.
     func printCurrentMessage() {
-        guard job == nil, let current, let services else { return }
-        let assets: MailAssetSchemeHandler.Context
-        switch current.body {
-        case .html(_, let context): assets = context
-        // A plain document references nothing, so the handler is given nothing to serve.
-        case .plain: assets = .none
+        guard canPrint, let current, let services else { return }
+        guard let thread else { return startJob([current], services: services) }
+        isPreparing = true
+        Task {
+            let messages = await thread()
+            isPreparing = false
+            startJob(messages.isEmpty ? [current] : messages, services: services)
+        }
+    }
+
+    /// The ⋯ menu's "Print message": one message, whichever is expanded.
+    func printOnly(_ message: PrintableMessage, services: MessageViewServices) {
+        guard job == nil, !isPreparing else { return }
+        startJob([message], services: services)
+    }
+
+    private func startJob(_ messages: [PrintableMessage], services: MessageViewServices) {
+        guard job == nil, let first = messages.first else { return }
+        let contexts: [MailAssetSchemeHandler.Context] = messages.compactMap {
+            // A plain or header-only document references nothing, so it adds nothing to serve.
+            if case .html(_, let context) = $0.body { return context }
+            return nil
         }
         let job = MessagePrintJob(
-            document: MessagePrintDocument.html(for: current),
-            title: current.header.subject ?? String(localized: "No subject"),
-            assets: assets,
+            document: messages.count == 1
+                ? MessagePrintDocument.html(for: first) : MessagePrintDocument.html(forThread: messages),
+            title: first.header.subject ?? String(localized: "No subject"),
+            assets: contexts,
             services: services
         )
         self.job = job
@@ -110,7 +147,7 @@ final class MessagePrintJob: NSObject, WKNavigationDelegate, WKUIDelegate {
     init(
         document: String,
         title: String,
-        assets: MailAssetSchemeHandler.Context,
+        assets: [MailAssetSchemeHandler.Context],
         services: MessageViewServices
     ) {
         let handler = MailAssetSchemeHandler(
@@ -119,7 +156,7 @@ final class MessagePrintJob: NSObject, WKNavigationDelegate, WKUIDelegate {
             server: services.server
         )
         // Told what it may serve before the document that asks for it exists, as on screen.
-        handler.update(context: assets)
+        handler.update(contexts: assets)
         // A page-sized frame: a web view with a zero frame lays out to nothing, and the print
         // operation paginates whatever layout it is handed.
         let webView = WKWebView(
@@ -266,7 +303,48 @@ enum MessagePrintDocument {
                 baseFontSize: MessageDocument.preferredBaseFontSize,
                 allowsOwnColorScheme: false
             )
+        case .headerOnly(let text):
+            return MessageDocument.wrap(
+                body: header + note(text),
+                baseFontSize: MessageDocument.preferredBaseFontSize,
+                allowsOwnColorScheme: false
+            )
         }
+    }
+
+    /// Every message of a conversation in one document, oldest first: each one's escaped
+    /// header, then its body as the rewriter drew it, a rule between messages.
+    ///
+    /// The HTML bodies are each the content of their own rewritten document — rewritten with
+    /// that message's own policy, so a message whose images are blocked contributes no
+    /// remote-image URL at all — placed in one light shell. Their `<style>` elements still
+    /// apply document-wide, which is the cost of one web view rather than one per message
+    /// (ADR-0085).
+    static func html(forThread messages: [PrintableMessage]) -> String {
+        let spacing = NCSpacingScale.macOS
+        let separator = "<div style=\"margin: \(spacing.loose * 2)px 0; border-top: 2px solid;\"></div>"
+        let sections = messages.map { message in
+            let header = headerBlock(message.header)
+            switch message.body {
+            case .html(let rendered, _):
+                return header + MessageDocument.bodyContent(of: rendered.document)
+            case .plain(let text, let signature):
+                var section = header + preformatted(text)
+                if let signature, !signature.isEmpty { section += "<hr>" + preformatted(signature) }
+                return section
+            case .headerOnly(let text):
+                return header + note(text)
+            }
+        }
+        return MessageDocument.wrap(
+            body: sections.joined(separator: separator),
+            baseFontSize: MessageDocument.preferredBaseFontSize,
+            allowsOwnColorScheme: false
+        )
+    }
+
+    private static func note(_ text: String) -> String {
+        "<p style=\"font-style: italic;\">\(escape(text))</p>"
     }
 
     /// Subject, sender, recipients and date — what the native header shows, which the web

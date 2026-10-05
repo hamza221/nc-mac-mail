@@ -1,0 +1,49 @@
+{
+  "ocs": {
+    "meta": {
+      "status": "ok",
+      "statuscode": 200,
+      "message": "OK"
+    },
+    "data": {
+      "id": "11",
+      "share_type": 3,
+      "uid_owner": "admin",
+      "displayname_owner": "admin",
+      "permissions": 17,
+      "can_edit": true,
+      "can_delete": true,
+      "stime": 1791062265,
+      "parent": null,
+      "expiration": null,
+      "token":"REDACTED",
+      "uid_file_owner": "admin",
+      "note": "",
+      "label": "Name redacted",
+      "displayname_file_owner": "admin",
+      "path": "/Receipt-2149-9589.pdf",
+      "item_type": "file",
+      "item_permissions": 27,
+      "is-mount-root": false,
+      "mount-type": "",
+      "mimetype": "application/pdf",
+      "has_preview": false,
+      "storage_id": "home::admin",
+      "storage": 17,
+      "item_source": 222,
+      "file_source": 222,
+      "file_parent": 186,
+      "file_target": "/Receipt-2149-9589.pdf",
+      "item_size": 39767,
+      "item_mtime": 1790676484,
+      "share_with": null,
+      "share_with_displayname": "(Shared link)",
+      "password": null,
+      "send_password_by_talk": false,
+      "url": "http://cloud.example.com/index.php/s/LPjjYkQqFX4XRgr",
+      "mail_send": 1,
+      "hide_download": 0,
+      "attributes": null
+    }
+  }
+}

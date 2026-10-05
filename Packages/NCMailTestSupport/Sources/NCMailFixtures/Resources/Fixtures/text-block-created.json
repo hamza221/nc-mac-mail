@@ -1,0 +1,10 @@
+{
+  "status": "success",
+  "data": {
+    "id": 8,
+    "owner": "admin",
+    "title": "Fixture block",
+    "content": "Recorded by the fixture recorder.",
+    "preview": "Recorded by the fixture recorder."
+  }
+}

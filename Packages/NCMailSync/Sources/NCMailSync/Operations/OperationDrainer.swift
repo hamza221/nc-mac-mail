@@ -19,10 +19,11 @@ public import NCMailStore
 /// Like every other type in this package it returns `Void` and tells nobody anything. What
 /// changed, changed in the database.
 public actor OperationDrainer: OperationDraining {
-    private let store: MailStore
-    private let client: MailClient
-    private let accountId: Int64
-    private let configuration: MutationQueueConfiguration
+    // Internal rather than private: `OperationDrainer+V2.swift` sends the v2 kinds.
+    let store: MailStore
+    let client: MailClient
+    let accountId: Int64
+    let configuration: MutationQueueConfiguration
 
     /// One pass at a time. A second `wake` during a pass sets ``wantsAnotherPass`` rather
     /// than starting a second drain, which is how "one in flight per account" survives an
@@ -200,8 +201,10 @@ public actor OperationDrainer: OperationDraining {
     /// One request and what it left behind.
     private func attempt(_ item: CollapsedOperation) async -> Outcome {
         do {
-            try await send(item)
-            try await store.finish(ids: item.absorbedIds, applying: [])
+            // A create answers with the server's id, which goes over its placeholder in the
+            // same transaction that clears the row (ADR-0081).
+            let effects = try await send(item)
+            try await store.finish(ids: item.absorbedIds, applying: effects)
             OperationLog.queue.info(
                 """
                 operation \(item.id, privacy: .public) \(item.kind.rawValue, privacy: .public) sent, \
@@ -217,6 +220,10 @@ public actor OperationDrainer: OperationDraining {
                 return Outcome(resolved: false, attempts: item.attempts, carryOn: false)
             }
             return await handle(error, for: item)
+        } catch is DAVConflict {
+            await park(item)
+            return Outcome(
+                resolved: false, attempts: max(item.attempts, configuration.visibleAfterAttempts), carryOn: true)
         } catch is CancellationError {
             await releaseClaim(item)
             return Outcome(resolved: false, attempts: item.attempts, carryOn: false)
@@ -340,7 +347,22 @@ public actor OperationDrainer: OperationDraining {
 
     // MARK: - Requests
 
-    private func send(_ item: CollapsedOperation) async throws {
+    /// - Returns: the local effects a success writes, which only a create has.
+    private func send(_ item: CollapsedOperation) async throws -> [LocalEffect] {
+        if item.kind.isDAV {
+            try await sendDAV(item)
+            return []
+        }
+        switch item.kind {
+        case .setFlags, .move, .delete, .moveThread, .deleteThread, .trustSender:
+            try await sendV1(item)
+            return []
+        default:
+            return try await sendV2(item)
+        }
+    }
+
+    private func sendV1(_ item: CollapsedOperation) async throws {
         if item.kind == .trustSender {
             try await sendTrust(item)
             return
@@ -372,8 +394,8 @@ public actor OperationDrainer: OperationDraining {
             )
         case .deleteThread:
             _ = try await client.delete(Endpoint.deleteThread(messageId: Int(remoteId)))
-        case .trustSender:
-            // Sent by `sendTrust` above; it carries no message id to reach this switch with.
+        default:
+            // `trustSender` is sent by `sendTrust` above; v2 kinds never reach here.
             break
         }
     }
@@ -437,6 +459,7 @@ public actor OperationDrainer: OperationDraining {
         else { return }
 
         await resolve(item, applying: reversal(of: item))
+        await revertDAV(item)
         OperationLog.queue.info(
             "operation \(item.id, privacy: .public) discarded, \(item.absorbedIds.count, privacy: .public) row(s)"
         )
@@ -453,6 +476,7 @@ public actor OperationDrainer: OperationDraining {
         let rows = (try? await store.pendingOperations(accountId: accountId)) ?? []
         for item in OperationCollapse.collapse(rows).reversed() {
             await resolve(item, applying: reversal(of: item))
+            await revertDAV(item)
         }
         await summary()
     }
@@ -483,6 +507,11 @@ public actor OperationDrainer: OperationDraining {
             for (value, messageIds) in byValue {
                 effects.append(LocalEffect(messageIds: messageIds.sorted(), isSenderTrusted: value))
             }
+        }
+        // A v2 kind's settings rows, written back from `before.rows` (ADR-0081).
+        let rows = rowReversal(of: item)
+        if !rows.isEmpty {
+            effects.append(LocalEffect(messageIds: [], rows: rows))
         }
         return effects
     }

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 public import Foundation
+internal import NCMailCore
 internal import OSLog
 
 /// The Nextcloud Mail HTTP client.
@@ -69,6 +70,13 @@ public struct MailClient: Sendable {
         try await perform(endpoint, body: nil as Data?)
     }
 
+    public func patch<T: Decodable & Sendable>(
+        _ endpoint: Endpoint<T>,
+        body: (some Encodable & Sendable)?
+    ) async throws -> T {
+        try await perform(endpoint, body: body)
+    }
+
     public func delete<T: Decodable & Sendable>(_ endpoint: Endpoint<T>) async throws -> T {
         try await perform(endpoint, body: nil as Data?)
     }
@@ -77,6 +85,18 @@ public struct MailClient: Sendable {
     /// avatar, or the sanitised HTML fragment.
     public func bytes(_ endpoint: Endpoint<Data>) async throws -> (Data, HTTPURLResponse) {
         try await sendWithRetries(endpoint, bodyData: nil)
+    }
+
+    /// The two upload routes (`POST /api/attachments`, `POST
+    /// /api/smime/certificates`) take `multipart/form-data` instead of JSON.
+    /// Both are mutations, so the endpoint is never retried whatever its flag
+    /// says — the drainer owns replaying an upload.
+    public func upload<T: Decodable & Sendable>(
+        _ endpoint: Endpoint<T>,
+        multipart form: MultipartForm
+    ) async throws -> T {
+        let (data, _) = try await sendWithRetries(endpoint, bodyData: form.encoded(), contentType: form.contentType)
+        return try decode(data, for: endpoint)
     }
 
     // MARK: - Machinery
@@ -94,8 +114,18 @@ public struct MailClient: Sendable {
             }
         }
         let (data, _) = try await sendWithRetries(endpoint, bodyData: bodyData)
-        // A 204 or an empty 200 is a success with nothing to read.
-        if data.isEmpty, let empty = EmptyResponse() as? T { return empty }
+        return try decode(data, for: endpoint)
+    }
+
+    private func decode<T: Decodable & Sendable>(_ data: Data, for endpoint: Endpoint<T>) throws -> T {
+        // A 204 or an empty 200 is a success with nothing to read. Types that
+        // can say "nothing there" opt in through EmptyBodyRepresentable.
+        if data.isEmpty, let emptyType = T.self as? any EmptyBodyRepresentable.Type,
+            let empty = emptyType.init() as? T
+        {
+            // emptyType is T.self, so its init() builds a T.
+            return empty
+        }
         do {
             return try JSONDecoder().decode(T.self, from: data)
         } catch {
@@ -108,9 +138,10 @@ public struct MailClient: Sendable {
 
     private func sendWithRetries<T>(
         _ endpoint: Endpoint<T>,
-        bodyData: Data?
+        bodyData: Data?,
+        contentType: String = "application/json"
     ) async throws -> (Data, HTTPURLResponse) {
-        let request = try buildRequest(endpoint, bodyData: bodyData)
+        let request = try buildRequest(endpoint, bodyData: bodyData, contentType: contentType)
         let attempts = endpoint.isRetryable ? retryPolicy.maximumAttempts : 1
         var lastError: any Error = MailError.transport(URLError(.unknown))
 
@@ -140,7 +171,11 @@ public struct MailClient: Sendable {
         throw lastError
     }
 
-    private func buildRequest<T>(_ endpoint: Endpoint<T>, bodyData: Data?) throws -> URLRequest {
+    private func buildRequest<T>(
+        _ endpoint: Endpoint<T>,
+        bodyData: Data?,
+        contentType: String = "application/json"
+    ) throws -> URLRequest {
         var request = URLRequest(url: try endpoint.url(relativeTo: server))
         request.httpMethod = endpoint.method.rawValue
         request.setValue(credentials.basicAuthorizationHeader, forHTTPHeaderField: "Authorization")
@@ -152,7 +187,7 @@ public struct MailClient: Sendable {
         request.httpShouldHandleCookies = false
         if let bodyData {
             request.httpBody = bodyData
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.setValue(contentType, forHTTPHeaderField: "Content-Type")
         }
         return request
     }
@@ -187,12 +222,15 @@ public struct MailClient: Sendable {
         case 200, 201, 204:
             return nil
         case 202:
-            // IncompleteSyncException. The server took the work and is not done.
-            return .syncInProgress
+            // Two controllers answer 202. Sync's IncompleteSyncException is the
+            // fail envelope (or nothing): the server took the work and is not
+            // done. Drafts and outbox answer 202 to every update, delete, move
+            // and send with the *success* envelope — those calls worked.
+            return failure?.status == "success" ? nil : .syncInProgress
         case 400:
-            return failure?.isMailboxNotCached == true
-                ? .mailboxNotCached
-                : .server(status: 400, message: failure?.message)
+            if failure?.isMailboxNotCached == true { return .mailboxNotCached }
+            if let connectFailure = failure?.connectFailure { return connectFailure }
+            return .server(status: 400, message: failure?.message)
         case 401:
             return .unauthorized
         case 403:

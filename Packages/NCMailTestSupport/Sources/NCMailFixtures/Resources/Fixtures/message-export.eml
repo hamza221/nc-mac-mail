@@ -1,0 +1,22 @@
+Delivered-To: user@example.com
+X-Spam-Status: No
+DKIM-Signature: v=1; a=ed25519-sha256; s=202601e; d=example.com; c=relaxed/relaxed; r=y;
+	h=Subject:To:From:Message-ID:Date; t=1791062094; bh=ACcg8L8dsrpbsjXlMMo2Q8o
+	p+PvkinUZZ6UfsC+SYrA=; b=U6/KHTS1N1sT2FGVgMrKPagDIM+nsw6GCoguitSklOwoCi6sbJ
+	kHcSNTFd3IUE+5ZjZwnmeomyPIjmoHQHDJAg==;
+DKIM-Signature: v=1; a=rsa-sha256; s=202601r; d=example.com; c=relaxed/relaxed; r=y;
+	h=Subject:To:From:Message-ID:Date; t=1791062094; bh=ACcg8L8dsrpbsjXlMMo2Q8o
+	p+PvkinUZZ6UfsC+SYrA=; b=d5xy/TRACKINGID+PgjnzRLf
+	Jo3tNjKRytHVn+TRACKINGID
+	2Bgn/QeC/yu7573SAPo1MA6lAv/YoLHtI16jxKy72XliSdkv+TRACKINGID
+	dgEiT9wJfWk+TRACKINGID//um7gJ/e+4
+	6ymT/TRACKINGID==;
+Date: Sat, 03 Oct 2026 21:14:53 +0000
+Message-ID: <user@example.com>
+From: admin <user@example.com>
+To: Self <user@example.com>
+Subject: Fixture OCS send
+Content-Type: text/plain; charset=utf-8
+MIME-Version: 1.0
+
+Recorded by the fixture recorder.

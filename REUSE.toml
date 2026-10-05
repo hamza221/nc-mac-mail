@@ -27,6 +27,11 @@ SPDX-License-Identifier = "CC0-1.0"
 path = [
     "NextcloudMail.xcodeproj/**",
     "NextcloudMail/NextcloudMail.entitlements",
+    "NextcloudMail/System/Info.plist",
+    "NextcloudMailWidgets/*.entitlements",
+    "NextcloudMailWidgets/Info.plist",
+    "NextcloudMailShare/*.entitlements",
+    "NextcloudMailShare/Info.plist",
 ]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "Hamza Mahjoubi"

@@ -1,6 +1,6 @@
 {
-  "uid": 48,
-  "messageId": "<CAOFMF9HH7hRsepLY8BA2Yb+ZZY8gYQcnz3gmkdxov=user@example.com>",
+  "uid": 43,
+  "messageId": "<user@example.com>",
   "from": [
     {
       "label": "Name redacted",
@@ -22,9 +22,9 @@
   "cc": [],
   "bcc": [],
   "subject": "Subject redacted",
-  "dateInt": 1782480125,
+  "dateInt": 1791062201,
   "flags": {
-    "seen": true,
+    "seen": false,
     "flagged": false,
     "answered": false,
     "deleted": false,
@@ -32,7 +32,7 @@
     "forwarded": false,
     "hasAttachments": true,
     "$mdnsent": false,
-    "important": true
+    "important": false
   },
   "hasHtmlBody": true,
   "dispositionNotificationTo": "",
@@ -41,8 +41,8 @@
     "checks": [
       {
         "type": "Contacts",
-        "isPhishing": false,
-        "message": "",
+        "isPhishing": true,
+        "message": "Sender email: user@example.com is not in the address book, but the sender name: admin is in the address book with the following email: user@example.com",
         "additionalData": []
       },
       {
@@ -64,7 +64,7 @@
         "additionalData": []
       }
     ],
-    "warning": false
+    "warning": true
   },
   "unsubscribeUrl": null,
   "isOneClickUnsubscribe": false,
@@ -76,22 +76,22 @@
   "attachments": [
     {
       "id": "2",
-      "messageId": 48,
-      "fileName": "attachment.docx",
-      "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      "size": 27607,
-      "cid": "f_mquymsb20",
+      "messageId": 43,
+      "fileName": "attachment.txt",
+      "mime": "text/plain",
+      "size": 33,
+      "cid": null,
       "disposition": "attachment",
-      "downloadUrl": "http://cloud.example.com/index.php/apps/mail/api/messages/66/attachment/2",
-      "mimeUrl": "/index.php/apps/theming/img/core/filetypes/x-office-document.svg?v=dcc46f9a",
+      "downloadUrl": "http://cloud.example.com/index.php/apps/mail/api/messages/65/attachment/2",
+      "mimeUrl": "/index.php/apps/theming/img/core/filetypes/text.svg?v=30fdf852",
       "isImage": false,
       "isCalendarEvent": false
     }
   ],
   "inlineAttachments": [],
   "accountId": 1,
-  "mailboxId": 5,
-  "databaseId": 66,
+  "mailboxId": 3,
+  "databaseId": 65,
   "isSenderTrusted": false,
   "smime": {
     "isSigned": false,

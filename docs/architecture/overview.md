@@ -37,6 +37,12 @@ in the Xcode project. A sixth package, `NCMailTestSupport`, holds the fake trans
 recorded fixtures; it ships nothing and the app never depends on it. The split exists so that everything except the views is testable
 without a GUI, and so that workstreams own directories rather than fighting over files.
 
+The app embeds two extensions (WS-42, [ADR-0100](../decisions/0100-app-group-and-extension-targets.md)):
+`NextcloudMailWidgets` (WidgetKit) and `NextcloudMailShare` (Share). Neither links a package
+or opens the mirror; they exchange files with the app through the app group — the widget
+snapshot ([ADR-0071](../decisions/0071-widgets-read-snapshot.md)) and the Share inbox — using
+the few types in `NextcloudMailShared/`, which all three targets compile.
+
 ```
                     ┌───────────────────────┐
                     │  NextcloudMail (app)  │  SwiftUI, @Observable stores,
@@ -167,8 +173,13 @@ See [concurrency.md](concurrency.md) for the rules. The short version:
   `NextcloudUI`. Views and stores are main-actor by default and say nothing about it.
 - `NCMailStore` is not main-actor. Writes go through a GRDB `DatabaseQueue`; reads for the
   UI arrive as `ValueObservation` on the main actor.
-- `NCMailSync` is a set of actors. `MirrorCoordinator`, `SyncScheduler` and
-  `OperationDrainer` each own their state and talk to each other with messages, not locks.
+- `NCMailSync` is a set of actors that each own their state and talk to each other with
+  messages, not locks. `AccountEngine` (app target) is the only place one is started, at two
+  levels: per Nextcloud login `CalendarListSync`, `ContactsSync`, `ServerResultFetcher` and
+  `ServerStateMirror`; then per mail account row `MirrorCoordinator`, `SyncScheduler` (with
+  its `OperationDrainer`), `AvatarFetcher` and `OutboxSender`. Sign-out stops them in reverse
+  ([ADR-0084](../decisions/0084-the-shell-starts-logins-before-accounts.md));
+  `SettingsCommands` is built per use, never running.
 - `NCMailNet` is stateless and `Sendable`; the client is a value type.
 
 ## Choices that shaped this, with their records
@@ -192,3 +203,4 @@ See [concurrency.md](concurrency.md) for the rules. The short version:
 | Bounded sync window plus deep reconcile | [ADR-0015](../decisions/0015-bounded-sync-window.md) |
 | Local ids, with the server's kept as `remoteId` | [ADR-0033](../decisions/0033-accounts-have-a-local-identity.md) |
 | The store's own `AsyncSequence`, and no GRDB in its public API | [ADR-0034](../decisions/0034-the-store-returns-its-own-sequence.md) |
+| A login's engines start before its accounts', stop after them | [ADR-0084](../decisions/0084-the-shell-starts-logins-before-accounts.md) |

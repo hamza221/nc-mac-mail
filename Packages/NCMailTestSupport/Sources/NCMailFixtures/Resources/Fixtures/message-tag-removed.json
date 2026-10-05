@@ -1,0 +1,8 @@
+{
+  "id": 13,
+  "userId": "admin",
+  "displayName": "Fixture tag renamed",
+  "imapLabel": "$fixture_tag",
+  "color": "#aa0000",
+  "isDefaultTag": false
+}

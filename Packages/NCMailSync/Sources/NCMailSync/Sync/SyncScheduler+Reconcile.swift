@@ -31,6 +31,12 @@ extension SyncScheduler {
         }
         let intents = await pendingIntentsByMessage()
 
+        // Server state is refreshed at every deep reconcile, and here — after the drain, so a
+        // queued settings change has reached the server before its old value is read back.
+        if let serverState {
+            await serverState.refresh(trigger: .deepReconcile)
+        }
+
         guard let all = try? await store.mailboxes(accountId: accountId) else { return }
         var targets = all.filter { $0.isMirrored && $0.isSelectable }
         if let mailboxIds {

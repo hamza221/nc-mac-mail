@@ -1,0 +1,29 @@
+BEGIN:VCARD
+VERSION:3.0
+PRODID:-//NCMailTests//EN
+UID:ws17-alice-4f2a
+N:Vance;Alice;Quinn;Dr.;PhD
+FN:Dr. Alice Q. Vance
+NICKNAME:Al
+ORG:Initech GmbH;Research;Protocols
+TITLE:Principal Engineer
+EMAIL;TYPE=WORK,PREF:alice.vance@initech.example
+EMAIL;TYPE=HOME:alice@vance.example
+EMAIL;TYPE=INTERNET:a.vance@proto.example
+TEL;TYPE=CELL:+49 170 5551234
+TEL;TYPE=WORK,VOICE:+49 30 5559876
+ADR;TYPE=WORK:;;Ritterstrasse 2-3;Berlin;;10969;Germany
+ADR;TYPE=HOME:;;Hauptstr. 5;Potsdam;;14467;Germany
+URL;TYPE=WORK:https://initech.example/~avance
+IMPP;X-SERVICE-TYPE=XMPP:xmpp:alice@jabber.example
+X-SOCIALPROFILE;TYPE=mastodon:https://mast.example/@avance
+X-MANAGER:Bob Tester
+X-PHONETIC-FIRST-NAME:Ah-lees
+BDAY:1984-03-14
+ANNIVERSARY:2010-06-21
+CATEGORIES:Work,VIP
+NOTE:Prefers encrypted mail. Second line\nwith an escaped newline and a comma\, kept.
+RELATED;TYPE=spouse:urn:uuid:ws17-bob-9c1d
+PHOTO;ENCODING=b;TYPE=PNG:iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8//8/AwAFAgHiT9FmAAAAAElFTkSuQmCC
+REV:2026-10-03T12:00:00Z
+END:VCARD

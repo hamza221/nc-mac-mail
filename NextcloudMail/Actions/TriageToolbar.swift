@@ -22,6 +22,7 @@ struct TriageToolbar: ToolbarContent {
             MoveToMenu(context: context)
             button(.star)
             button(.unread)
+            TriageMoreMenu(context: context)
             button(.refresh)
         }
     }
@@ -72,7 +73,7 @@ struct TriageButton: View {
 /// `TextField` is not something an `NSMenu` can hold, and SwiftUI renders a macOS `Menu` into
 /// one, so "a menu over the mailbox tree with a filter field" cannot be both halves at once
 /// ([ADR-0052](../../docs/decisions/0052-move-is-a-popover-because-a-menu-cannot-hold-a-field.md)).
-/// The popover keeps the filter, keeps the tree's indentation, and keeps the keyboard.
+/// The popover holds §4.7's picker — search, breadcrumbs, the keyboard — in full.
 struct MoveToMenu: View {
     let context: TriageContext
 
@@ -91,10 +92,7 @@ struct MoveToMenu: View {
         .triageReason(availability.reason)
         .disabled(!context.isEnabled(.move))
         .popover(isPresented: $isPresented, arrowEdge: .bottom) {
-            MoveDestinationList(context: context) { mailboxId in
-                isPresented = false
-                Task { await context.move(to: mailboxId) }
-            }
+            MailboxPicker(context: context, selection: context.selection) { isPresented = false }
         }
     }
 }

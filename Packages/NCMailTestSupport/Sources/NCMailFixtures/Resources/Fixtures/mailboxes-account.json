@@ -4,40 +4,6 @@
   "mailboxes": [
     {
       "databaseId": 1,
-      "id": "QVNCQQ==",
-      "name": "ASBA",
-      "accountId": 1,
-      "displayName": "ASBA",
-      "attributes": [],
-      "delimiter": "/",
-      "specialUse": [],
-      "specialRole": 0,
-      "mailboxes": [],
-      "syncInBackground": false,
-      "unread": 0,
-      "myAcls": "rliteswkxpa",
-      "shared": false,
-      "cacheBuster": "TRACKINGID"
-    },
-    {
-      "databaseId": 2,
-      "id": "QVNCQS9aRUI=",
-      "name": "ASBA/ZEB",
-      "accountId": 1,
-      "displayName": "ASBA/ZEB",
-      "attributes": [],
-      "delimiter": "/",
-      "specialUse": [],
-      "specialRole": 0,
-      "mailboxes": [],
-      "syncInBackground": false,
-      "unread": 0,
-      "myAcls": "rliteswkxpa",
-      "shared": false,
-      "cacheBuster": "TRACKINGID"
-    },
-    {
-      "databaseId": 3,
       "id": "RGVsZXRlZCBJdGVtcw==",
       "name": "Deleted Items",
       "accountId": 1,
@@ -59,7 +25,7 @@
       "cacheBuster": "TRACKINGID"
     },
     {
-      "databaseId": 4,
+      "databaseId": 2,
       "id": "RHJhZnRz",
       "name": "Drafts",
       "accountId": 1,
@@ -81,7 +47,7 @@
       "cacheBuster": "TRACKINGID"
     },
     {
-      "databaseId": 5,
+      "databaseId": 3,
       "id": "SU5CT1g=",
       "name": "INBOX",
       "accountId": 1,
@@ -96,13 +62,13 @@
       "specialRole": "inbox",
       "mailboxes": [],
       "syncInBackground": false,
-      "unread": 23,
+      "unread": 26,
       "myAcls": "rliteswkxpa",
       "shared": false,
       "cacheBuster": "TRACKINGID"
     },
     {
-      "databaseId": 6,
+      "databaseId": 4,
       "id": "SnVuayBNYWls",
       "name": "Junk Mail",
       "accountId": 1,
@@ -124,7 +90,7 @@
       "cacheBuster": "TRACKINGID"
     },
     {
-      "databaseId": 7,
+      "databaseId": 5,
       "id": "U2VudCBJdGVtcw==",
       "name": "Sent Items",
       "accountId": 1,
@@ -138,6 +104,40 @@
         "sent"
       ],
       "specialRole": "sent",
+      "mailboxes": [],
+      "syncInBackground": false,
+      "unread": 0,
+      "myAcls": "rliteswkxpa",
+      "shared": false,
+      "cacheBuster": "TRACKINGID"
+    },
+    {
+      "databaseId": 15,
+      "id": "Rml4dHVyZSBIaWRkZW4=",
+      "name": "Fixture Hidden",
+      "accountId": 1,
+      "displayName": "Fixture Hidden",
+      "attributes": [],
+      "delimiter": "/",
+      "specialUse": [],
+      "specialRole": 0,
+      "mailboxes": [],
+      "syncInBackground": false,
+      "unread": 0,
+      "myAcls": "rliteswkxpa",
+      "shared": false,
+      "cacheBuster": "TRACKINGID"
+    },
+    {
+      "databaseId": 16,
+      "id": "TRACKINGID",
+      "name": "Fixture Hidden/Nested",
+      "accountId": 1,
+      "displayName": "Fixture Hidden/Nested",
+      "attributes": [],
+      "delimiter": "/",
+      "specialUse": [],
+      "specialRole": 0,
       "mailboxes": [],
       "syncInBackground": false,
       "unread": 0,

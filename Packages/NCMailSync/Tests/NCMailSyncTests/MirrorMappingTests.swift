@@ -36,13 +36,15 @@ struct MirrorMappingTests {
 
         #expect(writes.count == accounts.count)
         let first = try #require(writes.first)
-        #expect(first.remoteId == 1)
+        let raw = try #require(try rawObjects("accounts.json").first)
+        #expect(first.remoteId == (raw["id"] as? NSNumber)?.int64Value)
         #expect(first.serverURL == Self.identity.serverURL)
         #expect(first.loginName == "user")
-        #expect(first.emailAddress == "user@example.com")
+        #expect(first.emailAddress == raw["emailAddress"] as? String)
         // The live test account has no archive folder. Nothing may assume this is set.
+        #expect(raw["archiveMailboxId"] is NSNull)
         #expect(first.archiveMailboxId == nil)
-        #expect(first.sortOrder == 1)
+        #expect(first.sortOrder == (raw["order"] as? NSNumber)?.intValue)
     }
 
     @Test("rawJSON keeps the fields no model names, so nothing needs a refetch to read them later")
@@ -62,27 +64,49 @@ struct MirrorMappingTests {
     @Test("subscription and selectability come off the raw IMAP attributes, case-folded")
     func mailboxSubscription() throws {
         let list = try decode(MailboxList.self, "mailboxes-account.json")
+        let raw = try rawObjects("mailboxes-account.json", key: "mailboxes")
         let writes = try list.entries.map { try MirrorMapping.mailboxWrite($0, accountId: 42) }
 
-        #expect(writes.count == 7)
+        #expect(writes.count == raw.count)
+        // Read off the raw payload, case-folded, independently of the mapping under test.
+        let expected = raw.filter { entry in
+            (entry["attributes"] as? [String] ?? []).contains { $0.lowercased() == "\\subscribed" }
+        }
+        .compactMap { ($0["databaseId"] as? NSNumber)?.int64Value }
+        .sorted()
         let subscribed = writes.filter(\.isSubscribed).map(\.remoteId).sorted()
-        // ADR-0007's test case, and not a bug in the recording: two folders the user hid.
-        #expect(subscribed == [3, 4, 5, 6, 7])
+        #expect(subscribed == expected)
+        // ADR-0007's test case, and not a bug in the recording: folders the user hid. The
+        // live account is seeded with them so the recording carries both kinds.
+        #expect(subscribed.count < writes.count, "the recording must hold an unsubscribed folder")
         #expect(writes.allSatisfy { $0.isSelectable })
 
-        let inbox = try #require(writes.first { $0.remoteId == 5 })
+        let inboxRaw = try #require(raw.first { $0["specialRole"] as? String == "inbox" })
+        let inboxId = try #require((inboxRaw["databaseId"] as? NSNumber)?.int64Value)
+        let inbox = try #require(writes.first { $0.remoteId == inboxId })
         #expect(inbox.specialRole == "inbox")
         // The local account id it was mapped for, never the one in the payload (ADR-0033).
         #expect(inbox.accountId == 42)
-        #expect(inbox.unreadCount == 23)
+        #expect(inbox.unreadCount == (inboxRaw["unread"] as? NSNumber)?.intValue)
         #expect(inbox.attributesJSON.contains("subscribed"))
     }
 
     @Test("a specialRole the server sends as the integer 0 becomes null, not \"0\"")
     func mailboxSpecialRoleFallback() throws {
         let list = try decode(MailboxList.self, "mailboxes-account.json")
+        let raw = try rawObjects("mailboxes-account.json", key: "mailboxes")
         let writes = try list.entries.map { try MirrorMapping.mailboxWrite($0, accountId: 1) }
-        let unsubscribed = try #require(writes.first { $0.remoteId == 1 })
+        // A plain folder the user hid: the server writes `0` for its role, and lists no
+        // `\subscribed` attribute.
+        let plain = try #require(
+            raw.first { entry in
+                (entry["specialRole"] as? NSNumber)?.intValue == 0 && !(entry["specialRole"] is String)
+                    && (entry["attributes"] as? [String] ?? []).allSatisfy { $0.lowercased() != "\\subscribed" }
+            },
+            "the recording must hold an unsubscribed folder with no special role"
+        )
+        let plainId = try #require((plain["databaseId"] as? NSNumber)?.int64Value)
+        let unsubscribed = try #require(writes.first { $0.remoteId == plainId })
         #expect(unsubscribed.specialRole == nil)
         #expect(unsubscribed.isSubscribed == false)
     }
@@ -104,22 +128,30 @@ struct MirrorMappingTests {
     @Test("an envelope maps its flags, its sender and its addresses, and takes sentAt from dateInt")
     func envelopeMapping() throws {
         let page = try decode([RawBacked<Envelope>].self, "messages-inbox-page1.json")
+        let raw = try rawObjects("messages-inbox-page1.json")
         let writes = try page.map {
             try MirrorMapping.envelopeWrite($0, accountId: 1, mailboxId: 77, syncedAt: 1_700_000_000)
         }
 
-        #expect(writes.count == 95)
+        #expect(writes.count == raw.count)
         let newest = try #require(writes.first)
-        #expect(newest.remoteId == 166)
+        let newestRaw = try #require(raw.first)
+        #expect(newest.remoteId == (newestRaw["databaseId"] as? NSNumber)?.int64Value)
         // The mailbox the caller was enumerating, not the id in the payload (ADR-0033).
         #expect(newest.mailboxId == 77)
         #expect(newest.accountId == 1)
-        #expect(newest.sentAt == 1_789_920_932)
+        #expect(newest.sentAt == (newestRaw["dateInt"] as? NSNumber)?.int64Value)
         #expect(newest.syncedAt == 1_700_000_000)
-        #expect(newest.isSeen == false)
-        #expect(newest.isNotJunk)
         #expect(newest.fromEmail != nil)
         #expect(newest.addresses.contains { $0.kind == .from })
+        // Every flag of every recorded envelope, against the raw payload's own keys.
+        for (entry, write) in zip(raw, writes) {
+            let flags = try #require(entry["flags"] as? [String: Any])
+            #expect(write.isSeen == (flags["seen"] as? Bool ?? false))
+            #expect(write.isFlagged == (flags["flagged"] as? Bool ?? false))
+            #expect(write.isJunk == (flags["$junk"] as? Bool ?? false))
+            #expect(write.isNotJunk == (flags["$notjunk"] as? Bool ?? false))
+        }
     }
 
     @Test("every recorded envelope keeps at least one address, and none of them is blank")
@@ -156,7 +188,10 @@ struct MirrorMappingTests {
 
     @Test("an HTML message stores the sanitised fragment and no plain body")
     func bodyMappingHTML() throws {
-        let body = try decode(RawBacked<MessageBody>.self, "message-body.json")
+        // The recorder's own HTML self-send: `message-html-plain.html` is this message's
+        // sanitised fragment, recorded from the same message.
+        let body = try decode(RawBacked<MessageBody>.self, "message-body-attachments.json")
+        try #require(body.value.hasHtmlBody, "the recorder's HTML self-send must have an HTML part")
         let fragment = String(decoding: try FixtureBytes.data("message-html-plain.html"), as: UTF8.self)
         let write = try MirrorMapping.bodyWrite(body, html: fragment, fetchedAt: 1_700_000_042)
 
@@ -178,7 +213,8 @@ struct MirrorMappingTests {
 
     @Test("a body whose html fragment 404'd keeps the copy that came with the body")
     func bodyMappingFallsBackToTheBodyField() throws {
-        let body = try decode(RawBacked<MessageBody>.self, "message-body.json")
+        let body = try decode(RawBacked<MessageBody>.self, "message-body-attachments.json")
+        try #require(body.value.hasHtmlBody, "the recorder's HTML self-send must have an HTML part")
         let write = try MirrorMapping.bodyWrite(body, html: nil, fetchedAt: 1)
         #expect(write.hasHtmlBody)
         #expect(write.html == body.value.body)
@@ -191,11 +227,18 @@ struct MirrorMappingTests {
         let write = try MirrorMapping.bodyWrite(body, html: nil, fetchedAt: 1)
 
         #expect(write.attachments.count == body.value.attachments.count + body.value.inlineAttachments.count)
+        let raw = try #require(try rawObject("message-body-attachments.json")["attachments"] as? [[String: Any]])
+        let first = try #require(raw.first)
         let attachment = try #require(write.attachments.first)
-        #expect(attachment.attachmentId == "2")
-        #expect(attachment.cid == "f_mquymsb20")
+        #expect(attachment.attachmentId == first["id"] as? String)
+        #expect(attachment.cid == first["cid"] as? String)
+        #expect(attachment.disposition == first["disposition"] as? String)
         #expect(attachment.isInline == false)
         #expect(attachment.downloadUrl != nil)
+        let inlineIds = Set(body.value.inlineAttachments.map(\.id))
+        for entry in write.attachments {
+            #expect(entry.isInline == inlineIds.contains(entry.attachmentId))
+        }
     }
 
     @Test("the body's rawJSON keeps every unmodelled field and drops the one that is stored twice")
@@ -223,5 +266,17 @@ struct MirrorMappingTests {
         // A compile-time fact more than a runtime one: `MessageBodyWrite` has no such
         // property to set, so the storage panel's total cannot drift from the bytes.
         #expect(Mirror(reflecting: write).children.allSatisfy { $0.label != "byteSize" })
+    }
+
+    /// The recording as plain JSON, so an expectation is read from what the server sent
+    /// rather than typed into the test — and not through the model under test.
+    private func rawObject(_ name: String) throws -> [String: Any] {
+        try #require(try JSONSerialization.jsonObject(with: try FixtureBytes.data(name)) as? [String: Any])
+    }
+
+    private func rawObjects(_ name: String, key: String? = nil) throws -> [[String: Any]] {
+        let object = try JSONSerialization.jsonObject(with: try FixtureBytes.data(name))
+        let list: Any? = if let key { (object as? [String: Any])?[key] } else { object }
+        return try #require(list as? [[String: Any]])
     }
 }

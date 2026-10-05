@@ -44,8 +44,8 @@ final class AppSession {
     /// `MailStore`. One mirror is opened per process, in `NextcloudMailApp.init()`, and this
     /// is how everything else gets it.
     let store: MailStore
-    /// Every account's coordinator, drainer and scheduler. The only thing in the app that
-    /// starts one.
+    /// Every login's and every account's sync engines (ADR-0084). The only thing in the app
+    /// that starts one.
     let engine: AccountEngine
     /// WS-10's triage actions and their undo stack, built once here because every one of them
     /// writes to the same mirror and the menu bar needs the same instance the columns use.
@@ -54,6 +54,8 @@ final class AppSession {
     /// `⌘F` is a `Commands` body outside the window, and it has to move the caret in the
     /// field the column is drawing.
     let search: SearchModel
+    /// WS-41's new-mail banners, Mail-app Nextcloud notifications and the Dock badge.
+    let notifier: MailNotifier
     /// The mirror on disk could not be opened, so this session runs on an empty in-memory
     /// one that is lost at quit. `RootSplitView` offers the recovery: delete the file and
     /// download everything again.
@@ -65,6 +67,9 @@ final class AppSession {
     private var hasStoredAccounts: Bool
     private let networkMonitor = NetworkMonitor()
     private var themeObservation: Task<Void, Never>?
+    /// `NSWorkspace.didWakeNotification`, held for the process's life like the rest of this
+    /// object.
+    private var wakeObserver: (any NSObjectProtocol)?
     nonisolated private static let logger = Logger(subsystem: "com.nextcloud.mail.macos", category: "session")
 
     init(store: MailStore, initialTheme: NCTheme, mirrorIsTemporary: Bool = false) {
@@ -77,6 +82,7 @@ final class AppSession {
         engine = AccountEngine(store: store, status: status)
         triage = TriageContext(store: store)
         search = SearchModel(store: store)
+        notifier = MailNotifier(store: store, center: SystemNotificationCenter())
     }
 
     /// Deletes the unreadable mirror and starts the app again, so the next launch opens a new
@@ -115,11 +121,25 @@ final class AppSession {
         navigation.mailboxDidChange = { [weak self] mailboxId in
             self?.engine.setSelectedMailbox(mailboxId)
         }
+        navigation.startMailbox = { [weak self] in
+            await self?.engine.startMailbox()
+        }
+        navigation.startMailboxDidSettle = { [weak self] selection in
+            await self?.engine.saveStartMailbox(selection)
+        }
         connectTriage()
+        notifier.start(navigation: navigation, queue: { [engine] in engine.mutationQueue(accountId: $0) })
         networkMonitor.start { [weak self] conditions in
             guard let self else { return }
             status.isOffline = conditions.isOffline
             engine.apply(conditions: conditions)
+        }
+        wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didWakeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.engine.systemDidWake() }
         }
         observeTheme()
         accounts = await AppSession.accountsFromKeychain()
@@ -155,8 +175,9 @@ final class AppSession {
 
     /// What the detail column needs to draw one message: the mirror it reads from, the client
     /// its WebView's scheme handler fetches assets with, the server those assets must come
-    /// from, the coordinator that can move a missing body up the backfill queue, and the
-    /// queued "always show images from this sender".
+    /// from, the coordinator that can move a missing body up the backfill queue, the
+    /// queued "always show images from this sender", and WS-30's three engine doors — the
+    /// login's server results, the account's queue and its exporter.
     ///
     /// - Parameter accountId: the account the selected mailbox belongs to. Nil, or an account
     ///   whose coordinator has not started yet, falls back to the first signed-in account so
@@ -171,7 +192,11 @@ final class AppSession {
                 client: running.session.client,
                 server: running.session.server,
                 prioritiser: running.prioritiser,
-                trustSender: trustSender
+                trustSender: trustSender,
+                serverResults: engine.serverResults(sessionId: running.session.id),
+                queue: engine.mutationQueue(accountId: accountId),
+                exporter: engine.exporter(accountId: accountId),
+                messageOpened: { [triage] messageId in await triage.actions.messageOpened(messageId) }
             )
         }
         guard let fallback = accounts.first else { return nil }
@@ -210,11 +235,7 @@ final class AppSession {
     /// modal. Either way the result is the same: this account, freshly authenticated,
     /// replaces whatever was there before under the same identity.
     func signedIn(_ credentials: Credentials) {
-        let session = AccountSession(
-            server: credentials.server,
-            loginName: credentials.loginName,
-            client: MailClient(server: credentials.server, credentials: credentials)
-        )
+        let session = AccountSession(server: credentials.server, credentials: credentials)
         accounts.removeAll { $0.id == session.id }
         accounts.append(session)
         if expiredAccount?.id == session.id {
@@ -223,6 +244,41 @@ final class AppSession {
         hasStoredAccounts = true
         engine.add(session)
         Task { await refreshTheme() }
+    }
+
+    /// Settings' sign-out, after it has removed the Keychain item (and, if asked, the
+    /// account's rows). Signing out one account row signs out its whole login, because the
+    /// Keychain item is the login's: every engine of it stops, its selection is dropped, and
+    /// with `removeLocalCopies` the login row goes too — which is what takes its contacts,
+    /// calendars and settings mirror with it — once nothing is left running to write them.
+    func signedOut(account: AccountRecord, removeLocalCopies: Bool) async {
+        let sessionId = AccountSession.identifier(server: account.serverURL, loginName: account.loginName)
+        accounts.removeAll { $0.id == sessionId }
+        hasStoredAccounts = !accounts.isEmpty
+        if expiredAccount?.id == sessionId {
+            expiredAccount = nil
+        }
+        if case .contacts(let selected, _) = navigation.selection, selected == sessionId {
+            navigation.select(nil)
+        }
+        await engine.signOut(sessionId: sessionId).value
+        guard removeLocalCopies else { return }
+        do {
+            try await store.deleteLogin(ServerIdentity(serverURL: account.serverURL, loginName: account.loginName))
+            try await store.vacuum()
+        } catch {
+            Self.logger.error("removing the login at sign-out failed: \(String(describing: error), privacy: .public)")
+        }
+        // The selected mailbox went with the login's rows: nothing to restore to.
+        if let mailboxId = navigation.selectedMailboxID, (try? await store.mailbox(id: mailboxId)) == nil {
+            navigation.select(nil)
+        }
+    }
+
+    /// The Settings window opened: server state is re-read (`sync-engine.md`, the
+    /// `.settingsOpened` trigger).
+    func settingsOpened() {
+        engine.settingsOpened()
     }
 
     /// How many accounts the Keychain holds, without reading a single password.
@@ -269,8 +325,7 @@ final class AppSession {
                     else {
                         return nil
                     }
-                    let client = MailClient(server: entry.server, credentials: credentials)
-                    return AccountSession(server: entry.server, loginName: entry.loginName, client: client)
+                    return AccountSession(server: entry.server, credentials: credentials)
                 } catch {
                     logger.error("one Keychain account could not be read; continuing with the rest")
                     return nil

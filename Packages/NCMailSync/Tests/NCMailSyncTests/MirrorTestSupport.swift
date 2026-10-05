@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import Foundation
+import NCMailCore
 import NCMailFixtures
 import NCMailNet
 import NCMailStore
@@ -111,12 +112,43 @@ enum MirrorTest {
 
     /// Answers every mirrored mailbox except `except` from the two recordings that happen to
     /// carry nothing — a sync response with no new messages, and an empty message page — so
-    /// a test can say what one mailbox does without stubbing the other four.
+    /// a test can say what one mailbox does without stubbing the others.
     static func stubQuietMailboxes(_ transport: FakeTransport, except mailboxId: Int) async throws {
-        for other in [3, 4, 5, 6, 7] where other != mailboxId {
+        for other in try recordedMailboxes().mirrored where other != mailboxId {
             await transport.stub(syncRoute(mailboxId: other), with: try .fixture("sync-incremental.json"))
             await transport.stub(messagesRoute(mailboxId: other), with: try .fixture("messages-inbox-page2.json"))
         }
+    }
+
+    /// Remote mailbox ids read out of the recorded folder list. The recorder tracks whatever
+    /// the dev server holds, so which ids exist, and which of them are subscribed, is read
+    /// rather than typed into a test.
+    struct RecordedMailboxes {
+        /// Every listed mailbox.
+        let all: [Int]
+        /// The one whose `specialRole` is `inbox`.
+        let inbox: Int
+        /// The subscribed ones, which are the ones mirrored (ADR-0007), inbox included.
+        let mirrored: [Int]
+        /// The ones the user hid, which nothing mirrors.
+        var unsubscribed: [Int] { all.filter { !mirrored.contains($0) } }
+        /// Mirrored, and not the inbox.
+        var others: [Int] { mirrored.filter { $0 != inbox } }
+    }
+
+    /// Subscription is read off the raw IMAP attributes here, independently of
+    /// `MirrorMapping`, so a test about the mapping is not checked against itself.
+    static func recordedMailboxes() throws -> RecordedMailboxes {
+        let list = try JSONDecoder().decode(MailboxList.self, from: try FixtureBytes.data("mailboxes-account.json"))
+        let inbox = try #require(list.mailboxes.first { $0.specialRole == "inbox" })
+        let mirrored = list.mailboxes.filter { mailbox in
+            mailbox.attributes.contains { $0.lowercased() == "\\subscribed" }
+        }
+        return RecordedMailboxes(
+            all: list.mailboxes.map(\.id).sorted(),
+            inbox: inbox.id,
+            mirrored: mirrored.map(\.id).sorted()
+        )
     }
 
     /// Ids and `dateInt`s read out of the recorded inbox page, so an assertion is against

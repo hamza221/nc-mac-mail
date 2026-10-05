@@ -5,39 +5,58 @@ import NCMailStore
 import NextcloudUI
 import SwiftUI
 
-/// The Accounts tab: one row per mirrored account, and the two-question sign-out flow
+/// One row of the Accounts tab's sidebar: a settings page of one account.
+struct AccountSettingsTarget: Hashable {
+    let accountId: Int64
+    let group: AccountSettingsGroup
+}
+
+/// The Accounts tab: a sidebar listing every mirrored account with its settings pages
+/// (``AccountSettingsGroup``) under it and "Add mail account" at its foot; on the right the
+/// selected account's header (name, address, sync status, Open Web Client, Sign Out) above
+/// the selected page, and the two-question sign-out flow
 /// [offline-queue.md](../../../docs/architecture/offline-queue.md#sign-out-and-pending-work)
 /// asks for.
-///
-/// Account creation is out of scope
-/// ([WS-12-settings.md](../../../docs/delivery/briefs/WS-12-settings.md#out-of-scope)); the
-/// footer explains that and opens the web client instead of leaving a blank space.
 struct AccountsSettingsView: View {
+    @Environment(AppSession.self) private var session
     @Environment(SettingsStore.self) private var settingsStore
     @Environment(\.ncTheme) private var theme
     @Environment(\.openURL) private var openURL
 
     @State private var queuePrompt: QueuePrompt?
     @State private var keepOrRemovePrompt: KeepOrRemovePrompt?
+    /// The account whose settings show on the right. Bound to the key the sidebar's
+    /// "Account settings…" writes, so a request lands even with the window already open.
+    @AppStorage(SettingsTab.preferredAccountIDKey) private var preferredAccountID: Int?
+    /// The page asked for; an account without it shows General instead
+    /// (``AccountSettingsGroup/resolved(for:)``), and switching accounts keeps it.
+    @State private var group = AccountSettingsGroup.general
+
+    private var selectedAccount: AccountRecord? {
+        settingsStore.accounts.first { Int($0.id) == preferredAccountID } ?? settingsStore.accounts.first
+    }
+
+    private var selection: Binding<AccountSettingsTarget?> {
+        Binding(
+            get: {
+                selectedAccount.map { AccountSettingsTarget(accountId: $0.id, group: group.resolved(for: $0)) }
+            },
+            set: { target in
+                guard let target else { return }
+                preferredAccountID = Int(target.accountId)
+                group = target.group
+            }
+        )
+    }
 
     var body: some View {
-        Form {
-            Section {
-                if settingsStore.accounts.isEmpty {
-                    Text("No accounts are mirrored yet.")
-                        .foregroundStyle(.secondary)
-                } else {
-                    ForEach(settingsStore.accounts) { account in
-                        row(for: account)
-                    }
-                }
-            } header: {
-                Text("Accounts")
-            } footer: {
-                Text("Accounts are added and removed in the Nextcloud web client.")
-            }
+        HStack(spacing: 0) {
+            sidebar
+                .frame(width: 220)
+            Divider()
+            detail
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .formStyle(.grouped)
         .confirmationDialog(
             String(localized: "Some actions have not reached the server yet."),
             isPresented: Binding(get: { queuePrompt != nil }, set: { if !$0 { queuePrompt = nil } }),
@@ -69,26 +88,99 @@ struct AccountsSettingsView: View {
         }
     }
 
-    @ViewBuilder
-    private func row(for account: AccountRecord) -> some View {
-        VStack(alignment: .leading, spacing: theme.metrics.spacing.tight) {
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: theme.metrics.spacing.hairline) {
-                    Text(account.name)
-                        .font(.headline)
-                    Text(account.emailAddress)
-                        .foregroundStyle(.secondary)
-                    Text(statusLine(for: account))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+    // MARK: - Sidebar
+
+    private var sidebar: some View {
+        List(selection: selection) {
+            if settingsStore.accounts.isEmpty {
+                Text("No accounts are mirrored yet.")
+                    .foregroundStyle(.secondary)
+            }
+            ForEach(settingsStore.accounts) { account in
+                Section {
+                    ForEach(AccountSettingsGroup.visible(for: account)) { group in
+                        NCNavigationItem(group.title)
+                            .tag(AccountSettingsTarget(accountId: account.id, group: group))
+                    }
+                } header: {
+                    NCNavigationCaption(account.emailAddress)
                 }
-                Spacer()
-                Button(String(localized: "Open Web Client")) { openWebClient(for: account) }
-                Button(String(localized: "Sign Out"), role: .destructive) { beginSignOut(account) }
             }
         }
-        .padding(.vertical, theme.metrics.spacing.tight)
-        .accessibilityElement(children: .combine)
+        .listStyle(.sidebar)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            addAccountBar
+        }
+    }
+
+    /// WS-40's "Add mail account", once per login; captioned with the login when there are
+    /// several, so the user knows which server the new account lands on.
+    private var addAccountBar: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Divider()
+            VStack(alignment: .leading, spacing: theme.metrics.spacing.tight) {
+                ForEach(session.accounts) { login in
+                    VStack(alignment: .leading, spacing: theme.metrics.spacing.hairline) {
+                        if session.accounts.count > 1 {
+                            Text(
+                                String(
+                                    format: String(localized: "%@ on %@"), login.loginName, login.server.host() ?? "")
+                            )
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                        }
+                        AddMailAccountButton(sessionId: login.id)
+                    }
+                }
+            }
+            .padding(theme.metrics.spacing.standard)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    // MARK: - Detail
+
+    @ViewBuilder
+    private var detail: some View {
+        if let account = selectedAccount {
+            VStack(spacing: 0) {
+                header(for: account)
+                Divider()
+                AccountSettingsView(
+                    accountId: account.id,
+                    group: Binding(get: { group.resolved(for: account) }, set: { group = $0 })
+                )
+                .id(account.id)
+            }
+        } else {
+            ContentUnavailableView { Text("No accounts are mirrored yet.") }
+        }
+    }
+
+    private func header(for account: AccountRecord) -> some View {
+        HStack(spacing: theme.metrics.spacing.standard) {
+            NCAvatar(displayName: account.name, size: .medium, label: .decorative)
+            VStack(alignment: .leading, spacing: theme.metrics.spacing.hairline) {
+                Text(account.name)
+                    .font(.headline)
+                Text(account.emailAddress)
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+                Text(statusLine(for: account))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .lineLimit(1)
+            .truncationMode(.middle)
+            Spacer(minLength: theme.metrics.spacing.standard)
+            Button(String(localized: "Open Web Client")) { openWebClient(for: account) }
+            Button(String(localized: "Sign Out"), role: .destructive) { beginSignOut(account) }
+        }
+        .padding(.horizontal, theme.metrics.spacing.comfortable)
+        .padding(.vertical, theme.metrics.spacing.standard)
+        .accessibilityElement(children: .contain)
     }
 
     private func statusLine(for account: AccountRecord) -> String {

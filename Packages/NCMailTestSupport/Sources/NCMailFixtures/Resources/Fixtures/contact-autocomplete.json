@@ -1,0 +1,35 @@
+[
+  {
+    "id": "TRACKINGID",
+    "label": "Name redacted",
+    "email": [
+      ""
+    ]
+  },
+  {
+    "id": "ws17-alice-4f2a",
+    "label": "Name redacted",
+    "email": [
+      "user@example.com",
+      "user@example.com",
+      "user@example.com"
+    ]
+  },
+  {
+    "id": "admin",
+    "label": "Name redacted",
+    "email": [
+      "user@example.com"
+    ]
+  },
+  {
+    "id": "alice",
+    "label": "Name redacted",
+    "email": null
+  },
+  {
+    "id": "jane",
+    "label": "Name redacted",
+    "email": null
+  }
+]

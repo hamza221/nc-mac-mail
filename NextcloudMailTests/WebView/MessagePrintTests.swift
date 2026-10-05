@@ -26,6 +26,7 @@ struct MessagePrintTests {
             messageId: 1,
             remoteId: 166,
             mailboxId: 1,
+            accountId: 1,
             threadRootId: nil,
             subject: subject,
             sender: sender,
@@ -165,5 +166,67 @@ struct MessagePrintTests {
             from: context
         )
         #expect(context.isEnabled(.printMessage))
+    }
+
+    // MARK: - Whole-thread printing (WS-30, ADR-0085)
+
+    @Test("a thread prints every message in order, each header escaped before its own body")
+    func threadDocumentHoldsEveryMessageInOrder() throws {
+        let first = PrintableMessage(
+            header: Self.header(subject: "First <b>"),
+            body: .html(try Self.rendered("<p>Alpha body</p>"), .none)
+        )
+        let second = PrintableMessage(
+            header: Self.header(subject: "Second"), body: .plain(text: "Beta < body", signature: nil))
+        let third = PrintableMessage(
+            header: Self.header(subject: "Third"),
+            body: .headerOnly(note: "This message has not been downloaded yet.")
+        )
+        let document = MessagePrintDocument.html(forThread: [first, second, third])
+
+        let alphaHeader = try #require(document.range(of: "First &lt;b&gt;"))
+        let alpha = try #require(document.range(of: "Alpha body"))
+        let betaHeader = try #require(document.range(of: ">Second<"))
+        let beta = try #require(document.range(of: "Beta &lt; body"))
+        let gamma = try #require(document.range(of: "This message has not been downloaded yet."))
+        #expect(alphaHeader.upperBound <= alpha.lowerBound)
+        #expect(alpha.upperBound <= betaHeader.lowerBound)
+        #expect(betaHeader.upperBound <= beta.lowerBound)
+        #expect(beta.upperBound <= gamma.lowerBound)
+        // One shell, light, with each HTML body's content and not a nested document.
+        #expect(document.components(separatedBy: "<!DOCTYPE html>").count == 2)
+        #expect(document.components(separatedBy: MessageDocument.bodyOpenTag).count == 2)
+        #expect(document.contains("<meta name=\"color-scheme\" content=\"light\">"))
+    }
+
+    @Test("a PGP message prints its header and the notice, nothing of the body")
+    func pgpPrintsHeaderOnly() {
+        let body = PrintableMessage.Body(.encrypted)
+        #expect(body == .headerOnly(note: MessagePGPNotice.text))
+        let document = MessagePrintDocument.html(
+            for: PrintableMessage(header: Self.header(), body: .headerOnly(note: MessagePGPNotice.text)))
+        #expect(document.contains("This message is encrypted with PGP and can"))
+        #expect(document.contains("t be read in this app."))
+    }
+
+    @Test("a rendered document's body content is exactly what the rewriter wrapped")
+    func bodyContentIsTheWrappedFragment() throws {
+        let rendered = try Self.rendered("<p>Hi</p></body><p>after a stray close</p>")
+        let content = MessageDocument.bodyContent(of: rendered.document)
+        #expect(content.contains("<p>Hi</p>"))
+        #expect(content.contains("after a stray close"))
+        #expect(!content.contains("<head>"))
+        #expect(MessageDocument.bodyContent(of: "<html><head><style>x</style></head></html>").isEmpty)
+    }
+
+    @Test("⌘P with a registered thread waits for it and stays disabled meanwhile")
+    func threadRegistrationIsOffered() throws {
+        let controller = MessagePrintController()
+        let owner = NSObject()
+        let message = PrintableMessage(header: Self.header(), body: .plain(text: "Hi", signature: nil))
+        controller.show(message, services: try Self.services(), thread: { [message] }, from: owner)
+        #expect(controller.canPrint)
+        controller.withdraw(from: owner)
+        #expect(!controller.canPrint)
     }
 }

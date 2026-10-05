@@ -1,0 +1,9 @@
+{
+  "status": "fail",
+  "data": {
+    "error": "CONNECTION_ERROR",
+    "service": "IMAP",
+    "host": "no-such-host.invalid",
+    "port": 993
+  }
+}

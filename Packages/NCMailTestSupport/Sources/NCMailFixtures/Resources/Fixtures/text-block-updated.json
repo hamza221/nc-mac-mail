@@ -1,0 +1,10 @@
+{
+  "status": "success",
+  "data": {
+    "id": 8,
+    "owner": "admin",
+    "title": "Fixture block renamed",
+    "content": "Updated content.",
+    "preview": "Updated content."
+  }
+}

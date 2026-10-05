@@ -4,14 +4,18 @@
 import NextcloudUI
 import SwiftUI
 
-/// "This message contains remote content that was not loaded", with the two ways out.
+/// "This message contains remote content that was not loaded", with the ways out: this
+/// message, this sender, or the sender's whole domain (§5.7).
 ///
 /// The buttons sit beside the card rather than inside its content builder: `NCNoteCard`
 /// ends with `.accessibilityElement(children: .combine)`, which makes any control inside it
 /// unreachable to VoiceOver. Filed in `docs/feedback/library-feedback.md`.
 struct BlockedContentBar: View {
+    /// The sender's domain; nil hides the domain choice.
+    let domain: String?
     let showImages: () -> Void
     let alwaysShow: () -> Void
+    let alwaysShowDomain: () -> Void
 
     @Environment(\.ncTheme) private var theme
 
@@ -29,6 +33,11 @@ struct BlockedContentBar: View {
                 Button("Always show from this sender", action: alwaysShow)
                     .buttonStyle(.tertiary)
                     .accessibilityLabel(Text("Always show images from this sender"))
+                if let domain {
+                    Button("Always show from \(domain)", action: alwaysShowDomain)
+                        .buttonStyle(.tertiary)
+                        .accessibilityLabel(Text("Always show images from \(domain)"))
+                }
             }
         }
     }

@@ -26,11 +26,12 @@ struct SearchPerformanceTests {
     /// The brief's number: results have to be on screen inside a frame while somebody types.
     static let budgetMilliseconds = 50.0
 
-    /// Five shapes of query, because they cost different things. The one-character prefix is
-    /// the worst case and also the first one every search runs: it matches most of the
-    /// corpus, and `ORDER BY bm25(...)` has to score every match before the window is taken.
+    /// Five shapes of query, because they cost different things. The two-character prefix
+    /// (the shortest term search accepts, WS-32) is the worst case and also the first one
+    /// every search runs: it matches most of the corpus, and `ORDER BY bm25(...)` has to
+    /// score every match before the window is taken.
     static let shapes: [(name: String, text: String)] = [
-        ("one character", "m"),
+        ("two characters", "me"),
         ("a common word", "quick brown"),
         ("a topic phrase", "\"quarterly numbers\""),
         ("a rare word", "hedgehogs"),
@@ -117,7 +118,7 @@ struct SearchPerformanceTests {
                 + "\(coverage.unmirroredMailboxes) mailboxes not downloaded"
         )
 
-        for text in ["p", "palestine", "NOT", "\"", "-", "😀", "re test"] {
+        for text in ["pa", "palestine", "NOT", "\"", "-", "😀", "re test"] {
             let elapsed = try await PerformanceTests.best(of: 3) {
                 _ = try await store.search(SearchQuery(text: text, scope: .all), limit: 50)
             }
@@ -128,7 +129,7 @@ struct SearchPerformanceTests {
         // Whether the weights order real mail sensibly, said as a number rather than by
         // printing somebody's subjects: a subject is exactly the sort of thing that must
         // never reach a log or a terminal, gated test or not.
-        let term = ProcessInfo.processInfo.environment["NCMAIL_LIVE_TERM"] ?? "a"
+        let term = ProcessInfo.processInfo.environment["NCMAIL_LIVE_TERM"] ?? "re"
         let ranked = try await store.search(SearchQuery(text: term, scope: .all), limit: 50)
         let inSubject = { (result: SearchResult) in
             result.message.subject?.range(of: term, options: .caseInsensitive) != nil

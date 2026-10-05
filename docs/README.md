@@ -13,6 +13,7 @@ new fact belongs in, it probably belongs in a decision record.
 | File | Answers |
 | --- | --- |
 | [product/overview.md](product/overview.md) | What the app is, who it is for, what v1 includes and what it deliberately does not |
+| [product/parity.md](product/parity.md) | Every user-facing behaviour of the Nextcloud Mail web client and Nextcloud Contacts, mapped to the workstream that delivers it or the ADR that excludes it |
 | [product/user-stories.md](product/user-stories.md) | The flows, each with acceptance criteria an agent can test against |
 | [product/ux-spec.md](product/ux-spec.md) | Screen by screen: layout, states, empty states, errors, the keyboard map |
 
@@ -32,7 +33,7 @@ new fact belongs in, it probably belongs in a decision record.
 ## Decisions — why it is built that way
 
 [decisions/README.md](decisions/README.md) indexes all of them and explains how to add one.
-Fifteen records, ADR-0001 to ADR-0015. Read ADR-0003 first; most of the rest hang off it.
+Records from ADR-0001 on; the index lists their status. Read ADR-0003 first; most of the rest hang off it.
 
 ## Reference — the facts you will look up repeatedly
 
@@ -42,6 +43,7 @@ Fifteen records, ADR-0001 to ADR-0015. Read ADR-0003 first; most of the rest han
 | [reference/schema.sql](reference/schema.sql) | The canonical local schema. The migration must reproduce it exactly |
 | [reference/ui-components.md](reference/ui-components.md) | Every `NextcloudUI` component this app uses, with real signatures, and the gaps we have to fill ourselves |
 | [reference/glossary.md](reference/glossary.md) | `databaseId` vs `id`, envelope vs message vs body vs thread, mailbox vs folder |
+| [reference/server-flags.md](reference/server-flags.md) | Written by WS-16 |
 
 Plus [plan/API.md](../plan/API.md), the complete endpoint map — still accurate, still the
 first place to look for an endpoint this app does not use yet.
@@ -50,9 +52,9 @@ first place to look for an endpoint this app does not use yet.
 
 | File | Answers |
 | --- | --- |
-| [delivery/roadmap.md](delivery/roadmap.md) | Milestones M0–M7, each with an exit criterion you can demonstrate |
+| [delivery/roadmap.md](delivery/roadmap.md) | Milestones M0–M16, each with an exit criterion you can demonstrate |
 | [delivery/v2-roadmap-plan.md](delivery/v2-roadmap-plan.md) | The v2 plan: parity with the Nextcloud Mail web client plus Contacts — ADRs, parity matrix, milestones M8–M16, workstreams WS-16–WS-44 |
-| [delivery/workstreams.md](delivery/workstreams.md) | The 16 workstreams, their dependencies, and the file ownership that keeps agents out of each other's way |
+| [delivery/workstreams.md](delivery/workstreams.md) | v1's 16 and v2's 29 workstreams, their dependencies, and the file ownership that keeps agents out of each other's way |
 | [delivery/briefs/](delivery/briefs/) | One ready-to-assign brief per workstream. This is the "mapped to other agents" part |
 | [delivery/definition-of-done.md](delivery/definition-of-done.md) | The gates. No workstream is finished without all of them |
 | [delivery/testing-strategy.md](delivery/testing-strategy.md) | What we test, where, and how to record fixtures from a real server |
@@ -63,9 +65,9 @@ first place to look for an endpoint this app does not use yet.
 | --- | --- |
 | [feedback/library-feedback.md](feedback/library-feedback.md) | Running list of everywhere `NextcloudUI` needed a workaround. The deliverable its README is waiting for |
 | [feedback/server-findings.md](feedback/server-findings.md) | Things found in `nextcloud/mail` worth raising upstream |
-| [feedback/upstream-issues.md](feedback/upstream-issues.md) | The issue text itself, ready for a human to post. Written by WS-15 from the two files above |
+| [feedback/upstream-issues.md](feedback/upstream-issues.md) | The issue text itself, ready for a human to post. Written by WS-15 and WS-43 from the two files above |
 
-The first two are append-only during implementation, and WS-15 curated them at the end. A
+The first two are append-only during implementation; WS-15 curated them after v1 and WS-43 after v2. A
 workstream that touched the library or the server API and added nothing to them has probably
 not finished.
 

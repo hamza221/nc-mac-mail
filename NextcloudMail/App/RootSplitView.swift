@@ -21,6 +21,9 @@ struct RootSplitView: View {
 
     @State private var sidebar: SidebarStore
     @State private var messageList: MessageListStore
+    @State private var listPreferences: MessageListPreferenceStore
+    /// The Contacts section's shared state: per-login models and the list selection (WS-35).
+    @State private var contacts: ContactsBrowser
 
     @SceneStorage("shell.sidebarWidth") private var sidebarWidth = ColumnWidth.sidebar.ideal
     @SceneStorage("shell.contentWidth") private var contentWidth = ColumnWidth.content.ideal
@@ -32,21 +35,21 @@ struct RootSplitView: View {
     init(session: AppSession) {
         self.session = session
         let sidebar = SidebarStore(store: session.store)
-        // The sidebar's own Refresh and Mark all as read, which were log-only until the
-        // engine and the triage queue existed to call.
+        // The sidebar's own Refresh, which was log-only until the engine existed to call.
         sidebar.refresh = { [weak session] accountId, mailboxId in
             session?.engine.refresh(mailboxId: mailboxId, accountId: accountId)
         }
-        sidebar.markAllRead = { [weak session] mailboxId in
-            guard let session else { return }
-            Task { await session.triage.actions.markAllRead(mailboxId: mailboxId) }
-        }
         _sidebar = State(initialValue: sidebar)
-        _messageList = State(initialValue: MessageListStore(store: session.store))
+        _messageList = State(initialValue: MessageListWiring.makeStore(session: session))
+        _listPreferences = State(initialValue: MessageListWiring.makePreferences(session: session))
+        _contacts = State(
+            initialValue: ContactsBrowser(
+                store: session.store, queue: { [weak session] in session?.engine.contactsQueue(sessionId: $0) }))
     }
 
     var body: some View {
         shell
+            .triagePresentations(session.triage)
             // On the sign-in screen as well as the columns: the mirror is shared by every
             // account, and an unreadable one affects whichever screen comes up first.
             .onAppear { isShowingMirrorAlert = session.mirrorIsTemporary }
@@ -70,7 +73,12 @@ struct RootSplitView: View {
         if session.needsSignIn {
             LoginView(onSignedIn: session.signedIn)
         } else {
-            NavigationSplitView {
+            // The server's `layout-mode` picks the window's shape; the three columns' views
+            // are the same in every shape, and the selection lives in `messageList` (WS-29).
+            MessageListLayoutHost(
+                layout: listPreferences.preferences.layout,
+                openedMessageId: $messageList.openedMessageId
+            ) {
                 SidebarView(model: sidebar, navigation: session.navigation)
                     .navigationSplitViewColumnWidth(
                         min: ColumnWidth.sidebar.min, ideal: sidebarWidth, max: ColumnWidth.sidebar.max
@@ -80,28 +88,27 @@ struct RootSplitView: View {
                         StatusFooter(status: session.status, retry: { session.engine.retryFailedActions() })
                     }
             } content: {
-                SearchableMessageList(
-                    model: session.search,
-                    list: messageList,
-                    navigation: session.navigation,
-                    isOffline: session.status.isOffline,
-                    triage: session.triage
-                )
-                .navigationSplitViewColumnWidth(
-                    min: ColumnWidth.content.min, ideal: contentWidth, max: ColumnWidth.content.max
-                )
-                .trackingWidth($contentWidth)
-                .task { session.triage.listStore = messageList }
+                contentColumn
+                    .navigationSplitViewColumnWidth(
+                        min: ColumnWidth.content.min, ideal: contentWidth, max: ColumnWidth.content.max
+                    )
+                    .trackingWidth($contentWidth)
+                    .task { session.triage.listStore = messageList }
             } detail: {
                 detailColumn
                     .navigationSplitViewColumnWidth(min: ColumnWidth.detail.min, ideal: ColumnWidth.detail.ideal)
                     // Archive, Delete, Junk, Move, Star, Mark unread, Refresh: the message
                     // pane's toolbar (ux-spec.md#message-view). Built since WS-10 and never
                     // installed, which is why there was no Refresh button.
-                    .toolbar { TriageToolbar(context: session.triage) }
+                    .toolbar { if showsMailbox { TriageToolbar(context: session.triage) } }
                     // Which actions the selection can take is a database read per account.
                     .task(id: messageList.selection) { await session.triage.refreshAvailability() }
             }
+            .environment(listPreferences)
+            .environment(contacts)
+            .task { listPreferences.start() }
+            .undoSendBanner(session: session)
+            .systemRouting(messageList: messageList, contacts: contacts)  // WS-42 exception
             .onChange(of: session.expiredAccount) { _, newValue in
                 isShowingExpiredAlert = newValue != nil
             }
@@ -119,6 +126,32 @@ struct RootSplitView: View {
         }
     }
 
+    /// Routes on ``SidebarSelection``: every message source is the searchable list (WS-29),
+    /// the outbox is WS-27's view, a Contacts entry is WS-35's list
+    /// (ux-spec.md, "What the sidebar can select").
+    @ViewBuilder
+    private var contentColumn: some View {
+        switch session.navigation.selection {
+        case nil, .mailbox, .unifiedInbox, .priorityInbox, .favorites:
+            SearchableMessageList(
+                model: session.search,
+                list: messageList,
+                navigation: session.navigation,
+                isOffline: session.status.isOffline,
+                triage: session.triage
+            )
+        case .outbox:
+            OutboxView(session: session)
+        case .contacts(let sessionId, let scope):
+            ContactsListView(sessionId: sessionId, scope: scope)
+        }
+    }
+
+    /// Nothing selected yet, or a message list: the message detail column.
+    private var showsMailbox: Bool {
+        session.navigation.selection.map { MessageListSource($0) != nil } ?? true
+    }
+
     /// The message, from the account the selected mailbox belongs to.
     ///
     /// `.id(accountId)` is what makes a second account correct rather than nearly correct:
@@ -127,14 +160,15 @@ struct RootSplitView: View {
     /// assets with the first account's client.
     @ViewBuilder
     private var detailColumn: some View {
-        let accountId = messageList.mailbox?.accountId
-        if let services = session.messageServices(accountId: accountId) {
+        let accountId = messageList.focusedAccountId
+        if case .contacts(let sessionId, let scope) = session.navigation.selection {
+            ContactsDetailColumn(sessionId: sessionId, scope: scope)
+        } else if showsMailbox, let services = session.messageServices(accountId: accountId) {
             MessageView(
                 services: services,
                 messageId: messageList.focusedMessageId,
                 isOffline: session.status.isOffline,
-                printer: session.printer,
-                select: { messageList.selection = [$0] }
+                printer: session.printer
             )
             .id(accountId)
             .task(id: messageList.focusedMessageId) {

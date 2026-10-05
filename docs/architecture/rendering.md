@@ -52,10 +52,10 @@ Three consequences:
 
 **And one thing the transformation does not cover.** `TransformImageSrc` rewrites `<img>`.
 It does not touch CSS, and HTMLPurifier keeps `<style>`. The recorded body
-(`message-html-plain.html`) opens with
+(`message-html-remote-images.html`) opens with
 
 ```css
-@import url(https://static-forms.klaviyo.com/fonts/api/v1/U45QAK/custom_fonts.css);
+@import url(https://fonts.example.org/css/brand-fonts.css);
 ```
 
 which is a fourth remote host, unblocked, in a message whose images are all blocked. WS-09
@@ -130,7 +130,8 @@ ncmail://asset/{base64url(original URL)}
 - **anything else** → fail the load. The handler is an allowlist, not a proxy.
 
 The allowlist is one function, `MailAssetPolicy.classify(_:server:messageRemoteId:)`, and
-both the rewriter and the handler call it: the rewriter to decide what a URL in the stored
+both the rewriter and the handler call it (the handler through
+`MailAssetSchemeHandler.decide(_:server:contexts:)`, its whole decision as a pure function): the rewriter to decide what a URL in the stored
 HTML may become, the handler to decide what the WebView may actually have. A rewriting bug
 therefore cannot widen what the handler serves. It also refuses an attachment URL naming a
 different message, so one message cannot read another's parts.
@@ -190,9 +191,11 @@ not preference, it is that the expanding variant has no supported implementation
   (see its report). Even if it runs, it puts a script evaluation on the path between
   clicking a message and seeing it, per message, to save one scroll surface.
 
-The thread shape settles the rest. Siblings are collapsed and only the selected message is
-expanded, so there is **one** `WKWebView` on screen at a time and therefore one WebContent
-process. A 200-message thread costs 200 `NCListItem` rows and one web view. The expanding
+The thread shape settles the rest. Siblings are collapsed and one message is expanded, so
+there is **one** `WKWebView` on screen at a time and therefore one WebContent process. A
+200-message thread costs 200 `NCListItem` rows and one web view. WS-30's thread mode keeps
+that: clicking a collapsed envelope expands it in place and collapses the previous one
+([ADR-0085](../decisions/0085-thread-mode-expands-one-message-at-a-time.md)). The expanding
 variant inside a `ScrollView` has the same property only if it is equally careful, and it is
 harder to keep careful.
 
@@ -232,7 +235,23 @@ images** cannot deliver.
 
 ## Printing, selection, find
 
-`⌘P` prints the message, header and body together, from its own offscreen `WKWebView`
+**Since WS-30, `⌘P` prints the whole conversation**, collapsed messages included, and the ⋯
+menu's "Print message" prints the expanded one alone. The pane registers a closure that reads
+every message of the thread from the mirror at print time: each one's escaped header block,
+then its body rewritten by its own `MessageHTMLRewriter` pass with its own policy (remote
+images only for a trusted sender, or as the reader left the expanded one), in one light shell
+(`MessagePrintDocument.html(forThread:)`). A body not mirrored prints its header and "This
+message has not been downloaded yet."; a PGP message prints its header and the notice. The
+scheme handler is given one `Context` per HTML message in the document
+(`update(contexts:)`): an inline-attachment URL is served only for the message its path names
+and only if that message's own document referenced the id; a proxied image only if some
+message in the document has remote images shown. The rewriter of a blocked message emits no
+proxy URL at all, which is what keeps the second rule honest
+([ADR-0085](../decisions/0085-thread-mode-expands-one-message-at-a-time.md)). The bodies'
+`<style>` elements apply document-wide in a printout — the price of one web view.
+
+The rest of this section is the single-message path, which "Print message" still takes:
+`⌘P` used to print the message, header and body together, from its own offscreen `WKWebView`
 rather than the one on screen
 ([ADR-0063](../decisions/0063-printing-uses-an-offscreen-web-view.md)). The message pane
 registers its header and the body it has drawn with `MessagePrintController`. The printed
@@ -269,3 +288,17 @@ whoever owns the message toolbar (WS-10) rather than being implied here.
 Itinerary cards, iMIP invitation responses, S/MIME and PGP decryption, smart replies,
 thread summaries, translation. All of them are read-path features and all of them are
 post-v1 — the mirror already carries the data they need in `messageBody.rawJSON`.
+
+## What v2 added (WS-30)
+
+- **Smart replies, thread summary, translation, message source** are `serverResult` rows
+  (ADR-0067), never awaited by the view. None of them is rendered as HTML: a translation of an
+  HTML body did not pass the server's purifier, so `HTMLPlainText` reduces it to text; the
+  message source is raw MIME and is shown as monospaced text.
+- **PGP** gets ADR-0064's notice and no body at all — the body area stays empty and the web
+  view is never built. PGP is the envelope's `encrypted` flag on mail S/MIME did not decrypt,
+  or a plain body that is an inline armoured block.
+- **Phishing, S/MIME, read receipt, unsubscribe, AI content** are native banners and chips
+  read from the body row's columns. Nothing about them touches the document.
+- **Attachments** preview in Quick Look from a file in the container's temporary directory,
+  written from `attachment.data` or by `MessageExporter`; the WebView is not involved.

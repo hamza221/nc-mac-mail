@@ -24,7 +24,7 @@ old one stays.*
 | [0009](0009-sanitised-html-not-raw-mime.md) | Store the server's sanitised HTML, not raw MIME | Accepted |
 | [0010](0010-webview-scheme-handler.md) | Serve body images through a custom URL scheme | Accepted |
 | [0011](0011-fts5-standalone-index.md) | FTS5 table holding its own copy of the text | Accepted |
-| [0012](0012-read-and-triage-scope.md) | v1 is read and triage; no composer | Accepted |
+| [0012](0012-read-and-triage-scope.md) | v1 is read and triage; no composer | Superseded by 0064 |
 | [0013](0013-module-layout.md) | Four local packages plus one app target | Accepted |
 | [0014](0014-singleton-enumeration.md) | Enumerate with `view=singleton`; thread locally | Accepted |
 | [0015](0015-bounded-sync-window.md) | Bounded sync window plus periodic deep reconcile | Accepted |
@@ -76,6 +76,45 @@ old one stays.*
 | [0061](0061-avatars-are-fetched-into-the-mirror-by-sync.md) | Avatars are fetched into the mirror by a sync worker, through the server's image route only | Accepted |
 | [0062](0062-the-sidebar-opens-settings-with-opensettings.md) | The sidebar opens Settings with `openSettings`, and the tab is bound to its key | Accepted |
 | [0063](0063-printing-uses-an-offscreen-web-view.md) | Printing builds its own offscreen web view, with the live view's configuration | Accepted |
+| [0064](0064-v2-parity-scope.md) | v2 is parity with the Nextcloud Mail web client's user surfaces, plus Contacts | Accepted — supersedes 0012 |
+| [0065](0065-native-rich-text-editor.md) | The composer is a TextKit 2 `NSTextView` this app owns, serialising to HTML itself | Accepted |
+| [0066](0066-drafts-and-outbox.md) | Drafts are local rows synced to the server's draft API; sending goes through the server outbox | Accepted — send sequence refined by 0083 |
+| [0067](0067-server-results-are-rows.md) | Server-computed results are cached rows | Accepted |
+| [0068](0068-settings-commands.md) | Settings the server must validate are online-only commands | Accepted |
+| [0069](0069-contacts-same-database.md) | Contacts use the same database and the same five modules, keyed by Nextcloud login | Accepted — 412 rule refined by 0082 |
+| [0070](0070-contacts-sidebar-section.md) | Contacts appear as a sidebar section, under the mail accounts | Accepted |
+| [0071](0071-widgets-read-snapshot.md) | Widgets read a snapshot file in the app group, never the database | Accepted (WS-42) |
+| [0072](0072-local-first-autocomplete.md) | Recipient autocomplete is local-first | Accepted |
+| [0073](0073-editor-canonical-html.md) | The editor serialises one canonical HTML form, and import makes any input canonical | Accepted |
+| [0074](0074-editor-triggers.md) | Editor triggers are one session API; `:` opens the system emoji palette | Accepted |
+| [0075](0075-lossless-raw-line-retention.md) | vCard and iCalendar properties keep their unfolded original line; untouched properties re-emit it | Accepted |
+| [0076](0076-sync-truncation-is-a-flag.md) | A truncated sync-collection is a flag on a successful result, not an error | Accepted |
+| [0077](0077-a-202-with-the-success-envelope-is-success.md) | A 202 carrying the success envelope is a success, not a sync in progress | Accepted |
+| [0078](0078-flags-come-from-apis-or-default-on.md) | Server flags come from user-readable APIs or default to on; the web page is never scraped | Accepted |
+| [0079](0079-a-login-table-roots-instance-state.md) | A `login` table is the local identity for instance-scoped state, and sign-out is two cascade roots | Accepted |
+| [0080](0080-recorder-scratch-lifecycles-and-send-to-self.md) | The fixture recorder mutates only scratch objects, and sends only to the account itself | Accepted |
+| [0081](0081-queued-rows-are-keyed-by-server-id.md) | Queued v2 settings rows are named by server id; offline creates get negative placeholders | Accepted |
+| [0082](0082-contact-writes-reapply-per-property.md) | A contact write that meets a 412 reapplies the edited properties once; local wins a same-field race; a second 412 parks a conflict row | Accepted — refines 0069's 412 rule |
+| [0083](0083-send-converts-the-server-draft-in-place.md) | A send converts the server draft in place, with `sendAt` pinned, and its state lives on the draft row | Accepted — refines 0066's send sequence |
+| [0084](0084-the-shell-starts-logins-before-accounts.md) | The shell starts a login's engines before its accounts', stops them in reverse, and restores the local selection before the server's start mailbox | Accepted |
+| [0085](0085-thread-mode-expands-one-message-at-a-time.md) | Thread mode expands one message at a time; whole-thread print is one document and the scheme handler takes a context per message | Accepted — refines 0063 |
+| [0086](0086-a-provisioned-account-that-cannot-connect-is-disabled.md) | A provisioned account whose connection test fails is the sidebar's disabled row | Accepted |
+| [0087](0087-files-actions-are-online-commands-with-row-results.md) | Files share links and image embeds are online-only commands whose results are `serverResult` rows; Files attachments are `cloud` draft attachments | Accepted — applies 0067/0068 |
+| [0088](0088-list-layout-preferences-follow-the-first-login.md) | The list's layout preferences are read from the first login and written to every login; the selection lives in the list model | Accepted |
+| [0089](0089-composer-keeps-signature-and-quote-outside-the-editor.md) | The composer keeps the signature and the quote outside the editor, and hides its window during a send | Accepted |
+| [0090](0090-editing-an-outbox-entry-converts-it-to-a-local-draft.md) | Editing an outbox entry converts it to a local draft | Accepted |
+| [0091](0091-app-settings-scope.md) | App settings: switches are read from the first login and written to every login; server-scoped lists follow a picked login; feature-gated tabs stay visible | Accepted — extends 0088 |
+| [0092](0092-contact-favourites-are-a-dav-dead-property-refreshed-each-pass.md) | Contact favourites are web Contacts' `nc:favorite` DAV property, refreshed by a Depth-1 listing every pass | Accepted |
+| [0093](0093-a-calendar-write-whose-uid-exists-updates-the-servers-copy.md) | A `calendarPut` refused with CalDAV `no-uid-conflict` is written once more onto the server's copy of that UID, without `If-Match`; a second 409 parks | Accepted |
+| [0094](0094-oauth-account-setup-polls-the-connection-test.md) | OAuth account setup observes completion by polling the connection test; closing the window deletes the temporary account | Accepted |
+| [0096](0096-address-book-import-and-merge-are-queued-card-writes.md) | Address-book management, vCard import (one `contactPut` per card; a UID in the book updates it) and merge (one put + one delete) are queued writes; export is written from the mirror; social auto-update is a per-Mac on-view switch | Accepted |
+| [0097](0097-teams-are-mirrored-rows-and-online-commands.md) | Teams: one `teams` server-result row is the Circles capability gate and the `team`/`teamMember` refresh; team edits are online-only commands that refresh before answering; Shared items filters the files_sharing listings; the org chart is computed from `X-MANAGERSNAME` | Accepted |
+| [0098](0098-new-mail-notifications-gate-on-the-inbox-enumeration.md) | New-mail banners: per inbox, the gate is `envelopesComplete` and the watermark the highest local id at that moment; more than five at once become one summary; suppressed when the key main window shows that inbox; Mail-app Nextcloud notifications are shown once each and never deleted on the server | Accepted |
+| [0099](0099-spotlight-indexes-the-newest-window-of-the-mirror.md) | Spotlight mirrors the newest 5 000 messages and every contact card, diffed from store observations; envelope fields only | Accepted |
+| [0100](0100-app-group-and-extension-targets.md) | Team-prefixed app group `$(TeamIdentifierPrefix)com.nextcloud.mail.macos` (no profile under ad-hoc signing); extensions signed ad hoc like the app and embedded by it; `NextcloudMailShared/` compiled into all three | Accepted |
+| [0101](0101-an-answered-invitation-shows-its-buttons-again-once-sent.md) | An invitation answered here shows its answer while it is queued and Accept/Decline again once sent, because calendar objects are not mirrored; mirroring them is the revisit trigger | Accepted |
+| [0102](0102-no-not-grouped-contacts-entry.md) | The Contacts sidebar has no "Not grouped" entry; a `ContactsScope.notGrouped` case is the revisit trigger | Accepted |
+| [0103](0103-the-test-host-launches-inert.md) | A hosted test run launches inert: in-memory mirror, no `AppSession.start()`, so no Keychain consent prompt and no real engines under the suites | Accepted |
 
 ## Which ones matter most
 

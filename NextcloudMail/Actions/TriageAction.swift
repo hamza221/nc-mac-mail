@@ -35,6 +35,14 @@ enum TriageAction: String, CaseIterable, Identifiable, Sendable {
     case nextMessage
     case search
     case searchAllMail
+    // v2 (WS-31)
+    case compose
+    case editTags
+    case snooze
+    case unsnooze
+    case quickAction
+    case forwardAsAttachment
+    case editAsNew
 
     var id: String { rawValue }
 
@@ -57,6 +65,13 @@ enum TriageAction: String, CaseIterable, Identifiable, Sendable {
         case .nextMessage: "Next Message"
         case .search: "Find"
         case .searchAllMail: "Find in All Mail"
+        case .compose: "New Message"
+        case .editTags: "Edit Tags\u{2026}"
+        case .snooze: "Snooze Until\u{2026}"
+        case .unsnooze: "Unsnooze"
+        case .quickAction: "Quick Action"
+        case .forwardAsAttachment: "Forward as Attachment"
+        case .editAsNew: "Edit as New Message"
         }
     }
 
@@ -73,6 +88,8 @@ enum TriageAction: String, CaseIterable, Identifiable, Sendable {
         case .delete: .trash
         case .junk: .junk
         case .move: .folder
+        case .editTags: .tag
+        case .snooze: .snooze
         case .star: .star
         case .unread: .unread
         case .refresh: .sync
@@ -93,7 +110,11 @@ enum TriageAction: String, CaseIterable, Identifiable, Sendable {
         case .printMessage: NCKeyboardShortcut("p")
         case .search: NCKeyboardShortcut("f")
         case .searchAllMail: NCKeyboardShortcut("f", modifiers: [.command, .shift])
-        case .move, .important, .markAllRead: nil
+        // §2.6 lists `C`; the web never bound it. ⌘N is File ▸ New Message (`ComposerCommand`).
+        case .compose: NCKeyboardShortcut("c", modifiers: [])
+        case .move, .important, .markAllRead, .editTags, .snooze, .unsnooze, .quickAction, .forwardAsAttachment,
+            .editAsNew:
+            nil
         }
     }
 
@@ -102,7 +123,7 @@ enum TriageAction: String, CaseIterable, Identifiable, Sendable {
     /// where it is, and moving the selection off it would hide the star the user just set.
     var removesFromList: Bool {
         switch self {
-        case .archive, .delete, .junk, .move: true
+        case .archive, .delete, .junk, .move, .snooze, .unsnooze: true
         default: false
         }
     }

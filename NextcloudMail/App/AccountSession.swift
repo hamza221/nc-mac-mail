@@ -3,14 +3,17 @@
 
 import Foundation
 import NCMailNet
+import NCMailStore
 
-/// One signed-in account, live: the identity the Keychain holds and the client that talks to
-/// its server.
+/// One signed-in Nextcloud login, live: the identity the Keychain holds and the two clients
+/// that talk to its server — `MailClient` for the Mail app's routes, `DAVClient` for CardDAV
+/// and CalDAV (contacts and the calendar list).
 ///
-/// `AccountEngine` is what attaches a `MirrorCoordinator`, an `OperationDrainer` and a
-/// `SyncScheduler` to one of these. It does so per *account row* rather than per Keychain
-/// entry, because a coordinator takes a local account id and only a row has one (ADR-0033),
-/// and it finds its way back here through ``identifier(server:loginName:)``.
+/// `AccountEngine` runs the login's own machinery (contacts, calendars, server state) once
+/// per session, and a `MirrorCoordinator`, an `OperationDrainer`, a `SyncScheduler` and an
+/// `OutboxSender` per *account row* of it, because those take a local account id and only a
+/// row has one (ADR-0033); a row finds its way back here through
+/// ``identifier(server:loginName:)``.
 /// `nonisolated` because the app target defaults to `@MainActor` and this value is built on
 /// the detached task that reads the Keychain (ADR-0054).
 nonisolated struct AccountSession: Identifiable, Equatable, Sendable {
@@ -21,12 +24,29 @@ nonisolated struct AccountSession: Identifiable, Equatable, Sendable {
     let server: URL
     let loginName: String
     let client: MailClient
+    let dav: DAVClient
 
-    init(server: URL, loginName: String, client: MailClient) {
+    /// Both clients signed with the same credentials, which is every real session.
+    init(server: URL, credentials: any MailCredentials) {
+        self.init(
+            server: server,
+            loginName: credentials.loginName,
+            client: MailClient(server: server, credentials: credentials),
+            dav: DAVClient(server: server, credentials: credentials)
+        )
+    }
+
+    init(server: URL, loginName: String, client: MailClient, dav: DAVClient) {
         self.server = server
         self.loginName = loginName
         self.client = client
+        self.dav = dav
         id = AccountSession.identifier(server: server.absoluteString, loginName: loginName)
+    }
+
+    /// The `login` row's key in the mirror.
+    var identity: ServerIdentity {
+        ServerIdentity(serverURL: server, loginName: loginName)
     }
 
     /// The same pair an `account` row carries in `serverURL` and `loginName` (ADR-0033),

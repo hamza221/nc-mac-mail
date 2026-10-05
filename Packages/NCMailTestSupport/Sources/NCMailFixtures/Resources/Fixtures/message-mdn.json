@@ -1,0 +1,12 @@
+{
+  "status": "error",
+  "message": "Message \"58\" has no disposition-notification-to header.",
+  "data": {
+    "debug": true,
+    "type": "OCA\\Mail\\Exception\\ServiceException",
+    "message": "Message \"58\" has no disposition-notification-to header.",
+    "code": 0,
+    "previous": null
+  },
+  "code": 0
+}

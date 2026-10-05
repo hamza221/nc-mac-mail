@@ -16,8 +16,12 @@ import Testing
 /// thing no unit test can answer is whether an account row, a coordinator, a drainer and a
 /// scheduler actually appear when the engine is pointed at a real Nextcloud.
 ///
+/// `localhost`, not `nextcloud.local`: the app-hosted runner cannot resolve `.local` (mDNS
+/// needs a Local Network permission it never gets), and the dev stack accepts both names.
+///
 /// ```
-/// NCMAIL_LIVE_SHELL=http://nextcloud.local NCMAIL_LIVE_USER=admin NCMAIL_LIVE_PASSWORD=admin \
+/// TEST_RUNNER_NCMAIL_LIVE_SHELL=http://localhost TEST_RUNNER_NCMAIL_LIVE_USER=admin \
+///   TEST_RUNNER_NCMAIL_LIVE_PASSWORD=admin \
 ///   xcodebuild -project NextcloudMail.xcodeproj -scheme NextcloudMail -destination 'platform=macOS' \
 ///   -only-testing:NextcloudMailTests/AccountEngineLiveTests test
 /// ```
@@ -50,8 +54,7 @@ struct AccountEngineLiveTests {
 
         let session = AccountSession(
             server: server,
-            loginName: user,
-            client: MailClient(server: server, credentials: BasicCredentials(loginName: user, appPassword: password))
+            credentials: BasicCredentials(loginName: user, appPassword: password)
         )
 
         // The server answers this login at all. Asserted first so that a failure here reads
@@ -77,15 +80,39 @@ struct AccountEngineLiveTests {
         // coordinator's progress stream.
         let mailboxes = try await eventually { try await store.mailboxes(accountId: account.id) }
         let progress = try await eventually { status.mirror }
+        #expect(mailboxes.isEmpty == false)
+
+        // The login's engines: contacts and the calendar list land rows, the outbox engine and
+        // the on-demand fetcher exist, and Settings' commands can be built.
+        let loginId = try #require(try await store.login(for: session.identity)?.id)
+        let books = try await eventually { try await store.addressBooks(loginId: loginId) }
+        let calendars = try await eventually { try await store.calendars(loginId: loginId) }
+        #expect(engine.outbox(accountId: account.id) != nil)
+        #expect(engine.serverResults(sessionId: session.id) != nil)
+        #expect(engine.contactsQueue(sessionId: session.id) != nil)
+        #expect(engine.settingsCommands(sessionId: session.id) != nil)
+
+        // Sign-out: everything stops, then the login row — and its contacts with it — goes.
+        let clock = ContinuousClock()
+        let signOutStarted = clock.now
+        await engine.signOut(sessionId: session.id).value
+        let signOutTook = clock.now - signOutStarted
+        #expect(engine.account(id: account.id) == nil)
+        #expect(engine.serverResults(sessionId: session.id) == nil)
+        try await store.deleteLogin(session.identity)
+        #expect(try await store.addressBooks(loginId: loginId).isEmpty)
+        #expect(try await store.calendars(loginId: loginId).isEmpty)
+        #expect(try await store.accounts().isEmpty)
 
         Issue.record(
             """
             live shell: \(accounts.count) account row(s), \(mailboxes.count) mailboxes, \
             footer says \(progress.bodiesPresent + progress.bodiesFailed) of \
-            \(progress.totalMessages), \(status.pendingFailures) failing operations
+            \(progress.totalMessages), \(status.pendingFailures) failing operations; \
+            \(books.count) address book(s), \(calendars.count) calendar(s); sign-out stopped \
+            every engine in \(signOutTook)
             """
         )
-        #expect(mailboxes.isEmpty == false)
     }
 
     /// Polls until a value arrives. The engine is deliberately fire-and-forget — every part of

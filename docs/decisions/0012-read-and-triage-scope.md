@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 # ADR-0012: v1 is read and triage; no composer
 
-**Status:** Accepted
+**Status:** Superseded by ADR-0064
 **Date:** 2026-09-21
 **Decided by:** Carried over from `plan/macos-client.md`, unchanged
 

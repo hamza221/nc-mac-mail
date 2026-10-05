@@ -24,7 +24,7 @@
           "user": {
             "language": "en",
             "locale": "",
-            "timezone": "Europe/Madrid"
+            "timezone": "Europe/Budapest"
           },
           "can-create-app-token": true
         },
@@ -32,19 +32,11 @@
           "delay": 0,
           "allow-listed": false
         },
-        "activity": {
-          "apiv2": [
-            "filters",
-            "filters-api",
-            "previews",
-            "rich-strings"
-          ]
-        },
         "calendar": {
           "webui": true
         },
         "circles": {
-          "version": "35.0.0-dev.1",
+          "version": "36.0.0-dev.0",
           "status": {
             "globalScale": false
           },
@@ -125,7 +117,8 @@
             }
           },
           "teamResourceProviders": [
-            "files"
+            "files",
+            "kudos"
           ]
         },
         "files": {
@@ -140,7 +133,8 @@
           "forbidden_filename_basenames": [],
           "forbidden_filename_characters": [
             "\\",
-            "/"
+            "/",
+            "\n"
           ],
           "forbidden_filename_extensions": [
             ".filepart",
@@ -257,27 +251,26 @@
             }
           }
         },
-        "notifications": {
-          "ocs-endpoints": [
-            "list",
-            "get",
-            "delete",
-            "delete-all",
-            "icons",
-            "rich-strings",
-            "action-web",
-            "user-status",
-            "exists",
-            "test-push"
+        "integration_giphy": {
+          "enabled": true,
+          "configured": false
+        },
+        "polls": {
+          "pollType": [
+            "datePoll",
+            "textPoll"
           ],
-          "push": [
-            "devices",
-            "object-data",
-            "delete"
+          "voteVariant": [
+            "simple"
           ],
-          "admin-notifications": [
-            "ocs",
-            "cli"
+          "access": [
+            "private",
+            "open"
+          ],
+          "showResults": [
+            "always",
+            "closed",
+            "never"
           ]
         },
         "provisioning_api": {
@@ -304,19 +297,19 @@
           "color-element": "#00679e",
           "color-element-bright": "#00679e",
           "color-element-dark": "#00679e",
-          "logo": "http://cloud.example.com/core/img/logo/logo.svg?v=0",
+          "logo": "http://cloud.example.com/core/img/logo/logo.svg?v=2",
           "background": "http://cloud.example.com/apps/theming/img/background/jo-myoung-hee-fluid.webp",
           "background-text": "#ffffff",
           "background-plain": false,
           "background-default": true,
-          "logoheader": "http://cloud.example.com/core/img/logo/logo.svg?v=0",
-          "favicon": "http://cloud.example.com/core/img/logo/logo.svg?v=0",
+          "logoheader": "http://cloud.example.com/core/img/logo/logo.svg?v=2",
+          "favicon": "http://cloud.example.com/core/img/logo/logo.svg?v=2",
           "primaryColor": "#00679e",
           "backgroundColor": "#00679e",
           "defaultPrimaryColor": "#00679e",
           "defaultBackgroundColor": "#00679e",
           "inverted": false,
-          "cacheBuster": "dcc46f9a",
+          "cacheBuster": "30fdf852",
           "enabledThemes": [
             "default"
           ],

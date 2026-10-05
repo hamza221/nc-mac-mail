@@ -28,6 +28,9 @@ struct TriageContextMenu: View {
         item(.important)
         Divider()
         MoveSubmenu(context: context, targetIds: targetIds)
+        Divider()
+        // The submenu above has already made `targetIds` the selection, so these act on them.
+        TriageMoreItems(context: context)
     }
 
     @ViewBuilder
@@ -37,7 +40,7 @@ struct TriageContextMenu: View {
             context.adopt(targetIds)
             Task { await context.perform(action) }
         } label: {
-            availability.reason.map { Text($0) } ?? Text(action.label)
+            availability.reason.map { Text($0) } ?? Text(action == .junk ? context.junkTitle : action.title)
         }
         .disabled(targetIds.isEmpty || !availability.isAvailable)
     }

@@ -10,8 +10,9 @@ import SwiftUI
 /// A wrapper around `MessageListView` rather than a second list. WS-08 left a one-property
 /// seam — `MessageListStore.filteredSource` — precisely so that results replace the rows of
 /// the list that already exists, with its windowing, its selection, its sections and its
-/// empty states intact. This view installs that seam and adds the three things search needs
-/// around it: the field, the scope control and the coverage footer.
+/// empty states intact. This view installs that seam and adds what search needs around it:
+/// the field, the scope control, the filter bar with its parameters sheet (WS-32) and the
+/// coverage footer.
 ///
 /// `RootSplitView` uses this in place of `MessageListView` in its `content` column; the
 /// arguments are the same plus the store, which the coverage counter and the results query
@@ -24,6 +25,7 @@ struct SearchableMessageList: View {
     var triage: TriageContext?
 
     @FocusState private var isFieldFocused: Bool
+    @State private var isSearchPresented = false
 
     var body: some View {
         MessageListView(
@@ -35,6 +37,7 @@ struct SearchableMessageList: View {
         )
         .searchable(
             text: $model.text,
+            isPresented: $isSearchPresented,
             placement: .toolbar,
             prompt: Text("Search mail")
         )
@@ -43,8 +46,18 @@ struct SearchableMessageList: View {
             Text("This Mailbox").tag(MessageListFilter.Scope.mailbox)
             Text("All Mail").tag(MessageListFilter.Scope.allMail)
         }
+        // Shown while the field is active, while a search runs, and for as long as a filter
+        // is on, so a search made of chips alone keeps its controls after focus moves on.
+        .safeAreaInset(edge: .top, spacing: 0) {
+            if isSearchPresented || model.isSearching || model.hasActiveFilters || model.isParametersSheetPresented {
+                SearchFilterBar(model: model)
+            }
+        }
         .safeAreaInset(edge: .bottom) {
             SearchCoverageFooter(summary: model.coverageSummary, note: model.unmirroredSummary)
+        }
+        .sheet(isPresented: $model.isParametersSheetPresented) {
+            SearchParametersSheet(model: model)
         }
         // The seam goes in once, on appear, and is never replaced: the closure reads the
         // field at the moment the list asks for rows, so there is no window in which a

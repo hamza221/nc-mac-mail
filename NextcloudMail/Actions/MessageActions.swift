@@ -55,6 +55,19 @@ final class MessageActions {
     /// account. Refreshed alongside ``availability`` and from the same read.
     private(set) var selectionAccountIds: [Int64] = []
 
+    /// Every selected message is already `$junk`, so Junk reads and acts as "Mark Not Junk"
+    /// (§4.4's toggle). Refreshed with ``availability``.
+    private(set) var selectionIsJunk = false
+
+    /// Every selected message sits in its account's snooze mailbox, so Snooze gives way to
+    /// Unsnooze. Refreshed with ``availability``.
+    private(set) var selectionIsSnoozed = false
+
+    /// A sentence the user has to see once, for the outcomes the web reports in a toast:
+    /// a quick action whose tag or folder has gone. The presentation host shows it and
+    /// clears it.
+    var notice: String?
+
     /// The list whose selection advances after an action that empties a row.
     ///
     /// Weak: the store outlives nothing here, and a column that goes away should not be kept
@@ -77,14 +90,16 @@ final class MessageActions {
     /// ([ADR-0051](../../docs/decisions/0051-triage-owns-its-undo-manager.md)).
     let undoManager = UndoManager()
 
-    private let store: MailStore
+    // Internal rather than private from here down: `MessageActions+V2.swift` builds the v2
+    // actions (tags, snooze, spam, quick actions) on the same machinery.
+    let store: MailStore
     /// One per account. `MutationQueue` is a thin actor over the store, so this costs nothing
     /// and saves resolving the account on every keystroke.
     private var queues: [Int64: MutationQueue] = [:]
 
     /// Identifiers and counts only. A subject or an address in this log is the same leak as
     /// one in a crash report.
-    private static let logger = Logger(subsystem: "com.nextcloud.mail.macos", category: "triage")
+    static let logger = Logger(subsystem: "com.nextcloud.mail.macos", category: "triage")
 
     init(store: MailStore) {
         self.store = store
@@ -125,39 +140,6 @@ final class MessageActions {
                     undo: Self.moveBack(restorable)
                 )
             }
-        }
-    }
-
-    /// Flags then move, in that order and as two operations — the server rejects the move of
-    /// a message it has not been told is junk.
-    ///
-    /// There is no junk-thread route, so a thread is junked by expanding it to its members.
-    /// That is the queue's shape, not a shortcut: `MailOperation` has `moveThread` and
-    /// `deleteThread` and nothing else.
-    func junk(_ selection: Selection) async {
-        await act(.junk, on: selection) { context in
-            guard let destination = try await context.queue.localMailboxId(for: .junk, accountId: context.accountId)
-            else {
-                return nil
-            }
-            let ids = context.expandedIds
-            var undo = Self.moveBack(context.expanded)
-            undo.insert(
-                QueuedOperation(
-                    accountId: context.accountId,
-                    operation: .setFlags(messageIds: ids, flags: ["junk": false, "notjunk": true])
-                ),
-                at: 0
-            )
-            return Work(
-                operations: [
-                    QueuedOperation(
-                        accountId: context.accountId,
-                        operation: .junk(messageIds: ids, junkMailboxId: destination)
-                    )
-                ],
-                undo: undo
-            )
         }
     }
 
@@ -304,6 +286,8 @@ final class MessageActions {
         guard !selection.isEmpty else {
             availability = [:]
             selectionAccountIds = []
+            selectionIsJunk = false
+            selectionIsSnoozed = false
             return
         }
         var fresh: [TriageAction: TriageAvailability] = [:]
@@ -317,6 +301,9 @@ final class MessageActions {
                 accountIds.count > 1
                 ? .unavailable(String(localized: "Messages from more than one account cannot move to one folder."))
                 : .available
+            selectionIsJunk = !records.isEmpty && records.allSatisfy(\.isJunk)
+            selectionIsSnoozed = try await allSnoozed(records)
+            fresh.merge(v2Availability(records: records, accountIds: accountIds)) { _, new in new }
         } catch {
             Self.logger.error("could not resolve availability: \(String(describing: error), privacy: .public)")
         }
@@ -374,7 +361,7 @@ final class MessageActions {
     // MARK: - Machinery
 
     /// Everything an action needs to build its operations, resolved once per account.
-    private struct Context {
+    struct Context {
         let accountId: Int64
         let queue: MutationQueue
         let selection: Selection
@@ -397,7 +384,7 @@ final class MessageActions {
     }
 
     /// What one account's share of an action turns into.
-    private struct Work {
+    struct Work {
         var operations: [QueuedOperation]
         /// The operations that put it back, in the order they must be applied.
         var undo: [QueuedOperation]
@@ -409,9 +396,10 @@ final class MessageActions {
     /// destination belonging to someone else — and the other accounts still go through. A
     /// mixed selection is the case the brief calls out and the one an early return would get
     /// wrong.
-    private func act(
+    func act(
         _ action: TriageAction,
         on selection: Selection,
+        removesFromList: Bool? = nil,
         _ build: (Context) async throws -> Work?
     ) async {
         guard !selection.isEmpty else { return }
@@ -430,7 +418,8 @@ final class MessageActions {
                 combined.operations.append(contentsOf: work.operations)
                 combined.undo.append(contentsOf: work.undo)
             }
-            await commit(combined, action: action, advancingPast: Set(selection.messageIds))
+            await commit(
+                combined, action: action, advancingPast: Set(selection.messageIds), removesFromList: removesFromList)
         } catch {
             Self.logger.error(
                 "\(action.rawValue, privacy: .public) failed: \(String(describing: error), privacy: .public)"
@@ -508,19 +497,22 @@ final class MessageActions {
     }
 
     /// Enqueues every operation, registers the undo, and advances the selection.
-    private func commit(_ work: Work, action: TriageAction, advancingPast acted: Set<Int64>) async {
+    func commit(
+        _ work: Work, action: TriageAction, advancingPast acted: Set<Int64>, removesFromList: Bool? = nil
+    ) async {
         guard !work.operations.isEmpty else { return }
-        let next = action.removesFromList ? list.flatMap { Self.nextSelection(after: acted, in: $0.rows) } : nil
+        let removes = removesFromList ?? action.removesFromList
+        let next = removes ? list.flatMap { Self.nextSelection(after: acted, in: $0.rows) } : nil
 
         await apply(work.operations)
         register(undo: work.undo, redo: work.operations, name: action.undoName)
 
-        if action.removesFromList, let list {
+        if removes, let list {
             list.selection = next.map { [$0] } ?? []
         }
     }
 
-    private func apply(_ operations: [QueuedOperation]) async {
+    func apply(_ operations: [QueuedOperation]) async {
         for item in operations {
             do {
                 try await queue(for: item.accountId).perform(item.operation, accountId: item.accountId)
@@ -543,7 +535,7 @@ final class MessageActions {
     /// during `undo()`, which is what lands it on the redo stack rather than back on the undo
     /// one. The database work is a `Task` after it, because the registration only has to
     /// describe what redo would do and that is already known.
-    private func register(undo inverse: [QueuedOperation], redo forward: [QueuedOperation], name: String) {
+    func register(undo inverse: [QueuedOperation], redo forward: [QueuedOperation], name: String) {
         guard !inverse.isEmpty else { return }
         undoManager.setActionName(name)
         undoManager.registerUndo(withTarget: self) { target in
@@ -563,7 +555,7 @@ final class MessageActions {
     /// why this groups rather than remembering a single destination. Messages the action
     /// erased have nothing to go back to and are not represented here — a `delete` of a
     /// message already in trash removes the row, and no operation restores it.
-    private static func moveBack(_ records: [MessageRecord]) -> [QueuedOperation] {
+    static func moveBack(_ records: [MessageRecord]) -> [QueuedOperation] {
         Dictionary(grouping: records) { MailboxKey(accountId: $0.accountId, mailboxId: $0.mailboxId) }
             .sorted { $0.key.mailboxId < $1.key.mailboxId }
             .map { key, group in
@@ -581,7 +573,7 @@ final class MessageActions {
 
     // MARK: - Reading the mirror
 
-    private func queue(for accountId: Int64) -> MutationQueue {
+    func queue(for accountId: Int64) -> MutationQueue {
         if let existing = queues[accountId] { return existing }
         // No drainer: `wakeDrainer` does that, which keeps `OperationDrainer` out of this
         // type's signature and `AccountEngine` the one owner of one.
@@ -591,7 +583,7 @@ final class MessageActions {
     }
 
     /// The selection, grouped by the account that owns each message, in selection order.
-    private func contexts(for selection: Selection) async throws -> [Context] {
+    func contexts(for selection: Selection) async throws -> [Context] {
         let records = try await self.records(for: selection.messageIds)
         var order: [Int64] = []
         var byAccount: [Int64: [MessageRecord]] = [:]
@@ -625,7 +617,7 @@ final class MessageActions {
 
     /// Reads each id that the mirror still has. One the mirror has lost is skipped: there is
     /// no local change to make and a request would only earn a 403 for a stale id.
-    private func records(for ids: [Int64]) async throws -> [MessageRecord] {
+    func records(for ids: [Int64]) async throws -> [MessageRecord] {
         var records: [MessageRecord] = []
         records.reserveCapacity(ids.count)
         for id in ids {

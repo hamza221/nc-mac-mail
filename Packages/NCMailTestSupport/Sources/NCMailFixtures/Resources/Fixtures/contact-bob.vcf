@@ -1,0 +1,21 @@
+BEGIN:VCARD
+VERSION:3.0
+PRODID:-//Sabre//Sabre VObject 4.5.6//EN
+UID:ws17-bob-9c1d
+N:Tester;Bob;;;
+FN:Bob Tester
+ORG:Globex Corp
+EMAIL;TYPE=PREF:bob@globex.example
+EMAIL:bob.tester@mail.example
+TEL;TYPE="voice,cell";VALUE=URI:tel:+1-555-0100
+ADR;TYPE=work;LABEL=1 Globex Plaza\nSpringfield:;;1 Globex Plaza;Springfiel
+ d;;58008;USA
+LANG;TYPE=PREF:en
+GENDER:M
+X-CUSTOM-FLAG;X-PARAM=weird value;TYPE=home:semi\;colon,comma\,escaped
+GEO:geo:52.5200,13.4050
+TZ:Europe/Berlin
+BDAY;X-APPLE-OMIT-YEAR=1604:1604-02-14
+CATEGORIES:Friends
+REV:20261003T101500Z
+END:VCARD

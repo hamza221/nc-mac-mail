@@ -1,0 +1,17 @@
+{
+  "status": "success",
+  "data": {
+    "imapConfig": {
+      "username": "user@example.com",
+      "host": "imap.gmail.com",
+      "port": 993,
+      "security": "ssl"
+    },
+    "smtpConfig": {
+      "username": "user@example.com",
+      "host": "smtp.gmail.com",
+      "port": 465,
+      "security": "ssl"
+    }
+  }
+}

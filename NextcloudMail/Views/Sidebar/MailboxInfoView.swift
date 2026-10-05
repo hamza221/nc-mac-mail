@@ -212,7 +212,7 @@ enum MailboxInfoText {
     /// echoed, so a future writer that stores something less careful cannot leak through here.
     static func failureExplanation(_ lastSyncError: String?) -> String {
         let error = lastSyncError ?? ""
-        if error.hasPrefix("unauthorized") {
+        if SessionExpiryTrigger.isAuthenticationLost(error) {
             return String(localized: "The server no longer accepts this account's app password. Sign in again.")
         }
         if error.hasPrefix("forbidden") {

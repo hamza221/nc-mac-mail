@@ -84,8 +84,9 @@ struct SearchTests {
 
     // MARK: - Prefixes
 
-    @Test(arguments: ["h", "he", "hed", "hedgeh", "hedgehog"])
-    func prefixMatchingWorksFromTheFirstCharacter(_ text: String) async throws {
+    /// Terms need two characters (WS-32); prefix matching works from the second one.
+    @Test(arguments: ["he", "hed", "hedgeh", "hedgehog"])
+    func prefixMatchingWorksFromTheSecondCharacter(_ text: String) async throws {
         let store = try MailStore.inMemory()
         let ids = try await Self.corpus(store)
         let first = try #require(ids.first)
@@ -407,7 +408,8 @@ struct FTS5MatchExpressionTests {
         ("\"quick brown\"", "\"quick brown\""),
         ("\"quick brown\" fox", "\"quick brown\" AND \"fox\"*"),
         ("NOT", "\"NOT\"*"),
-        ("a\"b", "\"a\"* AND \"b\"*"),
+        ("ab\"cd", "\"ab\"* AND \"cd\"*"),
+        ("a\"bc", "\"bc\"*"),
         ("\"quick bro", "\"quick bro\"*"),
         // Punctuation separates tokens here exactly as it did on the way into the index,
         // so what reaches SQLite is only ever letters, digits and single spaces.

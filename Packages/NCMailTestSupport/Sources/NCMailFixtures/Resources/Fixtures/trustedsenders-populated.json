@@ -1,0 +1,17 @@
+{
+  "status": "success",
+  "data": [
+    {
+      "id": 15,
+      "email": "example.org",
+      "uid": "admin",
+      "type": "domain"
+    },
+    {
+      "id": 16,
+      "email": "user@example.com",
+      "uid": "admin",
+      "type": "individual"
+    }
+  ]
+}

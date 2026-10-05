@@ -26,6 +26,9 @@ extension MirrorCoordinator {
                 group.addTask(priority: .utility) { await self.bodyWorker() }
             }
         }
+        // A 401 is the account's, not one message's: it ends the run the way a 401 in the
+        // bootstrap does, so the account is marked failed rather than paused.
+        if isBodyStageUnauthorized { throw MailError.unauthorized }
         try Task.checkCancellation()
     }
 
@@ -41,7 +44,7 @@ extension MirrorCoordinator {
 
     private func bodyWorker() async {
         while !Task.isCancelled {
-            if bodyPauseReason != nil { return }
+            if bodyPauseReason != nil || isBodyStageUnauthorized { return }
             await releaseThrottleIfExpired()
             guard let item = await claimNextBody() else { return }
 
@@ -65,6 +68,7 @@ extension MirrorCoordinator {
         pendingBodies.removeAll(keepingCapacity: true)
         isBodyQueueExhausted = false
         bodyFailureCounts.removeAll(keepingCapacity: true)
+        isBodyStageUnauthorized = false
     }
 
     /// The next message to fetch, refilling from the database when the in-memory slice runs
@@ -121,6 +125,8 @@ extension MirrorCoordinator {
             bodyFailureCounts[messageId] = nil
         } catch is CancellationError {
             // The row stays `missing`; the next run picks it up.
+        } catch MailError.unauthorized {
+            await loseAuthentication(messageId)
         } catch MailError.notFound {
             await abandonBody(messageId, why: "notFound")
         } catch MailError.forbidden {
@@ -158,6 +164,22 @@ extension MirrorCoordinator {
         )
         try? await store.setBodyState(.failed, messageIds: [messageId])
         bodyFailureCounts[messageId] = nil
+    }
+
+    /// 401: the app password is gone, which is not the message's fault. Nothing is counted
+    /// against it — three strikes would mark bodies the server still has as failed — and the
+    /// stage stops for this run, because every other body would get the same answer.
+    ///
+    /// The 401 is recorded against the message's mailbox: `lastSyncError` is what the app's
+    /// session-expiry trigger watches, so a revoked password found here raises the same
+    /// modal a mailbox sync would (ux-spec.md, "Authentication lost (401) → modal").
+    private func loseAuthentication(_ messageId: Int64) async {
+        isBodyStageUnauthorized = true
+        MirrorLog.mirror.error(
+            "message \(messageId, privacy: .public) body refused: unauthorized; stage 2 stopped"
+        )
+        guard let mailboxId = try? await store.message(id: messageId)?.mailboxId else { return }
+        try? await store.recordSyncFailure(mailboxId: mailboxId, message: describe(MailError.unauthorized))
     }
 
     /// Three strikes and the message is left to the deep reconcile rather than retried in a
