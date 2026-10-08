@@ -43,10 +43,15 @@ command -v create-dmg >/dev/null || {
 SIGNING_ARGS=()
 if [[ -n "${CODE_SIGN_IDENTITY:-}" && -n "${DEVELOPMENT_TEAM:-}" ]]; then
   echo "== building Release (signing as ${DEVELOPMENT_TEAM})"
+  # A plain `xcodebuild build` injects get-task-allow and signs without a
+  # secure timestamp; the notary service rejects both, so turn them off here
+  # rather than going through an archive/export round trip.
   SIGNING_ARGS=(
     CODE_SIGN_STYLE=Manual
     "CODE_SIGN_IDENTITY=${CODE_SIGN_IDENTITY}"
     "DEVELOPMENT_TEAM=${DEVELOPMENT_TEAM}"
+    CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO
+    "OTHER_CODE_SIGN_FLAGS=--timestamp"
   )
 else
   # The checked-in project signs ad hoc (CODE_SIGN_IDENTITY = "-", ADR-0018),
