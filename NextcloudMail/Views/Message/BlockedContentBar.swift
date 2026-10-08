@@ -11,6 +11,9 @@ import SwiftUI
 /// ends with `.accessibilityElement(children: .combine)`, which makes any control inside it
 /// unreachable to VoiceOver. Filed in `docs/feedback/library-feedback.md`.
 struct BlockedContentBar: View {
+    /// The address "Always show" trusts — the sender's, not the label beside it. Nil when the
+    /// sender has none, and then there is nobody to trust and the button is not offered.
+    let senderAddress: String?
     /// The sender's domain; nil hides the domain choice.
     let domain: String?
     let showImages: () -> Void
@@ -30,9 +33,18 @@ struct BlockedContentBar: View {
                 Button("Show images", action: showImages)
                     .buttonStyle(.secondary)
                     .accessibilityLabel(Text("Show images in this message"))
-                Button("Always show from this sender", action: alwaysShow)
+                // Names the address, not "this sender": the trust is granted to the address
+                // and lasts, and a display name can claim to be anybody.
+                if let senderAddress, !senderAddress.isEmpty {
+                    Button(action: alwaysShow) {
+                        Text("Always show from \(senderAddress)")
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    }
                     .buttonStyle(.tertiary)
-                    .accessibilityLabel(Text("Always show images from this sender"))
+                    .help(Text("Show remote images in every message from \(senderAddress)"))
+                    .accessibilityLabel(Text("Always show images from \(senderAddress)"))
+                }
                 if let domain {
                     Button("Always show from \(domain)", action: alwaysShowDomain)
                         .buttonStyle(.tertiary)

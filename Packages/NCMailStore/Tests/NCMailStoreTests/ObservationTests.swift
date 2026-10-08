@@ -160,4 +160,33 @@ struct ObservationTests {
 
         #expect(received == [nil, "10,11"])
     }
+
+    /// Every value is a whole snapshot, so a consumer that falls behind needs only the newest.
+    /// Buffering the rest held one full copy of a body per commit while a slow render ran.
+    @Test func aConsumerThatFallsBehindIsHandedOnlyTheNewestValue() async throws {
+        let observation = StoreObservation<Int> { continuation in
+            for value in 1...3 { continuation.yield(value) }
+            continuation.finish()
+        }
+
+        var received: [Int] = []
+        for try await value in observation { received.append(value) }
+
+        #expect(received == [3])
+    }
+
+    /// A replaced observation must not assign after its replacement. The stream buffers a
+    /// value before the cancelled loop gets to it, and handing that value out let a search
+    /// footer show the previous scope's counts over the current one.
+    @Test func aCancelledIterationIsHandedNothingItHadBuffered() async throws {
+        let observation = StoreObservation<Int> { continuation in continuation.yield(1) }
+        let iteration = Task {
+            withUnsafeCurrentTask { $0?.cancel() }
+            var received: [Int] = []
+            for try await value in observation { received.append(value) }
+            return received
+        }
+
+        #expect(try await iteration.value == [])
+    }
 }

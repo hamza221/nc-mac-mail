@@ -84,7 +84,9 @@ enum MessageBodyPresentation: Equatable {
     case waiting
     /// The body fetch failed. Retry raises its priority again.
     case failed
-    case plain(text: String, signature: String?)
+    /// The text with its links already found, off the main actor, so drawing it does no
+    /// detection.
+    case plain(PlainTextBody)
     case html(RenderedMessage, MailAssetSchemeHandler.Context)
     /// The content rule list would not compile, so no body is shown at all.
     case blocked(String)
@@ -212,6 +214,20 @@ final class MessageViewModel {
     private var resultObservations: [String: Task<Void, Never>] = [:]
     private var bodyState: BodyState?
     private var loginId: Int64?
+    /// What the body area was last drawn from, so a value the mirror delivers again
+    /// unchanged does not redo the work. The body observation re-delivers on every commit
+    /// to `messageBody` or `attachment`, any message's, and storing an inline image
+    /// re-delivers this one with the same HTML once per image.
+    private var lastRendered: RenderInput?
+    /// The body the reading text and translation offer were last derived from; the HTML to
+    /// text pass is a whole-body walk on the main actor.
+    private var lastObservedBody: MessageBodyRecord?
+
+    /// Everything a render reads. Equal inputs draw the same body.
+    private enum RenderInput: Equatable {
+        case plain(messageId: Int64, text: String, signature: String?)
+        case html(messageId: Int64, html: String, showsRemoteImages: Bool, baseFontSize: Double)
+    }
 
     init(services: MessageViewServices) {
         self.services = services
@@ -273,6 +289,8 @@ final class MessageViewModel {
         translatesMarkup = false
         translationOfferLanguage = nil
         bodyState = nil
+        lastRendered = nil
+        lastObservedBody = nil
         mailboxRole = nil
         smartReplies = .idle
         followUpAnswered = false
@@ -302,6 +320,7 @@ final class MessageViewModel {
 
         do {
             for try await stored in services.store.observeBody(messageId: messageId) {
+                guard isShowing(messageId) else { return }
                 guard let stored, let header else { continue }
                 attachments = stored.attachments
                 isSenderTrusted = stored.body.isSenderTrusted
@@ -311,13 +330,17 @@ final class MessageViewModel {
                     envelopeEncrypted: header.isEncrypted,
                     mdnSent: header.isMdnSent
                 )
-                bodyText = Self.readableText(of: stored.body)
-                translatesMarkup = (stored.body.plainBody ?? "").isEmpty && stored.body.html != nil
-                translationOfferLanguage = TranslationOffer.language(for: bodyText)
+                if stored.body != lastObservedBody {
+                    bodyText = Self.readableText(of: stored.body)
+                    translatesMarkup = (stored.body.plainBody ?? "").isEmpty && stored.body.html != nil
+                    translationOfferLanguage = TranslationOffer.language(for: bodyText)
+                    lastObservedBody = stored.body
+                }
                 if security.isPGP {
                     // ADR-0064: the honest notice, and nothing of the body at all.
                     presentation = .encrypted
                     hasBlockedRemoteContent = false
+                    lastRendered = nil
                     continue
                 }
                 await render(stored, header: header)
@@ -373,7 +396,7 @@ final class MessageViewModel {
         guard let record = try? await services.store.message(id: messageId), messageId == expandedId else { return }
         let addresses = (try? await services.store.addresses(messageId: messageId)) ?? []
         let tags = (try? await services.store.tags(messageId: messageId)) ?? []
-        guard messageId == expandedId else { return }
+        guard isShowing(messageId) else { return }
         let header = Self.header(from: record, addresses: addresses)
         if header != self.header { self.header = header }
         if tags != self.tags { self.tags = tags }
@@ -382,11 +405,13 @@ final class MessageViewModel {
         }
         if mailboxRole == nil {
             mailboxRole = (try? await services.store.mailbox(id: record.mailboxId))?.specialRole
+            guard isShowing(messageId) else { return }
         }
         bodyState = record.bodyState
         guard record.bodyState != .present else { return }
         attachments = []
         presentation = record.bodyState == .failed ? .failed : .waiting
+        lastRendered = nil
     }
 
     /// Draws the stored body again from what is already in the mirror. No request: the only
@@ -394,25 +419,59 @@ final class MessageViewModel {
     private func rerender(messageId: Int64) async {
         guard
             let stored = try? await services.store.body(messageId: messageId),
+            isShowing(messageId),
             let header, !security.isPGP
         else { return }
         await render(stored, header: header)
     }
 
     private func render(_ stored: StoredBody, header: MessageHeader) async {
+        let messageId = header.messageId
+        let showsRemoteImages = showsRemoteImages || isSenderTrusted
+        let input = Self.renderInput(stored.body, messageId: messageId, showsRemoteImages: showsRemoteImages)
+        guard input != lastRendered else { return }
         let rendered = await Self.render(
             stored.body,
             header: header,
             server: services.server,
-            showsRemoteImages: showsRemoteImages || isSenderTrusted
+            showsRemoteImages: showsRemoteImages
         )
         lastRewriteMilliseconds = rendered.milliseconds
+        // The rewrite cannot be cancelled, so the selection may have moved on while it ran,
+        // and a body drawn under another message's header is the wrong message. A changed
+        // image decision has its own render coming, which this one must not land after.
+        guard isShowing(messageId), showsRemoteImages == (self.showsRemoteImages || isSenderTrusted) else {
+            return
+        }
         presentation = rendered.presentation
         if case .html(let document, _) = rendered.presentation {
             hasBlockedRemoteContent = document.hasBlockedRemoteContent
         } else {
             hasBlockedRemoteContent = false
         }
+        lastRendered = input
+    }
+
+    /// Whether work started for `messageId` may still write what the view shows.
+    ///
+    /// Checked after every suspension. Collapsing or changing the selection cancels the body
+    /// observation, but not a read or a detached rewrite already in flight, and the Show
+    /// Images task is never cancelled at all.
+    private func isShowing(_ messageId: Int64) -> Bool {
+        !Task.isCancelled && expandedId == messageId
+    }
+
+    private static func renderInput(_ body: MessageBodyRecord, messageId: Int64, showsRemoteImages: Bool) -> RenderInput
+    {
+        guard body.hasHtmlBody, let html = body.html, !html.isEmpty else {
+            return .plain(messageId: messageId, text: body.plainBody ?? "", signature: body.signature)
+        }
+        return .html(
+            messageId: messageId,
+            html: html,
+            showsRemoteImages: showsRemoteImages,
+            baseFontSize: MessageDocument.preferredBaseFontSize
+        )
     }
 
     /// One body through the right renderer, off the main actor for HTML: a 5 MB body is a
@@ -425,7 +484,14 @@ final class MessageViewModel {
         showsRemoteImages: Bool
     ) async -> (presentation: MessageBodyPresentation, milliseconds: Double) {
         guard body.hasHtmlBody, let html = body.html, !html.isEmpty else {
-            return (.plain(text: body.plainBody ?? "", signature: body.signature), 0)
+            let text = body.plainBody ?? ""
+            let signature = body.signature
+            // Detached: the data detector is superlinear on link-dense text, and the sender
+            // chose the text.
+            let plain = await Task.detached(priority: .userInitiated) {
+                PlainTextBody(text: text, signature: signature)
+            }.value
+            return (.plain(plain), 0)
         }
         let policy = MessageRenderPolicy(
             server: server,

@@ -174,16 +174,16 @@ struct ReaderQueryTests {
     @Test("an avatar reads back by address, case-insensitively, and says when it is missing")
     func avatarsReadBackByAddress() async throws {
         let store = try MailStore.inMemory()
+        try await Seed.base(store)
         let bytes = Data([0x89, 0x50, 0x4E, 0x47])
-        try await store.write { db in
-            try AvatarRecord(
-                email: "Ada@Example.invalid",
-                data: bytes,
-                mime: "image/png",
-                fetchedAt: 100
-            ).insert(db)
-            try AvatarRecord(email: "nobody@example.invalid", missing: true, fetchedAt: 100).insert(db)
-        }
+        try await store.upsert(
+            avatar: AvatarRecord(email: "Ada@Example.invalid", data: bytes, mime: "image/png", fetchedAt: 100),
+            accountId: 1
+        )
+        try await store.upsert(
+            avatar: AvatarRecord(email: "nobody@example.invalid", missing: true, fetchedAt: 100),
+            accountId: 1
+        )
 
         let ada = try #require(try await store.avatar(for: "ada@example.INVALID"))
         #expect(ada.data == bytes)
@@ -192,5 +192,41 @@ struct ReaderQueryTests {
 
         #expect(try await store.avatar(for: "nobody@example.invalid")?.missing == true)
         #expect(try await store.avatar(for: "never-asked@example.invalid") == nil)
+    }
+
+    /// The key the writer stores is the key the work list retires and the reader finds. SQLite
+    /// built without ICU folds ASCII only, and Swift folds all of Unicode; mixing the two once
+    /// kept `Ö@` on the work list forever and let the Kelvin sign's address (U+212A, which
+    /// Swift folds to `k`) overwrite `kevin@`'s photo.
+    @Test("an address with a non-ASCII capital is stored under the key the work list and the reader use")
+    func avatarKeysFoldOneWay() async throws {
+        let store = try MailStore.inMemory()
+        try await Seed.base(store)
+        let kelvin = "\u{212A}evin@example.invalid"
+        try await store.upsert(
+            envelopes: ["Ö@example.invalid", kelvin, "kevin@example.invalid"].enumerated().map { offset, email in
+                Seed.envelope(
+                    remoteId: Int64(offset) + 1,
+                    sentAt: 100 + Int64(offset),
+                    addresses: [EnvelopeAddress(kind: .from, email: email)]
+                )
+            }
+        )
+        let photo = AvatarRecord(email: "kevin@example.invalid", data: Data([1]), mime: "image/png", fetchedAt: 100)
+        try await store.upsert(avatar: photo, accountId: 1)
+        for email in ["Ö@example.invalid", kelvin] {
+            try await store.upsert(avatar: AvatarRecord(email: email, missing: true, fetchedAt: 100), accountId: 1)
+        }
+
+        let needing = try await store.sendersNeedingAvatars(
+            accountId: 1,
+            staleBefore: 0,
+            retryMissingBefore: 0,
+            limit: 25
+        )
+        #expect(needing.isEmpty)
+        #expect(try await store.avatar(for: "Ö@example.invalid")?.missing == true)
+        #expect(try await store.avatar(for: kelvin)?.missing == true)
+        #expect(try await store.avatar(for: "kevin@example.invalid") == photo)
     }
 }

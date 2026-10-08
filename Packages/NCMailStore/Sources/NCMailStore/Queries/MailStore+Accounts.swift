@@ -73,12 +73,15 @@ extension MailStore {
     /// Removes an account and everything that hangs off it.
     ///
     /// The foreign keys cascade to mailboxes, messages, addresses, bodies, attachments, tags
-    /// and queued operations; the `messageSearch` trigger takes the index rows with them. The
-    /// caller is expected to `VACUUM` afterwards, which is a separate call because it is slow
-    /// and belongs to a progress indicator rather than to a transaction.
+    /// and queued operations; the `messageSearch` trigger takes the index rows with them.
+    /// `avatar` is shared across accounts and no cascade reaches it, so the rows no remaining
+    /// message names go in the same transaction. The caller is expected to call ``vacuum()``
+    /// afterwards, which is what makes the removal physical, and a separate call because it
+    /// is slow and belongs to a progress indicator rather than to a transaction.
     public func deleteAccount(id: Int64) async throws {
         try await dbQueue.write { db in
             try db.execute(sql: "DELETE FROM account WHERE id = ?", arguments: [id])
+            try Self.deleteUnreferencedAvatars(db)
         }
         storeLog.info("account \(id, privacy: .public) removed from the mirror")
     }
@@ -117,13 +120,31 @@ extension MailStore {
         }
     }
 
-    /// Rebuilds the file so the pages a delete freed go back to the file system.
+    /// Rebuilds the file so that what a removal deleted is gone from the disk, not only from
+    /// every query, and the pages it freed go back to the file system.
+    ///
+    /// Every removal path calls this straight after, and it is where "removed" becomes
+    /// physical (ADR-0105):
+    ///
+    /// - FTS5 `rebuild` rewrites each search index from its table's own content. A delete or
+    ///   a cleared body only appends a marker that hides the old postings from queries; the
+    ///   postings stay in `messageSearch_data` and `contactSearch_data`, live pages that
+    ///   `VACUUM` would copy. `optimize` is not enough: measured, it left removed words in the
+    ///   merged segment.
+    /// - `VACUUM` copies only live pages into a new file, so freed pages holding old rows,
+    ///   bodies and index segments are not carried over.
+    /// - The `TRUNCATE` checkpoint moves the vacuumed pages from the write-ahead log into the
+    ///   file and empties the log, which otherwise still holds them, and older frames too,
+    ///   until SQLite next checkpoints on its own.
     ///
     /// Outside any transaction, and slow on a large mirror, which is why it is not folded into
     /// ``deleteAccount(id:)``.
     public func vacuum() async throws {
         try await dbQueue.writeWithoutTransaction { db in
+            try db.execute(sql: "INSERT INTO messageSearch(messageSearch) VALUES ('rebuild')")
+            try db.execute(sql: "INSERT INTO contactSearch(contactSearch) VALUES ('rebuild')")
             try db.execute(sql: "VACUUM")
+            try db.execute(sql: "PRAGMA wal_checkpoint(TRUNCATE)")
         }
     }
 

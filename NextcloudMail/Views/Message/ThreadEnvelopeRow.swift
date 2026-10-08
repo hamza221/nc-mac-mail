@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Hamza Mahjoubi
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import NCMailCore
 import NCMailStore
 import NextcloudUI
 import SwiftUI
@@ -16,7 +17,15 @@ struct ThreadEnvelopeRow: View {
 
     @Environment(\.ncTheme) private var theme
 
-    private var sender: String { row.senderName ?? row.senderEmail ?? String(localized: "Unknown sender") }
+    private var address: Address { Address(label: row.senderName, email: row.senderEmail) }
+    private var sender: String {
+        address.displayName.isEmpty ? String(localized: "Unknown sender") : address.displayName
+    }
+    /// The line has room for the name only, and the name is the sender's to choose, so the
+    /// address rides along in the tooltip and the VoiceOver label.
+    private var senderNameAndAddress: String {
+        address.displayName.isEmpty ? sender : address.nameAndAddress
+    }
 
     private var subtitle: String {
         let preview = row.isEncrypted ? String(localized: "Encrypted message") : (row.previewText ?? "")
@@ -41,9 +50,9 @@ struct ThreadEnvelopeRow: View {
             .fontWeight(row.isSeen ? .regular : .semibold)
             .padding(.horizontal, theme.metrics.spacing.loose)
             .contentShape(Rectangle())
-            .help(sentAt.formatted(date: .complete, time: .standard))
+            .help(Text(verbatim: "\(senderNameAndAddress)\n\(sentAt.formatted(date: .complete, time: .standard))"))
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(Text("Expand message from \(sender)"))
+        .accessibilityLabel(Text("Expand message from \(senderNameAndAddress)"))
     }
 }

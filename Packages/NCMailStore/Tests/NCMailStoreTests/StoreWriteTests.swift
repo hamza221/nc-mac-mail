@@ -77,6 +77,110 @@ struct StoreWriteTests {
         }
     }
 
+    /// `avatar` has no `accountId` and no foreign key, because one person's picture is shared
+    /// by every account that hears from them (ADR-0033), so no cascade reaches it. Removing an
+    /// account must still take the addresses only its mail named; the rows other accounts'
+    /// mail still names stay.
+    @Test func deletingAnAccountTakesTheAvatarsOnlyItsMailNamed() async throws {
+        let store = try MailStore.inMemory()
+        try await Seed.base(store)
+        let other = try #require(try await store.upsert(accounts: [Seed.account(remoteId: 2)]).first)
+        let inbox = MailboxWrite(
+            accountId: other.id,
+            remoteId: 5,
+            name: "INBOX",
+            displayName: "INBOX",
+            isSubscribed: true
+        )
+        let otherMailbox = try #require(try await store.upsert(mailboxes: [inbox], accountId: other.id).first)
+        func message(_ remoteId: Int64, from email: String?, otherAccount: Bool = false) -> EnvelopeWrite {
+            Seed.envelope(
+                remoteId: remoteId,
+                mailboxId: otherAccount ? otherMailbox.id : 10,
+                accountId: otherAccount ? other.id : 1,
+                sentAt: 100 + remoteId,
+                addresses: email.map { [EnvelopeAddress(kind: .from, email: $0)] } ?? []
+            )
+        }
+        try await store.upsert(
+            envelopes: [
+                message(1, from: "only-a@example.invalid"),
+                message(2, from: "Shared@Example.invalid"),
+                message(1, from: "only-b@example.invalid", otherAccount: true),
+                message(2, from: "shared@example.invalid", otherAccount: true),
+                // No sender leaves a NULL in the column the cleanup reads, and `NOT IN` a
+                // list holding NULL is never true: one such row must not stop the cleanup.
+                message(3, from: nil, otherAccount: true),
+            ]
+        )
+        for email in ["only-a@example.invalid", "shared@example.invalid", "only-b@example.invalid"] {
+            try await store.upsert(avatar: AvatarRecord(email: email, missing: true, fetchedAt: 1), accountId: other.id)
+        }
+
+        try await store.deleteAccount(id: 1)
+
+        let remaining = try await store.read { db in
+            try String.fetchAll(db, sql: "SELECT email FROM avatar ORDER BY email")
+        }
+        #expect(remaining == ["only-b@example.invalid", "shared@example.invalid"])
+    }
+
+    /// The account's avatar fetcher stops after the account row is gone, not before, so an
+    /// answer already in flight lands after the cleanup above. It must not bring the address
+    /// back.
+    @Test func anAvatarWrittenForADeletedAccountIsDropped() async throws {
+        let store = try MailStore.inMemory()
+        try await Seed.base(store)
+        try await store.deleteAccount(id: 1)
+
+        let late = AvatarRecord(email: "late@example.invalid", missing: true, fetchedAt: 1)
+        try await store.upsert(avatar: late, accountId: 1)
+
+        #expect(try await store.avatar(for: "late@example.invalid") == nil)
+    }
+
+    /// Signing a login out with its local copies removed takes its correspondents' and its
+    /// contacts' pictures too, and keeps a photo another login's contact still names.
+    @Test func deletingALoginTakesTheAvatarsNothingLeftNames() async throws {
+        let store = try MailStore.inMemory()
+        try await Seed.base(store)
+        try await store.upsert(
+            envelopes: [
+                Seed.envelope(
+                    remoteId: 1, sentAt: 101, addresses: [EnvelopeAddress(kind: .from, email: "sender@example.invalid")]
+                )
+            ]
+        )
+        let gone = try #require(try await store.ensureLogin(Seed.identity).id)
+        let staying = try #require(
+            try await store.ensureLogin(ServerIdentity(serverURL: "https://two.example.invalid/", loginName: "ada")).id
+        )
+        for (loginId, email) in [(gone, "friend@example.invalid"), (staying, "Kept@Example.invalid")] {
+            let book = try #require(
+                try await store.syncAddressBooks(
+                    [AddressBookRecord(loginId: loginId, url: "/dav/books/\(loginId)/", displayName: "Personal")],
+                    loginId: loginId
+                ).first?.id
+            )
+            try await store.upsert(
+                contact: ContactRecord(
+                    addressBookId: book, href: "/dav/books/\(loginId)/a.vcf", vcard: "BEGIN:VCARD\nEND:VCARD",
+                    syncedAt: 1),
+                emails: [ContactEmailRecord(contactId: 0, position: 0, email: email)]
+            )
+        }
+        for email in ["sender@example.invalid", "friend@example.invalid", "kept@example.invalid"] {
+            try await store.upsert(avatar: AvatarRecord(email: email, data: Data([1]), isExternal: false, fetchedAt: 1))
+        }
+
+        try await store.deleteLogin(Seed.identity)
+
+        let remaining = try await store.read { db in
+            try String.fetchAll(db, sql: "SELECT email FROM avatar ORDER BY email")
+        }
+        #expect(remaining == ["kept@example.invalid"])
+    }
+
     /// The collision ADR-0033 exists for: two Nextcloud instances, each with an account 1,
     /// a mailbox 5 and a message 100.
     ///

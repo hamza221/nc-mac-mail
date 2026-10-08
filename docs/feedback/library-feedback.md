@@ -1553,6 +1553,20 @@ because SwiftPM had GRDB in the search path. That is a coincidence rather than a
 and one more reason the DAO belongs in `NCMailStore` where the import is declared. Moot
 since ADR-0045 moved those DAOs.
 
+### The system SQLite folds ASCII only, and nothing says so
+**Workstream:** security-audit fixes · **Severity:** trap
+**Where:** [ADR-0104](../decisions/0104-one-fold-for-the-avatar-key.md), `MailStore+Avatars.swift`
+
+GRDB links the system `libsqlite3`, which is built without ICU, so `lower()` and
+`COLLATE NOCASE` fold `A`–`Z` and nothing else. Swift's `lowercased()` folds all of Unicode.
+The avatar table was written with one and queried with the other: a sender `Ö@…` was never
+found again and the fetcher asked about it forever, and a sender `\u{212A}evin@…` (Kelvin
+sign) overwrote `kevin@`'s photo. Neither GRDB nor SQLite warns, and every ASCII fixture
+passes. The fix is to let SQLite compute every key it will later compare.
+
+**Worth a line in GRDB's documentation** next to its collation helpers: the bundled fold is
+ASCII-only unless the app ships its own SQLite with ICU.
+
 ## SQLite
 
 ### FTS5 virtual tables reject `ON CONFLICT`, so there is no upsert
@@ -1579,6 +1593,30 @@ message in the mailbox and filtering by thread afterwards. Rewriting it as
 
 The lesson generalises past this query. `EXPLAIN QUERY PLAN` saying "uses an index" is not
 the assertion worth making. Which index, and over how many rows, is.
+
+### Deleted FTS5 rows stay in the file until a `rebuild`
+**Workstream:** security-audit fixes · **Severity:** trap
+**Where:** [ADR-0105](../decisions/0105-removed-mail-leaves-the-search-index.md), `MailStore.vacuum()`
+
+Deleting from an FTS5 table writes a delete marker; the postings stay in
+`messageSearch_data` until a merge drops them, and `VACUUM` does not merge. Removed mail
+stayed readable in the file's bytes after "Remove Local Copies". `optimize` did not drop
+them either in a single-segment index; only `rebuild` or the table's `secure-delete` option
+did, and `secure-delete` multiplied ordinary write costs by four to thirty on mirror-shaped
+data. Apple's SQLite also defaults `PRAGMA secure_delete` to `FAST`, which another build
+would not, so the purge migration sets it explicitly.
+
+## WebKit
+
+### The context-menu item identifiers are not in any public header
+**Workstream:** security-audit fixes · **Severity:** friction
+**Where:** [ADR-0107](../decisions/0107-the-message-web-view-strips-loading-menu-items.md), `MessageBodyWKWebView.strip(_:)`
+
+"Download Linked File" starts a load that neither the navigation delegate nor the content
+rule list sees, so the message view removes it in `willOpenMenu(_:with:)`. The
+`WKMenuItemIdentifier…` constants that name it are exported by `WebKit.tbd` and declared in
+no SDK header, so Swift matches on their string values. A rename in WebKit would quietly
+stop the match, and no test in this repository can notice.
 
 ## The Swift toolchain
 
@@ -1881,6 +1919,7 @@ Fifteen workstreams plus three cross-cutting passes appended to this file. This 
 | WS-14 | **No entry of its own.** | Deliberate note rather than an omission: what WS-14 built closed WS-02's package-cycle entry, and the `FakeTransport.fail` gap its consumers recorded twice is the feedback on its API. A workstream whose deliverable is other workstreams' tooling is exactly the one whose feedback comes from its consumers. |
 | wave-2 fixes | `lastPrimedAt` DAO landed; GRDB's overload pair; nothing drawn | Part 2. |
 | store-DAO pass | `NCAvatar` and `NCUserBubble` take the right loader; the cache key includes the diameter; the queue DAO and four readers landed | Things that worked; question 6; Part 2 resolution markers. |
+| security-audit fixes | The system SQLite's ASCII-only fold; FTS5 keeps deleted postings until `rebuild`; WebKit's menu identifiers have no header. `NCUserBubble`'s `trailing:` slot carried the sender's address with no workaround | Part 2, GRDB, SQLite and WebKit. The `NCUserBubble` result is a thing that worked and needed no entry. |
 
 ## v2 workstreams
 

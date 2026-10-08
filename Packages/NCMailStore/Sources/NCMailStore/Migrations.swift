@@ -31,7 +31,35 @@ enum MailStoreMigrations {
         migrator.registerMigration("v4") { db in
             try db.execute(sql: v4)
         }
+        // Named for what it does rather than `v5`: it changes no object, so the schema stays
+        // v4 and `schema.sql` describes it unchanged. GRDB runs every registered identifier a
+        // mirror has not applied, in registration order, so it runs once on every mirror,
+        // after `v4` has created `contactSearch`.
+        migrator.registerMigration("purgeRemovedSearchPostings") { db in
+            try purgeRemovedPostings(db)
+        }
         return migrator
+    }
+
+    /// Purges the search-index postings that removals before this version left in the file
+    /// (ADR-0105).
+    ///
+    /// A plain FTS5 delete appends a marker that hides a posting from queries and leaves the
+    /// posting itself in `messageSearch_data` or `contactSearch_data`, where the removal's
+    /// `VACUUM` copied it into the new file. `MailStore.vacuum()` now rebuilds both indexes
+    /// first; this does the same once for mirrors that were vacuumed without it. A `rebuild`
+    /// rewrites an index from the table's own content, which no longer holds the removed text.
+    ///
+    /// It runs with SQLite's page-level `secure_delete` on, so the pages the old segments
+    /// occupied are zeroed as they are freed rather than left on the free list, still
+    /// holding the postings, until the next removal vacuums. The connection's own setting is
+    /// put back afterwards: zeroing freed pages on every ordinary write is I/O nothing needs.
+    private static func purgeRemovedPostings(_ db: Database) throws {
+        let pageSecureDelete = try Int.fetchOne(db, sql: "PRAGMA secure_delete") ?? 0
+        try db.execute(sql: "PRAGMA secure_delete = 1")
+        try db.execute(sql: "INSERT INTO messageSearch(messageSearch) VALUES ('rebuild')")
+        try db.execute(sql: "INSERT INTO contactSearch(contactSearch) VALUES ('rebuild')")
+        try db.execute(sql: "PRAGMA secure_delete = \(pageSecureDelete)")
     }
 
     /// Keep in step with `docs/reference/schema.sql`, statement for statement.

@@ -243,6 +243,10 @@ The counts share one line under the date. The first build put the unread bubble 
 - **Unread** is the semibold weight plus the counter bubble, matching the showcase. It is the
   *thread's* unread count, not the drawn message's `isSeen`, which is one rule for both views
   rather than two ([../decisions/0041-unread-is-the-threads-unread-count.md](../decisions/0041-unread-is-the-threads-unread-count.md)).
+- **Sender** is the display name, or the address when there is none. The name is the
+  sender's to choose and can read as somebody else's address, so the row's tooltip and its
+  VoiceOver label carry `Name <address>` (`Address.nameAndAddress`) whenever the two differ.
+  The message header always shows the address itself.
 - **Avatar photo** from the mirror's `avatar` table, which the per-account `AvatarFetcher`
   fills from the server's avatar endpoint. Until a row exists `NCAvatar` draws coloured
   initials, and the photo replaces them when the row lands, with no request from the view.
@@ -291,6 +295,14 @@ to Lorelai Gilmore, Michel Gerard  ▾                       NCChip each, collap
 📎 menu.pdf 179 KB   📎 rota.ods 22 KB     [Save all]      only when applicable
 ```
 
+- **Sender** — the name and, in secondary text inside the bubble, `<address>` whenever the
+  name is not that address (case and surrounding blanks ignored). A sender with no name
+  shows the address once. The address keeps its width and the name truncates first, so a
+  padded name cannot push it out. `"security@paypal.com" <attacker@evil.example>` reads as
+  exactly that.
+- **Remote content blocked** — **Show images** and **Always show from
+  attacker@evil.example**: the trust button names the address it trusts, and is not
+  offered when the sender has no address.
 - **Toolbar**: Archive, Delete, Junk, Move ▾, Star, Mark unread, Refresh. `NCButtonStyle.icon`
   with `.help` tooltips carrying the shortcut.
 - **Thread** — siblings listed below, collapsed, newest last, with the selected one
@@ -580,8 +592,8 @@ One rule, and it is the difference between a calm app and a nervous one:
 - Every control has a label; decorative icons are marked decorative. The library makes this
   mandatory at the type level.
 - Full keyboard navigation, visible focus, no mouse-only affordance.
-- VoiceOver rotor works over the list, and a row reads as "unread, from Sookie St. James,
-  The Dragonfly opening menu, 3 minutes ago".
+- VoiceOver rotor works over the list, and a row reads as "unread, from Sookie St. James
+  <sookie@dragonfly.example>, The Dragonfly opening menu, 3 minutes ago".
 - Dynamic Type throughout the native chrome; the message body keeps its own sizing, with
   ⌘+/⌘− to zoom it.
 - Reduce Motion honoured; Increase Contrast honoured through the library's contrast maths.

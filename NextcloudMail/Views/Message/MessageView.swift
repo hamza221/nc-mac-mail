@@ -285,8 +285,8 @@ struct MessageView: View {
         case .encrypted:
             // The notice is the banner above; the body area stays empty on purpose (ADR-0064).
             Color.clear
-        case .plain(let text, let signature):
-            PlainTextBodyView(text: text, signature: signature, onLink: open(_:))
+        case .plain(let content):
+            PlainTextBodyView(content: content, onLink: open(_:))
         case .html(let rendered, let assetContext):
             MessageBodyWebView(
                 rendered: rendered,

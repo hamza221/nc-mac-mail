@@ -84,9 +84,16 @@ public actor AvatarFetcher {
     /// Asks about every address that needs it, batch by batch, and returns how many rows it
     /// wrote. Ends at the first failure that is not a 404, so an outage costs one batch
     /// rather than one request per correspondent.
+    ///
+    /// No address is asked about twice in one pass. A pass ends when the work list is empty,
+    /// and the work list empties because each answer writes the row that retires it. When
+    /// that ever fails to hold — a writer and a query folding an address two ways did, for
+    /// `Ö@` (ADR-0104) — the same addresses come back in every batch, and without this the
+    /// pass re-asked the server about them as fast as it answered, until the app quit.
     @discardableResult
     public func runPass() async -> Int {
         var written = 0
+        var asked = Set<String>()
         while mayRun, !Task.isCancelled {
             let current = now().timeIntervalSince1970
             let batch: [String]
@@ -103,10 +110,11 @@ public actor AvatarFetcher {
                 )
                 return written
             }
-            guard !batch.isEmpty else { return written }
+            let fresh = batch.filter { asked.insert($0).inserted }
+            guard !fresh.isEmpty else { return written }
 
             do {
-                written += try await fetch(batch, fetchedAt: Int64(current))
+                written += try await fetch(fresh, fetchedAt: Int64(current))
             } catch {
                 // `MailError`'s description carries a status and a kind, never the URL, so
                 // the address the request named does not reach the log.
@@ -120,17 +128,24 @@ public actor AvatarFetcher {
     }
 
     /// One batch, `concurrency` at a time. Every address answered gets a row, either the
-    /// bytes or `missing`, which is what guarantees the next batch is a different one.
+    /// bytes or `missing`, which is what makes the next batch a different one.
     private func fetch(_ emails: [String], fetchedAt: Int64) async throws -> Int {
         let store = store
         let client = client
+        let accountId = accountId
         return try await withThrowingTaskGroup(of: Void.self) { group in
             var written = 0
             var pending = emails[...]
             func enqueue() {
                 guard let email = pending.popFirst() else { return }
                 group.addTask {
-                    try await Self.fetchOne(email, store: store, client: client, fetchedAt: fetchedAt)
+                    try await Self.fetchOne(
+                        email,
+                        store: store,
+                        client: client,
+                        accountId: accountId,
+                        fetchedAt: fetchedAt
+                    )
                 }
             }
             for _ in 0..<Self.concurrency { enqueue() }
@@ -142,7 +157,13 @@ public actor AvatarFetcher {
         }
     }
 
-    private static func fetchOne(_ email: String, store: MailStore, client: MailClient, fetchedAt: Int64) async throws {
+    private static func fetchOne(
+        _ email: String,
+        store: MailStore,
+        client: MailClient,
+        accountId: Int64,
+        fetchedAt: Int64
+    ) async throws {
         let record: AvatarRecord
         do {
             let (data, response) = try await client.bytes(.avatar(email: email))
@@ -159,6 +180,6 @@ public actor AvatarFetcher {
         } catch MailError.notFound {
             record = AvatarRecord(email: email, missing: true, fetchedAt: fetchedAt)
         }
-        try await store.upsert(avatar: record)
+        try await store.upsert(avatar: record, accountId: accountId)
     }
 }
