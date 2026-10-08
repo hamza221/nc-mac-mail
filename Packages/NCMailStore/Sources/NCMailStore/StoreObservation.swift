@@ -12,9 +12,15 @@
 /// ([ADR-0029](../../../../docs/decisions/0029-app-test-target-borrows-its-modules-from-the-host.md)).
 ///
 /// Neither this type nor its iterator names a GRDB type in a stored property, so a client
-/// resolves both out of `NCMailStore` alone. The semantics are unchanged, because the
-/// implementation is the same one GRDB's `values(in:scheduling:)` uses: an observation
-/// started per iterator, feeding an `AsyncThrowingStream`.
+/// resolves both out of `NCMailStore` alone. The implementation is the one GRDB's
+/// `values(in:scheduling:)` uses, an observation started per iterator feeding an
+/// `AsyncThrowingStream`, with two differences:
+///
+/// - `MailStore.observation(_:)` does not deliver a value equal to the last one it
+///   delivered. A commit to a table the query reads is not a change to what it returns.
+/// - At most one value waits for the consumer, the newest. Every value is a whole snapshot,
+///   so the ones it superseded carry nothing it lacks, and a slow consumer does not pile up
+///   one copy per commit.
 ///
 /// - Values arrive on the main actor. `MailStore.observation(_:)` schedules there, so a
 ///   `@MainActor @Observable` store can assign straight from the loop.
@@ -38,9 +44,12 @@ public struct StoreObservation<Element: Sendable>: AsyncSequence, Sendable {
     }
 
     public func makeAsyncIterator() -> AsyncIterator {
-        // `.unbounded`, matching GRDB's own default, so a consumer that is slow for a
-        // moment sees every value rather than a gap it cannot detect.
-        let stream = AsyncThrowingStream(Element.self, bufferingPolicy: .unbounded) { continuation in
+        // `.bufferingNewest(1)`: every value is a complete snapshot of the query, so one that
+        // a newer value superseded before the consumer got to it carries nothing the newer
+        // one lacks. GRDB's own default, `.unbounded`, kept one full copy per commit for a
+        // consumer that was slow for a while — a message view re-rendering a large body held
+        // a body per backfill commit.
+        let stream = AsyncThrowingStream(Element.self, bufferingPolicy: .bufferingNewest(1)) { continuation in
             start(continuation)
         }
         return AsyncIterator(base: stream.makeAsyncIterator())
@@ -52,8 +61,15 @@ public struct StoreObservation<Element: Sendable>: AsyncSequence, Sendable {
         /// GRDB to lay out.
         var base: AsyncThrowingStream<Element, any Error>.AsyncIterator
 
+        /// Nil once the iterating task is cancelled, even with a value already buffered.
+        ///
+        /// `AsyncThrowingStream` hands out what it buffered before reporting the end, so a
+        /// cancelled `for await` could still assign one stale snapshot after its replacement
+        /// had assigned a fresh one: a search footer counting the previous scope's mail.
         public mutating func next() async throws -> Element? {
-            try await base.next()
+            guard !Task.isCancelled else { return nil }
+            let value = try await base.next()
+            return Task.isCancelled ? nil : value
         }
     }
 }

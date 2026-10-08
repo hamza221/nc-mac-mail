@@ -18,6 +18,13 @@ the rules. Owned by WS-09.*
 Deciding per message keeps the expensive, dangerous path off the majority of messages. The
 plain body is already in `messageBody.plainBody` from the mirror.
 
+The links in a plain body are found once, when the body is read, off the main actor
+(`PlainTextBody`, built in `MessageViewModel.render`), and the view only draws the result.
+`NSDataDetector` is superlinear on link-dense text the sender chose — 760 KB of it froze the
+window for 9.5 s when it ran in the view's `body` — so detection also stops at the first
+100,000 UTF-16 units, cut at the last whitespace so no URL is linked by half. The text past
+that point is shown, unlinked.
+
 ## What the mirror stores
 
 `messageBody.html` is the **sanitised fragment** from
@@ -89,12 +96,29 @@ Plus, and none of these are optional:
   control there is and one the web client has a whole detector for.
 
   The visible text has to be collected during the rewrite, because a cancelled navigation
-  carries a URL and nothing else: by the time WebKit asks, the anchor is gone. Where two
-  anchors share one `href` and say different things, the text that *names a host* is the one
-  kept — it is the one the rule can act on. Text that claims no host at all ("Shop now",
-  "Hoodies") asks no question, which is why the recorded body's thirteen click-tracker links
-  produce no confirmations. A rule that asks about every marketing link is a rule people
-  click through.
+  carries a URL and nothing else: by the time WebKit asks, the anchor is gone. So the
+  rewriter works out the verdict for **each anchor** as it closes, from at most 512 bytes of
+  its text (whitespace collapsed, entities decoded), and keeps the first disagreement for
+  that anchor's target
+  ([ADR-0106](../decisions/0106-link-disagreement-is-recorded-per-anchor.md)). Two anchors on
+  one `href` that say different things therefore ask, whichever comes first — an honest
+  footer link cannot vouch for a lying one. The text's claim is the host part of its last
+  word: `paypal.com/signin`, `paypal.com:443` and `paypal.com.` all claim `paypal.com`.
+
+  The target is not the `href` string. WebKit reports the URL in its own canonical form
+  (`https://Login.Evil.test` arrives as `https://login.evil.test/`), so both sides go
+  through one normaliser, `LinkTarget`. An `href` whose host the normaliser cannot predict
+  (non-ASCII, IPv6, a number that is not a dotted quad) is checked against every click
+  instead, and a web link the rewrite has no record of asks, because its text is unknown.
+  Text that claims no host at all ("Shop now", "Hoodies") asks no question, which is why
+  the recorded body's thirteen click-tracker links produce no confirmations. A rule that
+  asks about every marketing link is a rule people click through.
+- **A context menu that cannot load.** WebKit's stock menu has items that start a load
+  without asking the navigation delegate and outside the content rule list: **Download
+  Linked File** sent a GET straight to the sender. `MessageBodyWKWebView` removes every
+  Download… and Open … in New Window item as the menu opens; Open Link stays, because it is
+  an ordinary link activation and goes through the confirmation
+  ([ADR-0107](../decisions/0107-the-message-web-view-strips-loading-menu-items.md)).
 - **No persistent data store.** A message must not be able to set a cookie or fill local
   storage.
 
@@ -208,12 +232,15 @@ does to `⌘P`, needs a window.
 ## The blocked-content bar
 
 `NCNoteCard(.warning, …)` above the body: "This message contains remote content that was
-not loaded." with **Show images** and **Always show from this sender**.
+not loaded." with **Show images** and **Always show from *address***.
 
 - **Show images** rewrites `data-original-src` → `src`, restores `data-original-style`,
   drops the injected `display:none!important`, and reloads from the stored HTML. No network
   request until the WebView asks for `ncmail://asset/…`.
-- **Always show from this sender** additionally queues a `trustSender` operation
+- **Always show from *address*** names the sender's address, not "this sender": the trust
+  is bound to the address and lasts, while the display name is the sender's to choose and
+  can claim to be anybody. It is not offered when the sender has no address. It
+  additionally queues a `trustSender` operation
   ([offline-queue.md](offline-queue.md#operations)): every stored body from that address
   is marked `isSenderTrusted` in the same transaction, so the sender's other messages show
   images at once and offline, and the drainer sends

@@ -45,7 +45,22 @@ struct MessageHeaderView<Menu: View>: View {
             HStack(alignment: .center, spacing: theme.metrics.spacing.standard) {
                 if let sender = header.sender {
                     RecipientBubble(email: sender.email ?? "", label: sender.label, accountId: header.accountId)
-                        .accessibilityLabel(Text("From \(sender.displayName)"))
+                        .accessibilityLabel(Text("From \(sender.nameAndAddress)"))
+                    // The label is the sender's to choose and can read as somebody else's
+                    // address, so the real one is always beside it — it is also what "Always
+                    // show" trusts. A separate `Text` so bidi controls in the label cannot
+                    // reorder it, and priority over the name so a padded label truncates first
+                    // and cannot push the address out.
+                    if let address = sender.addressBesideName {
+                        Text(verbatim: "<\(address)>")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                            .layoutPriority(1)
+                            .textSelection(.enabled)
+                            .accessibilityHidden(true)
+                    }
                 }
                 if header.isImportant {
                     MailSymbol.important.view(size: .small, label: .text("Important"))

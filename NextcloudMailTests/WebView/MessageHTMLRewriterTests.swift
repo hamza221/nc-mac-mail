@@ -167,20 +167,21 @@ struct MessageHTMLRewriterTests {
 
     // MARK: - Links
 
-    @Test("the anchor text of every link is collected, and none of this message's links lie")
-    func linkTextsAreCollected() throws {
+    @Test("none of the recorded message's links lie, so none of them asks")
+    func recordedLinksOpen() throws {
         let rendered = try Self.renderRecorded(showsRemoteImages: false)
+        let hrefs = RenderedDocument.elements("a", in: rendered.document).compactMap { tag in
+            tag.attributes.first { $0.name == "href" }?.value
+        }
 
-        // Two distinct hrefs, not five: four anchors share the shop URL and one is the
-        // unsubscribe link, so the five links collapse onto two URLs.
-        #expect(rendered.linkTexts.count == 2)
-        #expect(rendered.linkTexts.values.allSatisfy { !$0.isEmpty })
-        // Links to `click.example.net` with text like "Hoodies": the text claims no
-        // host, so the confirmation must not fire. A rule that asks about every marketing
-        // link is a rule people click through.
-        for (href, text) in rendered.linkTexts {
+        // Five links: four to the shop at `click.example.net` with text like "Hoodies" and one
+        // unsubscribe link. The text claims no host, so the confirmation must not fire. A rule
+        // that asks about every marketing link is a rule people click through.
+        #expect(hrefs.count == 5)
+        for href in hrefs {
+            // These hrefs are already in WebKit's canonical form; a click reports them as is.
             let url = try #require(URL(string: href))
-            #expect(LinkDisagreement.verdict(text: text, target: url) == .open)
+            #expect(rendered.verdict(for: url) == .open, "\(href) should open")
         }
     }
 

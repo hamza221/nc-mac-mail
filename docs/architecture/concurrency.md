@@ -49,7 +49,12 @@ WKWebView + scheme handler        OperationDrainer (per acct) ValueObservation
   publishes over a GRDB `ValueObservation` scheduled on the main actor. A store receives
   fresh values and assigns them; SwiftUI does the rest. The sequence is the store's own
   type, not GRDB's, so nothing above `NCMailStore` links GRDB
-  ([ADR-0034](../decisions/0034-the-store-returns-its-own-sequence.md)).
+  ([ADR-0034](../decisions/0034-the-store-returns-its-own-sequence.md)). A value arrives
+  after every commit to a table the query reads, changed or not, and a consumer that falls
+  behind is handed the newest value, not every one it missed: each is a whole snapshot. A
+  consumer whose work per value is expensive compares with the last value it acted on. A
+  cancelled iteration is handed nothing more, not even a value already buffered, so a
+  replaced observation cannot assign after the one that replaced it.
 - **Writes** always go through `DatabaseQueue.write`, off the main actor, one at a time.
   WAL means readers never block on them.
 - **Requests** run inside whichever actor asked; `URLSession` is already concurrent.

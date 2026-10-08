@@ -52,6 +52,7 @@ struct MessageBanners: View {
             }
             if model.hasBlockedRemoteContent, !model.showsRemoteImages, !model.isSenderTrusted {
                 BlockedContentBar(
+                    senderAddress: model.header?.sender?.email,
                     domain: model.senderDomain,
                     showImages: model.showImages,
                     alwaysShow: { Task { await model.alwaysShowFromThisSender() } },

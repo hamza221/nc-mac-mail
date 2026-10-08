@@ -65,7 +65,8 @@ extension MailStore {
     /// Two roots, deliberately. Everything instance-scoped cascades from `login`; everything
     /// mail-scoped cascades from `account`, whose rows carry the identity inline since v1 and
     /// do not reference `login` (ADR-0079). The FTS triggers take `messageSearch` and
-    /// `contactSearch` rows with them. The caller is expected to `VACUUM` afterwards, same as
+    /// `contactSearch` rows with them, and the avatar rows nothing left names go in the same
+    /// transaction. The caller is expected to `VACUUM` afterwards, same as
     /// ``deleteAccount(id:)``.
     public func deleteLogin(_ identity: ServerIdentity) async throws {
         try await dbQueue.write { db in
@@ -77,6 +78,7 @@ extension MailStore {
                 sql: "DELETE FROM login WHERE serverURL = ? AND loginName = ?",
                 arguments: [identity.serverURL, identity.loginName]
             )
+            try Self.deleteUnreferencedAvatars(db)
         }
         storeLog.info("login removed from the mirror")
     }

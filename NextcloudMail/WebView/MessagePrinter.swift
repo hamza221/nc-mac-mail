@@ -25,7 +25,7 @@ struct PrintableMessage: Equatable {
         init?(_ presentation: MessageBodyPresentation) {
             switch presentation {
             case .html(let rendered, let context): self = .html(rendered, context)
-            case .plain(let text, let signature): self = .plain(text: text, signature: signature)
+            case .plain(let content): self = .plain(text: content.text, signature: content.signature)
             // A PGP message prints its header and the notice, as the web client prints it.
             case .encrypted: self = .headerOnly(note: MessagePGPNotice.text)
             case .waiting, .failed, .blocked: return nil
@@ -353,14 +353,18 @@ enum MessagePrintDocument {
     static func headerBlock(_ header: MessageHeader) -> String {
         let spacing = NCSpacingScale.macOS
         var rows: [(label: String, value: String)] = []
+        // Name and address both, because paper cannot be hovered to find out which address a
+        // display name stands for.
         if let sender = header.sender {
-            rows.append((label: String(localized: "From"), value: line(sender)))
+            rows.append((label: String(localized: "From"), value: sender.nameAndAddress))
         }
         if !header.to.isEmpty {
-            rows.append((label: String(localized: "To"), value: header.to.map(line).joined(separator: ", ")))
+            let to = header.to.map(\.nameAndAddress).joined(separator: ", ")
+            rows.append((label: String(localized: "To"), value: to))
         }
         if !header.cc.isEmpty {
-            rows.append((label: String(localized: "Cc"), value: header.cc.map(line).joined(separator: ", ")))
+            let cc = header.cc.map(\.nameAndAddress).joined(separator: ", ")
+            rows.append((label: String(localized: "Cc"), value: cc))
         }
         rows.append(
             (label: String(localized: "Date"), value: header.sentAt.formatted(date: .long, time: .shortened))
@@ -395,16 +399,6 @@ enum MessagePrintDocument {
     /// was written with.
     private static func preformatted(_ text: String) -> String {
         "<pre style=\"white-space: pre-wrap; font: inherit; margin: 0;\">\(escape(text))</pre>"
-    }
-
-    /// Name and address both, because paper cannot be hovered to find out which address a
-    /// display name stands for.
-    private static func line(_ address: Address) -> String {
-        guard
-            let email = address.email, !email.isEmpty,
-            let label = address.label, !label.isEmpty, label != email
-        else { return address.displayName }
-        return "\(label) <\(email)>"
     }
 
     /// Escaping for a quoted attribute escapes everything text content needs, and one

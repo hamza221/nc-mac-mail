@@ -35,6 +35,7 @@ struct MessageViewModelTests {
         var model: MessageViewModel
         var prioritiser: RecordingPrioritiser
         var messageId: Int64
+        var accountId: Int64
         var mailboxId: Int64
         var threadRootId: String
     }
@@ -122,12 +123,41 @@ struct MessageViewModelTests {
             model: model,
             prioritiser: prioritiser,
             messageId: messageId,
+            accountId: accountId,
             mailboxId: mailboxId,
             threadRootId: recorded.threadRootId
         )
     }
 
-    private static func storeBody(_ mirror: Mirror, html: String? = nil, plain: String? = nil) async throws {
+    /// A second message in the same mailbox, from another recorded envelope, for the
+    /// selection to move to.
+    private static func seedOtherMessage(_ mirror: Mirror) async throws -> Int64 {
+        let object = try JSONSerialization.jsonObject(with: try FixtureBytes.data("messages-inbox-page1.json"))
+        let envelope = try #require((object as? [[String: Any]])?.first { ($0["databaseId"] as? Int) == 58 })
+        let ids = try await mirror.store.upsert(envelopes: [
+            EnvelopeWrite(
+                remoteId: 58,
+                mailboxId: mirror.mailboxId,
+                accountId: mirror.accountId,
+                sentAt: 1_789_920_000,
+                syncedAt: 1_789_920_999,
+                messageId: envelope["messageId"] as? String,
+                threadRootId: envelope["threadRootId"] as? String,
+                subject: "Subject redacted",
+                fromEmail: "user@example.com",
+                fromLabel: "Name redacted",
+                rawJSON: String(decoding: try JSONSerialization.data(withJSONObject: envelope), as: UTF8.self)
+            )
+        ])
+        return try #require(ids.first)
+    }
+
+    private static func storeBody(
+        _ mirror: Mirror,
+        messageId: Int64? = nil,
+        html: String? = nil,
+        plain: String? = nil
+    ) async throws {
         try await mirror.store.upsert(
             body: MessageBodyWrite(
                 fetchedAt: 1_789_921_000,
@@ -146,7 +176,7 @@ struct MessageViewModelTests {
                     )
                 ]
             ),
-            for: mirror.messageId
+            for: messageId ?? mirror.messageId
         )
     }
 
@@ -286,8 +316,75 @@ struct MessageViewModelTests {
         mirror.model.present(messageId: mirror.messageId)
 
         #expect(await Self.waitUntil { mirror.model.presentation != .waiting })
-        #expect(mirror.model.presentation == .plain(text: "Hello, and https://example.com/x", signature: nil))
+        guard case .plain(let content) = mirror.model.presentation else {
+            Issue.record("expected the native renderer, got \(mirror.model.presentation)")
+            return
+        }
+        #expect(content.text == "Hello, and https://example.com/x")
+        #expect(content.signature == nil)
+        // Found when the body was read, so the view's body has nothing left to detect.
+        #expect(content.linkedText.runs.compactMap { $0.link?.absoluteString } == ["https://example.com/x"])
         #expect(!mirror.model.hasBlockedRemoteContent)
+    }
+
+    // MARK: - What may write the body area
+
+    @Test("a rewrite still running when the selection moves never lands under the next message")
+    func aStaleRenderIsDiscarded() async throws {
+        let mirror = try await Self.seed()
+        let next = try await Self.seedOtherMessage(mirror)
+        // About 2 MB: long enough that the rewrite is still running when the selection
+        // moves, and that the next message's plain body is drawn before it finishes.
+        try await Self.storeBody(mirror, html: String(repeating: try Self.recordedHTML(), count: 64))
+        try await Self.storeBody(mirror, messageId: next, plain: "The next message.")
+
+        mirror.model.present(messageId: mirror.messageId)
+        // The observation assigns the attachments and starts the rewrite in one main-actor
+        // turn, so once they are here the rewrite is in flight.
+        #expect(await Self.waitUntil { !mirror.model.attachments.isEmpty })
+        mirror.model.present(messageId: next)
+
+        // Written in the turn the rewrite returns, before its result could be assigned.
+        #expect(await Self.waitUntil { mirror.model.lastRewriteMilliseconds > 0 })
+        #expect(await Self.waitUntil { mirror.model.presentation != .waiting })
+        #expect(mirror.model.header?.messageId == next)
+        #expect(mirror.model.presentation == .plain(PlainTextBody(text: "The next message.", signature: nil)))
+        #expect(!mirror.model.hasBlockedRemoteContent)
+    }
+
+    @Test("a body delivered again unchanged is not drawn again, but its attachments still update")
+    func anUnchangedBodyIsNotRedrawn() async throws {
+        let mirror = try await Self.seed()
+        try await Self.storeBody(mirror, html: try Self.recordedHTML())
+        mirror.model.present(messageId: mirror.messageId)
+        #expect(await Self.waitUntil { mirror.model.presentation != .waiting })
+
+        // A presentation no render produces, so a redraw would show.
+        mirror.model.contentRuleListFailed("no rule list")
+
+        // Each stored inline image rewrites the attachment row and re-delivers the body
+        // with the same HTML. Waiting for the first delivery before writing the second means
+        // a redraw started by the first would have landed before the second is seen: the
+        // observation renders one value before it reads the next.
+        for byte: UInt8 in [1, 2] {
+            try await mirror.store.storeInlineAttachment(
+                messageId: mirror.messageId,
+                attachmentId: "2",
+                data: Data([byte]),
+                fetchedAt: 1_789_921_100
+            )
+            #expect(await Self.waitUntil { mirror.model.attachments.first?.data == Data([byte]) })
+        }
+        #expect(mirror.model.presentation == .blocked("no rule list"))
+
+        // A different decision is a different input, and draws again.
+        mirror.model.showImages()
+        #expect(
+            await Self.waitUntil {
+                guard case .html(_, let context) = mirror.model.presentation else { return false }
+                return context.showsRemoteImages
+            }
+        )
     }
 
     @Test("a failed body offers a retry, and retrying asks the backfill again")

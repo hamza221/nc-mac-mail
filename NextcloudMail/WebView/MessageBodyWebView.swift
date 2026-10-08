@@ -59,7 +59,7 @@ struct MessageBodyWebView: NSViewRepresentable {
     }
 
     func makeNSView(context: Context) -> WKWebView {
-        let webView = WKWebView(
+        let webView = MessageBodyWKWebView(
             frame: .zero,
             configuration: Self.configuration(serving: context.coordinator.handler)
         )
@@ -167,10 +167,7 @@ struct MessageBodyWebView: NSViewRepresentable {
                 return .allow
             }
             if let url, navigationAction.navigationType == .linkActivated, MailLinkScheme.isOpenable(url) {
-                let text = rendered?.linkTexts[url.absoluteString]
-                onLinkActivated(
-                    MessageLinkActivation(url: url, verdict: LinkDisagreement.verdict(text: text, target: url))
-                )
+                activate(url)
             }
             return .cancel
         }
@@ -185,12 +182,64 @@ struct MessageBodyWebView: NSViewRepresentable {
             if let url = navigationAction.request.url, navigationAction.navigationType == .linkActivated,
                 MailLinkScheme.isOpenable(url)
             {
-                let text = rendered?.linkTexts[url.absoluteString]
-                onLinkActivated(
-                    MessageLinkActivation(url: url, verdict: LinkDisagreement.verdict(text: text, target: url))
-                )
+                activate(url)
             }
             return nil
         }
+
+        /// Both link callbacks end here, so a plain click and a `target="_blank"` one cannot
+        /// be judged differently.
+        private func activate(_ url: URL) {
+            // `rendered` is set in `attach`, before anything loads, so a click always has
+            // one. An empty record answers "ask" for any web link, which is the side to err
+            // on if that ever stops being true.
+            let verdict = rendered?.verdict(for: url) ?? LinkVerdicts().verdict(for: url)
+            onLinkActivated(MessageLinkActivation(url: url, verdict: verdict))
+        }
+    }
+}
+
+/// The message body's `WKWebView`, whose context menu cannot load anything (ADR-0107).
+///
+/// WebKit's stock link and image menus include items that start a load inside WebKit
+/// without asking the navigation delegate, and that the content rule list does not see:
+/// **Download Linked File** sent a GET straight to the sender's host, with no link
+/// confirmation. Those items are taken out as the menu opens. **Open Link** stays — it
+/// arrives as an ordinary link activation and goes through the confirmation — and so does
+/// **Copy Link**.
+final class MessageBodyWKWebView: WKWebView {
+    /// WebKit's `WKMenuItemIdentifier…` constants are exported but not declared in any
+    /// public header, so they are spelled here by value — the same strings the menu items
+    /// carry as their `identifier`.
+    static let loadingItems: Set<String> = [
+        "WKMenuItemIdentifierDownloadLinkedFile",
+        "WKMenuItemIdentifierDownloadImage",
+        "WKMenuItemIdentifierDownloadMedia",
+        "WKMenuItemIdentifierOpenLinkInNewWindow",
+        "WKMenuItemIdentifierOpenImageInNewWindow",
+        "WKMenuItemIdentifierOpenMediaInNewWindow",
+        "WKMenuItemIdentifierOpenFrameInNewWindow",
+    ]
+
+    override func willOpenMenu(_ menu: NSMenu, with event: NSEvent) {
+        super.willOpenMenu(menu, with: event)
+        Self.strip(menu)
+    }
+
+    /// Removes the loading items, then any separator the removal left at an end or next to
+    /// another one.
+    static func strip(_ menu: NSMenu) {
+        for item in menu.items where item.identifier.map({ loadingItems.contains($0.rawValue) }) ?? false {
+            menu.removeItem(item)
+        }
+        var previousWasSeparator = true
+        for item in menu.items {
+            if item.isSeparatorItem, previousWasSeparator {
+                menu.removeItem(item)
+            } else {
+                previousWasSeparator = item.isSeparatorItem
+            }
+        }
+        if let last = menu.items.last, last.isSeparatorItem { menu.removeItem(last) }
     }
 }

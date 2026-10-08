@@ -101,12 +101,10 @@ answered 404 for, and bytes otherwise. It returns an `AvatarRecord` rather than 
 because `NCMailStore` may not import SwiftUI; the conversion is the app-side loader above,
 which `MessageHeaderView` and `MessageListRow` both pass as `load:`.
 
-**Half built.** There is a reader and no writer, and nothing fetches an avatar, so in
-practice every address still draws initials — the difference is that it draws them because
-the row is absent rather than because there was no way to look. The writer and
-`GET /api/avatars/image/{email}` are still unowned; whichever workstream takes them needs
-`upsert(avatar:)` beside the reader, and the fetch belongs in `NCMailNet` and `NCMailSync`
-like every other request.
+The writer is `AvatarFetcher` in `NCMailSync`, through `MailStore.upsert(avatar:accountId:)`
+([ADR-0061](../decisions/0061-avatars-are-fetched-into-the-mirror-by-sync.md)). The key is
+SQLite's `lower()` of the address, computed by SQLite, which is the fold the reader matches
+with ([ADR-0104](../decisions/0104-one-fold-for-the-avatar-key.md)).
 
 ## Gaps: what the library does not give us
 

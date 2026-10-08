@@ -115,6 +115,10 @@ old one stays.*
 | [0101](0101-an-answered-invitation-shows-its-buttons-again-once-sent.md) | An invitation answered here shows its answer while it is queued and Accept/Decline again once sent, because calendar objects are not mirrored; mirroring them is the revisit trigger | Accepted |
 | [0102](0102-no-not-grouped-contacts-entry.md) | The Contacts sidebar has no "Not grouped" entry; a `ContactsScope.notGrouped` case is the revisit trigger | Accepted |
 | [0103](0103-the-test-host-launches-inert.md) | A hosted test run launches inert: in-memory mirror, no `AppSession.start()`, so no Keychain consent prompt and no real engines under the suites | Accepted |
+| [0104](0104-one-fold-for-the-avatar-key.md) | The avatar key is SQLite's `lower()` of the address, computed by SQLite | Accepted |
+| [0105](0105-removed-mail-leaves-the-search-index.md) | Removed mail leaves the file: the search indexes are rebuilt before every removal's `VACUUM` | Accepted |
+| [0106](0106-link-disagreement-is-recorded-per-anchor.md) | Link disagreement is recorded per anchor, keyed by a normalised target | Accepted |
+| [0107](0107-the-message-web-view-strips-loading-menu-items.md) | The message web view strips the context-menu items that start a load | Accepted |
 
 ## Which ones matter most
 

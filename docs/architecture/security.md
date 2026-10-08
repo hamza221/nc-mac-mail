@@ -41,7 +41,10 @@ The largest attack surface in any mail client. Four layers, described in
 3. A **content rule list** blocks every load except our own `ncmail:` scheme, so even a
    sanitiser bug cannot produce a network request.
 4. **Navigation is cancelled** and links open in the browser, with a confirmation when the
-   visible text and the target host disagree.
+   visible text and the target host disagree. The rule list does not see loads WebKit
+   starts itself, so the body's context menu loses every item that would start one:
+   Download Linked File and the Open … in New Window items
+   ([ADR-0107](../decisions/0107-the-message-web-view-strips-loading-menu-items.md)).
 
 We store sanitised HTML rather than raw MIME
 ([ADR-0009](../decisions/0009-sanitised-html-not-raw-mime.md)), so the dangerous form of a

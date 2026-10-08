@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import Foundation
+import NCMailCore
 import NCMailStore
 import NextcloudUI
 import SwiftUI
@@ -42,7 +43,15 @@ struct MessageListRow: View {
     static let attachmentChipLimit = 3
 
     private var isUnread: Bool { row.threadUnreadCount > 0 }
-    private var senderName: String { row.senderName ?? row.senderEmail ?? String(localized: "Unknown sender") }
+    private var sender: Address { Address(label: row.senderName, email: row.senderEmail) }
+    private var senderName: String {
+        sender.displayName.isEmpty ? String(localized: "Unknown sender") : sender.displayName
+    }
+    /// Name and address, for the tooltip and VoiceOver. The row has room for the name only,
+    /// and the name is the sender's to choose, so the address has to be one hover away.
+    private var senderNameAndAddress: String {
+        sender.displayName.isEmpty ? senderName : sender.nameAndAddress
+    }
     private var subject: String { row.subject ?? String(localized: "No subject") }
     /// "Draft: …", as the web client prefixes a draft's subject.
     private var subjectLine: String {
@@ -81,6 +90,7 @@ struct MessageListRow: View {
         // replaces the lot, in the order the specification asks VoiceOver to read.
         .accessibilityElement(children: .combine)
         .accessibilityLabel(Text(spokenDescription))
+        .help(Text(verbatim: senderNameAndAddress))
     }
 
     /// `NCListItem` has no third line, so the adornments are a second block indented to the
@@ -156,12 +166,13 @@ struct MessageListRow: View {
             .foregroundStyle(tint.map { AnyShapeStyle($0) } ?? AnyShapeStyle(.secondary))
     }
 
-    /// "Unread, from Sookie St. James, The Dragonfly opening menu, 3 minutes ago."
+    /// "Unread, from Sookie St. James <sookie@dragonfly.example>, The Dragonfly opening menu,
+    /// 3 minutes ago."
     private var spokenDescription: String {
         var parts: [String] = []
         if isUnread { parts.append(String(localized: "Unread")) }
         if row.isDraft { parts.append(String(localized: "Draft")) }
-        parts.append(String(localized: "from \(senderName)"))
+        parts.append(String(localized: "from \(senderNameAndAddress)"))
         parts.append(subject)
         if row.threadCount > 1 { parts.append(String(localized: "\(row.threadCount) messages")) }
         if row.isImportant { parts.append(String(localized: "important")) }

@@ -1,7 +1,9 @@
 -- SPDX-FileCopyrightText: Hamza Mahjoubi
 -- SPDX-License-Identifier: AGPL-3.0-or-later
 --
--- Canonical schema for the local mirror, version 4.
+-- Canonical schema for the local mirror, version 4. Migration
+-- `purgeRemovedSearchPostings` changes no object here; it rebuilds `messageSearch` and
+-- `contactSearch` once (ADR-0105).
 --
 -- This file is the contract. `Packages/NCMailStore/Sources/NCMailStore/Migrations.swift`
 -- must produce exactly this schema, and `MigrationTests.testSchemaMatchesReference`
@@ -281,6 +283,12 @@ CREATE TABLE messageTag (
 -- Keyed by address because that is what `GET /api/avatars/image/{email}` takes.
 -- `missing` records a 404 so the client does not ask again every launch; the
 -- library draws coloured initials in that case and needs no bytes.
+--
+-- `email` is always SQLite's `lower()` of the address, written by SQL rather than
+-- by Swift, and every query compares against `lower()` of its argument. No ICU, so
+-- that folds ASCII only; Swift's `lowercased()` folds all of Unicode and must not
+-- be mixed in (ADR-0104). Shared across accounts and outside every cascade, so
+-- removing an account deletes the rows no remaining message's sender names.
 
 CREATE TABLE avatar (
     email     TEXT PRIMARY KEY,
@@ -334,6 +342,11 @@ CREATE VIRTUAL TABLE messageSearch USING fts5(
     people,                     -- "Name <addr>" for from/to/cc, space joined
     tokenize = 'unicode61 remove_diacritics 2'
 );
+
+-- A delete or update here only appends a marker that hides the old postings from
+-- queries; the postings stay in `messageSearch_data` until a merge meets them.
+-- So every removal ends in `MailStore.vacuum()`, which runs FTS5 `rebuild` before
+-- `VACUUM`: removed mail must not stay readable in the file (ADR-0105).
 
 -- Inserts and updates are the store's helper, in the same transaction as the write
 -- that feeds them. Deletes are not, because a message row also disappears through

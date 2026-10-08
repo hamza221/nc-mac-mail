@@ -31,13 +31,18 @@ nonisolated struct RenderedMessage: Equatable, Sendable {
     /// Attributes removed: event handlers, `javascript:` targets, images that resolve off
     /// the server.
     var removedAttributes: Int
-    /// `href` to the text the reader sees, collected while scanning, because the
-    /// link-confirmation rule needs the anchor text and a cancelled navigation carries only
-    /// a URL.
-    var linkTexts: [String: String]
+    /// What each anchor's visible text said about where it goes, worked out during the
+    /// rewrite because a cancelled navigation carries only a URL (ADR-0106).
+    var links: LinkVerdicts
     /// The message says something about colour schemes, so it gets the real appearance
     /// rather than the forced light canvas (rendering.md).
     var prefersOwnColorScheme: Bool
+
+    /// What to do with a click on `url`, the URL WebKit reports. The one question both of the
+    /// web view's link callbacks ask.
+    func verdict(for url: URL) -> LinkDisagreement.Verdict {
+        links.verdict(for: url)
+    }
 }
 
 /// Turns the stored sanitised fragment into the document the WebView loads.
@@ -76,14 +81,22 @@ nonisolated struct MessageHTMLRewriter {
             inlineAttachmentIds: [],
             droppedElements: [],
             removedAttributes: 0,
-            linkTexts: [:],
+            links: LinkVerdicts(),
             prefersOwnColorScheme: Self.declaresColorScheme(fragment)
         )
 
         var skipping: (name: String, depth: Int)?
         var styleDepth = 0
         var anchorHref: String?
-        var anchorText = ""
+        var anchorText = AnchorText()
+        // Every anchor is recorded, closed or not: a click on one that never was is answered
+        // with a question (LinkVerdicts), which is right for a lie and wrong for an honest
+        // link the server forgot to close.
+        func finishAnchor() {
+            if let href = anchorHref { result.links.record(text: anchorText.text, href: href) }
+            anchorHref = nil
+            anchorText = AnchorText()
+        }
 
         var scanner = HTMLScanner(fragment)
         while let token = scanner.next() {
@@ -106,7 +119,7 @@ nonisolated struct MessageHTMLRewriter {
                 if styleDepth > 0 {
                     out += rewriteCSS(text, result: &result)
                 } else {
-                    if anchorHref != nil, anchorText.count < 240 { anchorText += text }
+                    if anchorHref != nil { anchorText.append(text) }
                     out += text
                 }
 
@@ -126,31 +139,18 @@ nonisolated struct MessageHTMLRewriter {
                 if tag.name == "style" { styleDepth += 1 }
                 rewriteAttributes(of: &tag, result: &result)
                 if tag.name == "a" {
+                    finishAnchor()
                     anchorHref = tag.attributes.first { $0.name == "href" }?.value
-                    anchorText = ""
                 }
                 out += Self.serialise(tag)
 
             case .endTag(let name):
                 if name == "style" { styleDepth = max(0, styleDepth - 1) }
-                if name == "a", let href = anchorHref {
-                    let text = anchorText.trimmingCharacters(in: .whitespacesAndNewlines)
-                    // Two anchors can share one `href` and say different things. Keep the
-                    // text that names a host: it is the one the confirmation can catch, and
-                    // remembering the harmless one instead would be the way to hide behind
-                    // it.
-                    let stored = result.linkTexts[href]
-                    let storedClaims = stored.flatMap(LinkDisagreement.claimedHost(in:)) != nil
-                    if !text.isEmpty, stored == nil || (!storedClaims && LinkDisagreement.claimedHost(in: text) != nil)
-                    {
-                        result.linkTexts[href] = text
-                    }
-                    anchorHref = nil
-                    anchorText = ""
-                }
+                if name == "a" { finishAnchor() }
                 out += "</\(name)>"
             }
         }
+        finishAnchor()
 
         result.document = MessageDocument.wrap(
             body: out,
@@ -158,6 +158,40 @@ nonisolated struct MessageHTMLRewriter {
             allowsOwnColorScheme: result.prefersOwnColorScheme
         )
         return result
+    }
+
+    /// The visible text of the anchor being read, as much of it as the link rule reads.
+    ///
+    /// Bounded as it is appended. A cap checked before an unbounded append bounded nothing:
+    /// an anchor holding 100 KB of text and a run of `<br />`s copied that text once per
+    /// line break. Runs of whitespace collapse to one space, as they do on screen, so markup
+    /// indentation cannot use up the budget ahead of the words the reader sees, and entities
+    /// are decoded, so `AT&amp;T` is what the confirmation quotes.
+    private struct AnchorText {
+        private(set) var text = ""
+        private var bytes = 0
+        private var pendingSpace = false
+
+        mutating func append(_ raw: String) {
+            guard bytes < LinkDisagreement.textLimit else { return }
+            for scalar in HTMLEntities.decode(raw).unicodeScalars {
+                if scalar.properties.isWhitespace {
+                    pendingSpace = !text.isEmpty
+                    continue
+                }
+                let width = UTF8.width(scalar) + (pendingSpace ? 1 : 0)
+                guard bytes + width <= LinkDisagreement.textLimit else {
+                    bytes = LinkDisagreement.textLimit
+                    return
+                }
+                if pendingSpace {
+                    text.unicodeScalars.append(" ")
+                    pendingSpace = false
+                }
+                text.unicodeScalars.append(scalar)
+                bytes += width
+            }
+        }
     }
 
     // MARK: - Attributes

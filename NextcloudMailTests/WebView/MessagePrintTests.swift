@@ -125,7 +125,7 @@ struct MessagePrintTests {
         #expect(PrintableMessage.Body(.waiting) == nil)
         #expect(PrintableMessage.Body(.failed) == nil)
         #expect(PrintableMessage.Body(.blocked("no rule list")) == nil)
-        #expect(PrintableMessage.Body(.plain(text: "Hi", signature: nil)) != nil)
+        #expect(PrintableMessage.Body(.plain(PlainTextBody(text: "Hi", signature: nil))) != nil)
         #expect(PrintableMessage.Body(.html(try Self.rendered("<p>Hi</p>"), .none)) != nil)
     }
 

@@ -60,6 +60,34 @@ struct LinkDisagreementTests {
         #expect(verdict == .confirm(shown: "Shop now", target: "xn--80ak6aa92e.com"))
     }
 
+    @Test("a host followed by a path, query, port or trailing dot still claims the host")
+    func hostWithTrailingPartsClaimsIt() throws {
+        // The audit's vectors: each claimed nothing, so the click opened without a word.
+        let target = try Self.url("https://login.evil.test/x")
+        for text in [
+            "paypal.com/signin", "www.paypal.com/signin?x=1", "paypal.com.", "paypal.com:443",
+            "mail.example.com/login", "Sign in at paypal.com/signin", "help@paypal.com.",
+        ] {
+            #expect(
+                LinkDisagreement.verdict(text: text, target: target)
+                    == .confirm(shown: text, target: "login.evil.test"),
+                "\(text) should ask"
+            )
+        }
+        // And the same shapes still agree with the host they name.
+        #expect(
+            LinkDisagreement.verdict(text: "paypal.com/signin", target: try Self.url("https://www.paypal.com/signin"))
+                == .open
+        )
+        #expect(LinkDisagreement.verdict(text: "paypal.com.", target: try Self.url("https://paypal.com./x")) == .open)
+    }
+
+    @Test("text longer than the rule reads claims nothing, whatever is at its end")
+    func overlongTextIsNotRead() {
+        let text = String(repeating: " ", count: LinkDisagreement.textLimit) + "paypal.com"
+        #expect(LinkDisagreement.claimedHost(in: text) == nil)
+    }
+
     @Test("only four schemes ever reach the system, whatever the message asks for")
     func onlyOpenableSchemesAreHandedOn() throws {
         for spelling in ["https://a.test/x", "http://a.test/x", "mailto:a@b.test", "tel:+4930123"] {

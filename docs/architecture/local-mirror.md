@@ -39,8 +39,21 @@ unsubscribed mailboxes beyond what the user opened
 
 One database for all accounts. Cross-account search and a future unified inbox are
 single-statement features that way, and the alternative — a file per account — buys
-isolation we have no use for. Per-account deletion is `DELETE FROM account WHERE id = ?`
-plus `VACUUM`, which the cascade rules in the schema make complete.
+isolation we have no use for. Per-account deletion is `MailStore.deleteAccount(id:)` then
+`MailStore.vacuum()`, and it is complete on disk, not only to every query:
+
+- `DELETE FROM account WHERE id = ?` cascades to everything with an `accountId` and, through
+  the trigger, to the search rows; signing out removes the login too (`deleteLogin`), which
+  takes its contacts and their `contactSearch` rows. In the same transaction the `avatar`
+  rows that no remaining message's sender and no remaining contact names go too: `avatar` is
+  shared across accounts (ADR-0033) and no cascade reaches it. An avatar answer still in
+  flight for the deleted account is not written, because the writer checks the account
+  still exists.
+- `vacuum()` runs FTS5 `rebuild` on `messageSearch` and `contactSearch`, then `VACUUM`, then
+  a `TRUNCATE` checkpoint. A delete from an FTS5 table only hides the old postings behind a
+  marker; the rebuild rewrites the index from what is still there, `VACUUM` drops the freed
+  pages, and the checkpoint empties the write-ahead log, so none of them keeps what was
+  removed ([ADR-0105](../decisions/0105-removed-mail-leaves-the-search-index.md)).
 
 At-rest protection is the sandbox container plus FileVault, and the threat model is
 written down honestly in [security.md](security.md) and
@@ -253,7 +266,7 @@ Every read goes to the database. The rules the store enforces:
 | Message body | `messageBody` | Enqueue at head, show a lightweight "fetching" state on that one message |
 | Thread siblings | `message` grouped by `threadRootId` | Same as the list |
 | Attachment payload | Network on demand | Normal download progress; inline images are stored after the first fetch |
-| Avatar | `avatar` | Fetch once, store, including a `missing` marker so a 404 is not re-asked every launch |
+| Avatar | `avatar`, keyed by SQLite `lower()` of the address ([ADR-0104](../decisions/0104-one-fold-for-the-avatar-key.md)) | Fetch once, store, including a `missing` marker so a 404 is not re-asked every launch |
 | Search | `messageSearch` | Reports how much of the account is indexed |
 
 The one place the app deliberately blocks on the network is an attachment download the
@@ -266,9 +279,10 @@ What there is instead:
 
 - **Settings › Storage** lists each account: local size, message count, mirror state,
   backfill progress.
-- **Remove local copies** deletes `messageBody`, `attachment.data` and the search rows for
-  that account, keeps envelopes, `VACUUM`s, and leaves the app fully working — bodies
-  re-fetch when opened, and the backfill can be restarted.
+- **Remove local copies** deletes `messageBody`, `attachment.data` and the account's body
+  text from the search index (its postings too, see above), keeps envelopes, runs
+  `vacuum()`, and leaves the app fully working — bodies re-fetch when opened, and the
+  backfill can be restarted.
 - **Re-download** clears the same and resets `bodyState` to `missing`, which restarts
   stage 2. Used when the server's sanitiser changes and old HTML should be refreshed —
   that is what `messageBody.sanitiserGeneration` is for.
