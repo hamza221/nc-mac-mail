@@ -19,8 +19,14 @@ work offline and the network only syncs.
 
 Download `NextcloudMail-<version>.dmg` from
 [GitHub Releases](https://github.com/hamza221/nc-mac-mail/releases) and drag the app to
-Applications. Release builds are not notarized yet, so the first launch needs
-right-click → Open. Or build from source: see [Development](#development).
+Applications. Releases are signed with Developer ID and notarized. Or build from source:
+see [Development](#development).
+
+After that the app updates itself. It checks once a day, and App ▸ Check for Updates…
+checks right away. If an update arrives while you are busy, the sidebar shows a line
+instead of a window taking focus. Settings ▸ General ▸ Updates chooses the channel:
+**Stable**, or **Beta**, which also gets pre-releases. Beta builds start on Beta. Builds
+older than the first one with the updater have to be replaced by hand once.
 
 ## Use
 
@@ -68,24 +74,34 @@ account; for a locally signed build and the sandbox details, see
 
 ### Releasing
 
-Push a tag `v<version>` (or run the **Release** workflow by hand with a tag) and
-`.github/workflows/release.yml` builds Release on a macOS runner, packages
-`NextcloudMail-<version>.dmg` with `Scripts/make-dmg.sh` — styled background, app icon
-next to an `/Applications` drop link — and publishes a GitHub release with the DMG
-attached and generated notes. The same script runs locally:
+Bump `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` in every target, push to `main`,
+then run:
 
 ```sh
 brew install create-dmg
-Scripts/make-dmg.sh            # writes build/NextcloudMail-<version>.dmg
+NOTARY_PROFILE=<notarytool keychain profile> Scripts/release.sh
 ```
 
-With no secrets configured the app inside the DMG is ad-hoc signed (ADR-0018), so
-Gatekeeper on another Mac requires right-click → Open, and notarization is a manual
-follow-up. To turn real signing on, no workflow edit is needed: set the repository
-secrets `MACOS_CERT_P12` (base64 Developer ID certificate), `MACOS_CERT_PASSWORD`,
-`APPLE_TEAM_ID`, and for notarization `NOTARY_APPLE_ID` plus `NOTARY_PASSWORD`
-(an app-specific password); the import, sign, notarize and staple steps activate
-when they exist.
+`Scripts/release.sh` does the whole release:
+
+- Builds Release with Developer ID through `Scripts/make-dmg.sh`, which gives the DMG its
+  styled background and an `/Applications` drop link, and re-signs Sparkle's helpers.
+- Notarizes and staples the DMG.
+- Signs it for the in-app updater.
+- Tags `v<version>` and publishes the GitHub release with generated notes. A version
+  like `0.4.0-beta` becomes a pre-release.
+- Adds the item to [`appcast.xml`](appcast.xml), the feed the app reads, tagging
+  pre-releases for the beta channel only.
+
+The update signature uses the EdDSA key stored in the login Keychain under account
+`nc-mac-mail`. If that key is lost, users can no longer receive updates. Keep a backup
+made with Sparkle's `generate_keys --account nc-mac-mail -x <file>`. See
+[ADR-0108](docs/decisions/0108-in-app-updates-use-sparkle-outside-ncmailnet.md).
+
+Pushing a tag no longer publishes anything from CI. If CI replaced the DMG after the
+feed was written, every update to that version would fail. The **Release build**
+workflow still builds a DMG for a tag on request and keeps it as a workflow artifact.
+With no secrets set, that DMG holds an ad-hoc-signed app (ADR-0018).
 
 ## Licence
 
