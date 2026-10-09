@@ -77,7 +77,7 @@ the few types in `NextcloudMailShared/`, which all three targets compile.
 | `NCMailNet` | `MailClient`, `LoginFlow`, `Keychain`, endpoint definitions, the error envelope, retry and backoff policy | Know that a database exists; know what a view is |
 | `NCMailStore` | The GRDB stack, migrations, records, every query, the `StoreObservation` sequences, the storage-size accounting | Make a network request; contain product logic ("archive means move to…"); name a GRDB type in a public signature |
 | `NCMailSync` | Mirror state machine, backfill scheduler, incremental sync, deep reconcile, the mutation queue and its drainer, conflict rules | Import SwiftUI; hold a reference to a view |
-| `NextcloudMail` | Scenes, views, `@Observable` stores, the WKWebView host and scheme handler, keyboard commands, Settings | Make a network request outside `NCMailNet`; read a JSON payload directly |
+| `NextcloudMail` | Scenes, views, `@Observable` stores, the WKWebView host and scheme handler, keyboard commands, Settings | Make a network request outside `NCMailNet` (the one exception is the Sparkle updater, ADR-0108); read a JSON payload directly |
 
 Dependencies point downward only. `NCMailStore` does not know `NCMailNet` exists; the sync
 module is where the two meet. This is what makes "the network only writes to the database"
