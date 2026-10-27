@@ -16,7 +16,8 @@
 #                  app's Info.plist has no CFBundleShortVersionString.
 #   CODE_SIGN_IDENTITY, DEVELOPMENT_TEAM
 #                  When both are set, build with real manual signing instead of
-#                  the project's ad-hoc default. Left unset, the DMG ships an
+#                  the project's ad-hoc default, and sign the DMG with the same
+#                  certificate. Left unset, the DMG ships an
 #                  ad-hoc-signed app (ADR-0018) and notarization does not apply.
 #
 # Styling is done by create-dmg (brew install create-dmg): it drives Finder via
@@ -76,6 +77,7 @@ APP="$DERIVED_DATA/Build/Products/Release/NextcloudMail.app"
 # outer layer, so the notary service would reject the DMG. Re-sign them inside out with the
 # release identity, then the app, whose seal covers the framework (ADR-0108). This is the
 # order Sparkle's own documentation gives; Downloader.xpc keeps its entitlements.
+IDENTITY=""
 if [[ -n "${CODE_SIGN_IDENTITY:-}" && -n "${DEVELOPMENT_TEAM:-}" ]]; then
   IDENTITY="$(security find-identity -v -p codesigning \
     | awk -v name="$CODE_SIGN_IDENTITY" -v team="($DEVELOPMENT_TEAM)" \
@@ -135,6 +137,13 @@ create-dmg \
   --no-internet-enable \
   "$DMG" \
   "$APP"
+
+# The same certificate hash as the app, not the identity's name: with a renewed or a second
+# team's "Developer ID Application" in the keychain, signing by name is ambiguous and fails.
+# Notarizing the DMG needs this signature; stapling afterwards keeps it valid.
+if [[ -n "$IDENTITY" ]]; then
+  codesign --sign "$IDENTITY" --timestamp "$DMG"
+fi
 
 echo "== wrote $DMG"
 du -h "$DMG"

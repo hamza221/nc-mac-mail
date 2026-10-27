@@ -45,7 +45,9 @@ database".
 - **Channels.** Pre-release items are tagged `<sparkle:channel>beta</sparkle:channel>`.
   Stable items are untagged. `allowedChannels(for:)` returns `["beta"]` on the beta
   channel and nothing on stable. A build whose version has a pre-release suffix starts on
-  beta, and the choice is a setting.
+  beta. The starting channel is saved at first launch, so a beta tester who updates to a
+  stable build stays on beta. The choice is a setting, and changing it resets Sparkle's
+  update cycle so the new channel is checked within moments.
 - **Notification.** Scheduled checks run daily (`SUEnableAutomaticChecks`). If one finds
   an update while the app is not in focus, Sparkle uses gentle reminders: the sidebar
   shows "Version X is available" with an Update button instead of a window taking focus.

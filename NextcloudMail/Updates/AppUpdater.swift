@@ -55,7 +55,11 @@ final class AppUpdater {
     private(set) var lastCheckDate: Date?
 
     var channel: UpdateChannel {
-        didSet { defaults.set(channel.rawValue, forKey: UpdateChannel.defaultsKey) }
+        didSet {
+            defaults.set(channel.rawValue, forKey: UpdateChannel.defaultsKey)
+            // Otherwise the new channel waits for the next daily check.
+            if started { controller.updater.resetUpdateCycleAfterShortDelay() }
+        }
     }
 
     var automaticallyChecksForUpdates: Bool {
@@ -70,14 +74,21 @@ final class AppUpdater {
     private let delegate: SparkleDelegate
     private let defaults: UserDefaults
     @ObservationIgnored private var canCheckObservation: NSKeyValueObservation?
+    @ObservationIgnored private var started = false
     private static let logger = Logger(subsystem: "com.nextcloud.mail.macos", category: "updates")
 
     init(bundle: Bundle = .main, defaults: UserDefaults = .standard) {
         self.defaults = defaults
         let version = bundle.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
-        channel =
-            defaults.string(forKey: UpdateChannel.defaultsKey).flatMap(UpdateChannel.init(rawValue:))
-            ?? .initial(forVersion: version)
+        if let stored = defaults.string(forKey: UpdateChannel.defaultsKey).flatMap(UpdateChannel.init(rawValue:)) {
+            channel = stored
+        } else {
+            // Saved now, not left to be re-derived each launch: a beta tester who updates to a
+            // stable build would otherwise drop to the stable channel and miss the next beta.
+            let initial = UpdateChannel.initial(forVersion: version)
+            defaults.set(initial.rawValue, forKey: UpdateChannel.defaultsKey)
+            channel = initial
+        }
         let delegate = SparkleDelegate()
         self.delegate = delegate
         // Not started here: `start()` decides whether this process should update at all.
@@ -100,6 +111,7 @@ final class AppUpdater {
             Self.logger.error("updater did not start: \(error.localizedDescription, privacy: .public)")
             return
         }
+        started = true
         refresh()
         // KVO rather than `publisher(for:).values`: the async sequence never delivered here,
         // and the menu item stayed disabled. Sparkle is a UI-actor type, so changes arrive on

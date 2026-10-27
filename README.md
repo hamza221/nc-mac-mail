@@ -19,8 +19,9 @@ work offline and the network only syncs.
 
 Download `NextcloudMail-<version>.dmg` from
 [GitHub Releases](https://github.com/hamza221/nc-mac-mail/releases) and drag the app to
-Applications. Releases are signed with Developer ID and notarized. Or build from source:
-see [Development](#development).
+Applications. Releases cut with `Scripts/release.sh` are signed with Developer ID and
+notarized; 0.3.0-beta and earlier are not, so their first launch needs right-click → Open.
+Or build from source: see [Development](#development).
 
 After that the app updates itself. It checks once a day, and App ▸ Check for Updates…
 checks right away. If an update arrives while you are busy, the sidebar shows a line
@@ -91,7 +92,11 @@ NOTARY_PROFILE=<notarytool keychain profile> Scripts/release.sh
 - Tags `v<version>` and publishes the GitHub release with generated notes. A version
   like `0.4.0-beta` becomes a pre-release.
 - Adds the item to [`appcast.xml`](appcast.xml), the feed the app reads, tagging
-  pre-releases for the beta channel only.
+  pre-releases for the beta channel only. The feed is pushed last, after the asset is up.
+
+Version and build number are checked before the build starts. If a run fails, run it
+again: an existing tag and release on the same commit are reused and the asset replaced.
+If only the final push of `appcast.xml` failed, run `git reset --hard origin/main` first.
 
 The update signature uses the EdDSA key stored in the login Keychain under account
 `nc-mac-mail`. If that key is lost, users can no longer receive updates. Keep a backup
