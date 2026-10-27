@@ -55,5 +55,16 @@ settings cannot spell. WS-42.
 			</array>
 		</dict>
 	</array>
+	<!-- ADR-0108: in-app updates. The feed is the appcast committed at the repository's root;
+	     every archive it lists must carry an EdDSA signature from this key. The installer
+	     launcher service is what lets a sandboxed app hand the install to Sparkle. -->
+	<key>SUFeedURL</key>
+	<string>https://raw.githubusercontent.com/hamza221/nc-mac-mail/main/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>niC0BqfTsIoSyzV8NKEGX00NWc22pj3YibovtCIeUrI=</string>
+	<key>SUEnableInstallerLauncherService</key>
+	<true/>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
 </dict>
 </plist>

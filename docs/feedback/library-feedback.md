@@ -1963,3 +1963,15 @@ says why for each, from their reports.
 The standing obligation is unchanged: a workstream that touched the library and found a
 workaround appends an entry below, in the format at the top of this file. The next
 curation moves it into Part 1b or Part 2.
+
+### No notice row for app-level news, so the update line copies the status footer
+**Workstream:** in-app updates (ADR-0108) · **Component:** none (`NCNoteCard` considered) · **Severity:** polish
+**Where:** NextcloudMail/Updates/UpdateViews.swift (`UpdateAvailableBanner`)
+The sidebar line that says an update is waiting is a hand-built `HStack`: icon, caption,
+tertiary small button, padded with `theme.metrics.spacing.tight`, the same as
+`StatusFooter`. `NCNoteCard(.info)` is too heavy for permanent chrome at the bottom of a
+sidebar, and its children are combined for accessibility, so the button inside it is
+unreachable (see the existing `NCNoteCard` entry). What would have helped: a compact
+`NCStatusRow(symbol:text:action:)` that both the status footer and this line could use.
+The settings section needed nothing from the library: `Form` with `Picker`, `Toggle` and
+`LabeledContent` worked as is.

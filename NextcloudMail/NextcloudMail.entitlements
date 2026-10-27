@@ -20,5 +20,12 @@
 	<array>
 		<string>$(TeamIdentifierPrefix)com.nextcloud.mail.macos</string>
 	</array>
+	<!-- ADR-0108: Sparkle's installer runs outside the sandbox; these two names are the
+	     launcher and status services the sandboxed app looks up to reach it. -->
+	<key>com.apple.security.temporary-exception.mach-lookup.global-name</key>
+	<array>
+		<string>$(PRODUCT_BUNDLE_IDENTIFIER)-spks</string>
+		<string>$(PRODUCT_BUNDLE_IDENTIFIER)-spki</string>
+	</array>
 </dict>
 </plist>

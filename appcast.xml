@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+SPDX-FileCopyrightText: Hamza Mahjoubi
+SPDX-License-Identifier: AGPL-3.0-or-later
+
+The in-app update feed (ADR-0108). The app reads it from this path on main, so the path
+is a public contract. Written by Scripts/release.sh; do not edit items by hand, because
+each one carries the EdDSA signature of the exact DMG it points at.
+-->
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+  <channel>
+    <title>Nextcloud Mail for macOS</title>
+    <link>https://github.com/hamza221/nc-mac-mail/releases</link>
+    <language>en</language>
+    <!-- items: newest first -->
+  </channel>
+</rss>

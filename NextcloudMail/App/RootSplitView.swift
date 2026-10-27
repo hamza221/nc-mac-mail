@@ -18,6 +18,7 @@ import SwiftUI
 /// store they take is not available to a `@State` initialiser through `@Environment`.
 struct RootSplitView: View {
     private let session: AppSession
+    @Environment(AppUpdater.self) private var updater
 
     @State private var sidebar: SidebarStore
     @State private var messageList: MessageListStore
@@ -85,7 +86,10 @@ struct RootSplitView: View {
                     )
                     .trackingWidth($sidebarWidth)
                     .safeAreaInset(edge: .bottom) {
-                        StatusFooter(status: session.status, retry: { session.engine.retryFailedActions() })
+                        VStack(spacing: 0) {
+                            UpdateAvailableBanner(updater: updater)
+                            StatusFooter(status: session.status, retry: { session.engine.retryFailedActions() })
+                        }
                     }
             } content: {
                 contentColumn

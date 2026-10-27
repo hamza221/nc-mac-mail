@@ -10,6 +10,7 @@ import SwiftUI
 /// settings, and "Add mail account" for every login whose server allows it.
 struct GeneralSettingsView: View {
     @Environment(AppSession.self) private var session
+    @Environment(AppUpdater.self) private var updater
     @Environment(SettingsStore.self) private var settingsStore
 
     @AppStorage(SettingsTab.preferredTabKey) private var selectedTab = SettingsTab.general
@@ -69,6 +70,8 @@ struct GeneralSettingsView: View {
             } header: {
                 Text("Account settings")
             }
+
+            UpdateSettingsSection(updater: updater)
         }
         .formStyle(.grouped)
         .onAppear(perform: refreshDefault)
