@@ -70,11 +70,14 @@ message never reaches our disk at all.
 
 ### Other applications on the Mac
 
-- App Sandbox with `com.apple.security.network.client` and
-  `com.apple.security.files.user-selected.read-write`, nothing else. The second is what lets
-  an explicit save panel open at all. Without it `NSSavePanel` logs "missing the User
-  Selected File Read/Write app sandbox entitlement" and attachment saving silently did
-  nothing. No file access outside the container except where the reader chose in that panel.
+- App Sandbox with `com.apple.security.network.client`,
+  `com.apple.security.files.user-selected.read-write` and `com.apple.security.print`,
+  nothing else. The second is what lets an explicit save panel open at all. Without it
+  `NSSavePanel` logs "missing the User Selected File Read/Write app sandbox entitlement"
+  and attachment saving silently did nothing. No file access outside the container except
+  where the reader chose in that panel. The third is Print Message: without it the sandbox
+  answers every print operation with "This application does not support printing", which
+  no test caught because the unit tests build the printable document, never the print sheet.
 - One temporary mach-lookup exception, for `<bundle id>-spks` and `-spki`: the two
   services Sparkle's out-of-sandbox installer listens on
   ([ADR-0108](../decisions/0108-in-app-updates-use-sparkle-outside-ncmailnet.md)). The

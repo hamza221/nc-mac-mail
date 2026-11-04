@@ -92,6 +92,8 @@ struct KeyboardShortcutsWindow: Scene {
             KeyboardShortcutsView()
         }
         .windowResizability(.contentSize)
+        // Links are `SystemAppDelegate`'s; see the main `WindowGroup` in `NextcloudMailApp`.
+        .handlesExternalEvents(matching: [])
     }
 }
 

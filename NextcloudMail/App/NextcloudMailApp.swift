@@ -37,7 +37,11 @@ struct NextcloudMailApp: App {
     }
 
     var body: some Scene {
-        WindowGroup {
+        // An id, like every other scene here, so SwiftUI keeps the window's frame under a
+        // stable "main-AppWindow-1". Without one it keys the frame by the root view's type
+        // description, which differed on every launch — a developer's container had 376 such
+        // keys — so the window never came back at the size it was left.
+        WindowGroup(id: "main") {
             RootSplitView(session: session)
                 .environment(session)
                 .environment(updater)
@@ -50,6 +54,13 @@ struct NextcloudMailApp: App {
                 .systemIntegration(session: session)  // WS-42 exception
                 .mailNotifications(session.notifier)  // WS-41 exception
         }
+        // A `mailto:` or `ncmail:` link is `SystemAppDelegate`'s, never a reason for a window.
+        // Without this SwiftUI opened a second main window for every link even though the
+        // delegate handles the URL, and that window's `RootSplitView` took over the shared
+        // navigation and `triage.listStore` — the first window lost its mailbox, and closing
+        // the second left every triage command disabled until relaunch. Every other scene
+        // declines links the same way, or SwiftUI hands the URL to the next one in line.
+        .handlesExternalEvents(matching: [])
         .commands {
             MailCommands(context: session.triage)
             SearchCommands(model: session.search)

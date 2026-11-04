@@ -1,0 +1,10 @@
+/*
+SPDX-FileCopyrightText: Hamza Mahjoubi
+SPDX-License-Identifier: AGPL-3.0-or-later
+
+The application menu, the widget gallery and Notification Center read the localized
+CFBundleName. The generated Info.plist sets it to PRODUCT_NAME ("NextcloudMail") and
+overrides the key in System/Info.plist, so the readable name lives here; the bundle and
+executable stay NextcloudMail.
+*/
+"CFBundleName" = "Nextcloud Mail";

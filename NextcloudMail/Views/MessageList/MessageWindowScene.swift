@@ -23,6 +23,8 @@ struct MessageWindowScene: Scene {
                 .ncTheme(session.theme)
         }
         .defaultSize(width: 720, height: 640)
+        // Links are `SystemAppDelegate`'s; see the main `WindowGroup` in `NextcloudMailApp`.
+        .handlesExternalEvents(matching: [])
     }
 }
 

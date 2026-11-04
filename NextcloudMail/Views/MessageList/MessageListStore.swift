@@ -183,7 +183,7 @@ final class MessageListStore {
     }
 
     var title: String {
-        source?.title ?? mailbox?.displayName ?? String(localized: "Messages")
+        source?.title ?? mailbox?.localizedDisplayName ?? String(localized: "Messages")
     }
 
     /// The selected rows, for triage to act on.
