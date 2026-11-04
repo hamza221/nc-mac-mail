@@ -64,6 +64,10 @@ final class SidebarStore {
     private var outboxObservation: Task<Void, Never>?
     private var accountTasks: [Int64: Task<Void, Never>] = [:]
     private var testedAccounts: Set<Int64> = []
+    /// Views currently started. A `layout-mode` change swaps the split view, and SwiftUI runs
+    /// the new sidebar's `.task` before the old one's `.onDisappear` (issue #7); counting is
+    /// what keeps that late `stop()` from cancelling the observation the new view relies on.
+    private var activeClients = 0
 
     nonisolated private static let logger = Logger(subsystem: "com.nextcloud.mail.macos", category: "sidebar")
 
@@ -86,8 +90,10 @@ final class SidebarStore {
 
     // MARK: - Lifecycle
 
-    /// Starts observing. Safe to call more than once: a run already in progress is left alone.
+    /// Starts observing, once per view that shows the sidebar; balance each call with
+    /// ``stop()``. A run already in progress is left alone.
     func start() {
+        activeClients += 1
         guard accountsObservation == nil else { return }
         accountsObservation = Task { [weak self] in
             guard let store = self?.store else { return }
@@ -114,10 +120,13 @@ final class SidebarStore {
         }
     }
 
-    /// The view calls this when the column goes away. Cancelling every task is enough --
-    /// dropping the iterator terminates the store's sequence, which terminates the database
-    /// observation with it ([ADR-0034](../../../docs/decisions/0034-the-store-returns-its-own-sequence.md)).
+    /// The view calls this when the column goes away; observation ends with the last view.
+    /// Cancelling every task is enough -- dropping the iterator terminates the store's
+    /// sequence, which terminates the database observation with it
+    /// ([ADR-0034](../../../docs/decisions/0034-the-store-returns-its-own-sequence.md)).
     func stop() {
+        activeClients = max(activeClients - 1, 0)
+        guard activeClients == 0 else { return }
         accountsObservation?.cancel()
         accountsObservation = nil
         outboxObservation?.cancel()

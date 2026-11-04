@@ -163,6 +163,25 @@ struct SidebarStoreTests {
         #expect(model.mailboxNodes[account.id] == nil)
     }
 
+    /// A `layout-mode` change swaps the split view, so SwiftUI builds a second `SidebarView`
+    /// on the same store and runs its `.task` *before* the old one's `.onDisappear` (issue #7).
+    @Test("a view's stop after another view's start keeps the observation running")
+    func overlappingViewsKeepObserving() async throws {
+        let store = try MailStore.inMemory()
+        let account = try await makeAccount(store)
+        try await makeMailbox(store, accountId: account.id, remoteId: 1, name: "INBOX", specialRole: "inbox")
+
+        let model = SidebarStore(store: store)
+        model.start()  // first view's .task
+        #expect(await settled({ model.accounts.count }, is: 1))
+        model.start()  // second view's .task
+        model.stop()  // first view's .onDisappear
+
+        #expect(await settled({ model.mailboxNodes[account.id]?.count }, is: 1))
+        try await makeMailbox(store, accountId: account.id, remoteId: 2, name: "Archive")
+        #expect(await settled({ model.mailboxNodes[account.id]?.count }, is: 2))
+    }
+
     @Test("a node with no persisted state is expanded by default")
     func expansionDefaultsToExpanded() throws {
         let model = SidebarStore(store: try MailStore.inMemory())
