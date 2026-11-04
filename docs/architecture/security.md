@@ -75,7 +75,15 @@ message never reaches our disk at all.
   an explicit save panel open at all. Without it `NSSavePanel` logs "missing the User
   Selected File Read/Write app sandbox entitlement" and attachment saving silently did
   nothing. No file access outside the container except where the reader chose in that panel.
+- One temporary mach-lookup exception, for `<bundle id>-spks` and `-spki`: the two
+  services Sparkle's out-of-sandbox installer listens on
+  ([ADR-0108](../decisions/0108-in-app-updates-use-sparkle-outside-ncmailnet.md)). The
+  updater is also the one network client outside `NCMailNet`. It fetches only the appcast
+  and the DMG, sends no user data, and installs nothing that lacks both our EdDSA
+  signature and our Developer ID.
 - Hardened runtime, Developer ID signature, notarization before any distribution.
+  `Scripts/release.sh` is the one path that produces all three, and it re-signs Sparkle's
+  bundled helpers with the release identity.
 - The database lives inside the container, so another sandboxed app cannot read it.
 
 ## Threats we do not defend against, and why

@@ -20,6 +20,8 @@ import SwiftUI
 @main
 struct NextcloudMailApp: App {
     @State private var session: AppSession
+    /// In-app updates (ADR-0108). App-wide rather than per session: it updates the app, not mail.
+    @State private var updater: AppUpdater
     @NSApplicationDelegateAdaptor(SystemAppDelegate.self) private var systemDelegate  // WS-42 exception
 
     init() {
@@ -28,12 +30,17 @@ struct NextcloudMailApp: App {
             initialValue: AppSession(
                 store: store, initialTheme: ThemeCache.cachedTheme(), mirrorIsTemporary: isTemporary)
         )
+        // Started once per process, not per window; a test host never updates itself.
+        let updater = AppUpdater()
+        if !Self.isHostingTests { updater.start() }
+        _updater = State(initialValue: updater)
     }
 
     var body: some Scene {
         WindowGroup {
             RootSplitView(session: session)
                 .environment(session)
+                .environment(updater)
                 .ncTheme(session.theme)
                 .task {
                     // The host of a test run keeps its session inert — see `isHostingTests`.
@@ -46,6 +53,7 @@ struct NextcloudMailApp: App {
         .commands {
             MailCommands(context: session.triage)
             SearchCommands(model: session.search)
+            UpdateCommands(updater: updater)
         }
         KeyboardShortcutsWindow()
         ComposerScene(session: session)
@@ -53,6 +61,7 @@ struct NextcloudMailApp: App {
         Settings {
             SettingsScene()
                 .environment(session)
+                .environment(updater)
         }
     }
 

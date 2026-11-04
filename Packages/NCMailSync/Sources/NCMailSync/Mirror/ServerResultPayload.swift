@@ -3,7 +3,7 @@
 
 internal import Foundation
 public import NCMailCore
-public import NCMailStore
+internal import NCMailStore
 
 /// The families of `serverResult` row (ADR-0067) and the key each one is filed under.
 ///

@@ -119,6 +119,7 @@ old one stays.*
 | [0105](0105-removed-mail-leaves-the-search-index.md) | Removed mail leaves the file: the search indexes are rebuilt before every removal's `VACUUM` | Accepted |
 | [0106](0106-link-disagreement-is-recorded-per-anchor.md) | Link disagreement is recorded per anchor, keyed by a normalised target | Accepted |
 | [0107](0107-the-message-web-view-strips-loading-menu-items.md) | The message web view strips the context-menu items that start a load | Accepted |
+| [0108](0108-in-app-updates-use-sparkle-outside-ncmailnet.md) | In-app updates use Sparkle 2, outside NCMailNet, with a stable and a beta channel | Accepted |
 
 ## Which ones matter most
 
