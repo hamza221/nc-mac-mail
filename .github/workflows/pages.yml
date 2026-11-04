@@ -1,0 +1,36 @@
+# SPDX-FileCopyrightText: Hamza Mahjoubi
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+name: Landing page
+
+# Publishes site/ to GitHub Pages. The appcast is not served from here: Sparkle reads it from
+# raw.githubusercontent.com (ADR-0108), so this site can change without touching updates.
+on:
+  push:
+    branches: [main]
+    paths: ["site/**", ".github/workflows/pages.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<!--
+SPDX-FileCopyrightText: Hamza Mahjoubi
+SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NC Mail for macOS</title>
+<meta name="description" content="NC Mail: a native, local-first macOS mail client for Nextcloud.">
+<link rel="icon" href="icon.png">
+<style>
+  :root { color-scheme: light dark; --fg: #1d1d1f; --muted: #6e6e73; --bg: #fff; --accent: #0082c9; }
+  @media (prefers-color-scheme: dark) { :root { --fg: #f5f5f7; --muted: #a1a1a6; --bg: #111; } }
+  body { margin: 0; font: 17px/1.5 -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif; color: var(--fg); background: var(--bg); }
+  main { max-width: 760px; margin: 0 auto; padding: 64px 24px; text-align: center; }
+  h1 { font-size: 44px; margin: 16px 0 8px; }
+  .lead { color: var(--muted); font-size: 20px; margin: 0 0 32px; }
+  .button { display: inline-block; background: var(--accent); color: #fff; text-decoration: none; padding: 12px 28px; border-radius: 10px; font-weight: 600; }
+  .note { color: var(--muted); font-size: 14px; margin-top: 12px; }
+  .shot { width: 100%; margin: 48px 0; border-radius: 10px; box-shadow: 0 10px 40px rgba(0,0,0,.25); }
+  ul { list-style: none; padding: 0; text-align: left; display: grid; gap: 16px; }
+  li strong { display: block; }
+  footer { color: var(--muted); font-size: 13px; margin-top: 56px; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <img src="icon.png" width="128" height="128" alt="NC Mail app icon">
+  <h1>NC Mail</h1>
+  <p class="lead">A native macOS mail client for your Nextcloud.</p>
+
+  <a class="button" href="https://github.com/hamza221/nc-mac-mail/releases">Download for macOS</a>
+  <p class="note">Not notarized yet: on first launch, right-click the app and choose Open.</p>
+
+  <img class="shot" src="screenshot.png" alt="NC Mail main window with mailboxes, message list and an open message">
+
+  <ul>
+    <li><strong>Local first</strong>Your mail is mirrored to a database on your Mac. Read, search and triage offline; changes sync back to your own Nextcloud server.</li>
+    <li><strong>Contacts integration</strong>Your Nextcloud address books, right in the app.</li>
+    <li><strong>Nextcloud Assistant integration</strong>Use your server's Assistant directly from your mail.</li>
+    <li><strong>Feature parity with Nextcloud Mail</strong>The goal is everything the Nextcloud Mail web app does, as a native Mac app.</li>
+  </ul>
+
+  <footer>
+    <p>NC Mail is an independent project and is not affiliated with, or endorsed by, Nextcloud GmbH. Nextcloud is a trademark of Nextcloud GmbH.</p>
+    <p><a href="https://github.com/hamza221/nc-mac-mail">Source on GitHub</a> · AGPL-3.0-or-later</p>
+  </footer>
+</main>
+</body>
+</html>

@@ -63,3 +63,10 @@ path = "NextcloudMail/Assets.xcassets/**"
 precedence = "aggregate"
 SPDX-FileCopyrightText = ["2018-2026 Google LLC", "Hamza Mahjoubi"]
 SPDX-License-Identifier = "Apache-2.0"
+
+# The landing page's copy of the app icon (site/), same origin as above.
+[[annotations]]
+path = "site/icon.png"
+precedence = "aggregate"
+SPDX-FileCopyrightText = ["2018-2026 Google LLC", "Hamza Mahjoubi"]
+SPDX-License-Identifier = "Apache-2.0"
