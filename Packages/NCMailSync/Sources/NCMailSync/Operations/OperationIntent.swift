@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 internal import Foundation
-public import NCMailStore
+internal import NCMailStore
 
 /// The account settings a `patchAccount` changes. Nil leaves a field alone, which is exactly
 /// what `PATCH /api/accounts/{id}` does with a key it does not receive.

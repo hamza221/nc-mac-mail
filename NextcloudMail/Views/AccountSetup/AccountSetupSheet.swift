@@ -37,9 +37,9 @@ struct AccountSetupSheet: View {
     }
 
     private func build() {
+        let sessionId = sessionId
         guard model == nil, let account = session.accounts.first(where: { $0.id == sessionId }) else { return }
         let engine = session.engine
-        let sessionId = sessionId
         let built = AccountSetupModel(
             store: session.store,
             identity: account.identity,
