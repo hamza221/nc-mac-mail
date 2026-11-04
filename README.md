@@ -5,6 +5,8 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 # Nextcloud Mail for macOS
 
+[![REUSE status](https://api.reuse.software/badge/github.com/hamza221/nc-mac-mail)](https://api.reuse.software/info/github.com/hamza221/nc-mac-mail)
+
 A native macOS client for [Nextcloud Mail](https://github.com/nextcloud/mail) and Contacts.
 Local-first: your mail lives in a database on your Mac, so reading, search and triage all
 work offline and the network only syncs.
