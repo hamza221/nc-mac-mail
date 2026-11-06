@@ -24,6 +24,7 @@
 #   DEVELOPMENT_TEAM     default 5L5C5L86RV.
 #   SPARKLE_KEY_ACCOUNT  Keychain account of the EdDSA update key; default nc-mac-mail.
 #   DERIVED_DATA         passed through to make-dmg.sh.
+#   NOTES_FILE           Markdown release notes; default: GitHub's generated PR list.
 #
 # This runs locally rather than on CI because the EdDSA private key lives in the release
 # manager's Keychain, and each appcast item signs the exact bytes of the DMG it names: an
@@ -55,6 +56,7 @@ git fetch -q --tags origin main
 COMMIT="$(git rev-parse HEAD)"
 [[ "$COMMIT" == "$(git rev-parse origin/main)" ]] || die "main is not the same as origin/main"
 grep -qF "$MARKER" "$APPCAST" || die "$APPCAST has lost its insertion marker"
+[[ -z "${NOTES_FILE:-}" || -s "$NOTES_FILE" ]] || die "NOTES_FILE $NOTES_FILE is missing or empty"
 
 SETTINGS="$(xcodebuild -project NextcloudMail.xcodeproj -target NextcloudMail \
   -configuration Release -showBuildSettings 2>/dev/null)"
@@ -106,9 +108,13 @@ if [[ "$VERSION" == *-* ]]; then
   CHANNEL="<sparkle:channel>beta</sparkle:channel>"
 fi
 
-# Generated without needing the tag or the release to exist yet.
-NOTES="$(gh api -X POST "repos/$REPO/releases/generate-notes" \
-  -f tag_name="$TAG" -f target_commitish="$COMMIT" --jq .body)"
+if [[ -n "${NOTES_FILE:-}" ]]; then
+  NOTES="$(<"$NOTES_FILE")"
+else
+  # Generated without needing the tag or the release to exist yet.
+  NOTES="$(gh api -X POST "repos/$REPO/releases/generate-notes" \
+    -f tag_name="$TAG" -f target_commitish="$COMMIT" --jq .body)"
+fi
 
 # Markdown release notes, because Sparkle renders HTML ones in a web view (ADR-0108).
 ITEM="    <item>

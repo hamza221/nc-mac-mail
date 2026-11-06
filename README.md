@@ -91,8 +91,8 @@ NOTARY_PROFILE=<notarytool keychain profile> Scripts/release.sh
   styled background and an `/Applications` drop link, and re-signs Sparkle's helpers.
 - Notarizes and staples the DMG.
 - Signs it for the in-app updater.
-- Tags `v<version>` and publishes the GitHub release with generated notes. A version
-  like `0.4.0-beta` becomes a pre-release.
+- Tags `v<version>` and publishes the GitHub release with generated notes, or the Markdown
+  in `NOTES_FILE` if set. A version like `0.4.0-beta` becomes a pre-release.
 - Adds the item to [`appcast.xml`](appcast.xml), the feed the app reads, tagging
   pre-releases for the beta channel only. The feed is pushed last, after the asset is up.
 
