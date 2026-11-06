@@ -13,5 +13,30 @@ each one carries the EdDSA signature of the exact DMG it points at.
     <link>https://github.com/hamza221/nc-mac-mail/releases</link>
     <language>en</language>
     <!-- items: newest first -->
+    <item>
+      <title>0.4.0-beta</title>
+      <pubDate>Fri, 06 Nov 2026 10:56:00 +0000</pubDate>
+      <sparkle:version>2</sparkle:version>
+      <sparkle:shortVersionString>0.4.0-beta</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+      <sparkle:channel>beta</sparkle:channel>
+      <description sparkle:format="markdown"><![CDATA[## What's new
+
+- **In-app updates.** The app checks for updates once a day; App ▸ Check for Updates… checks right away. If an update arrives while you are busy, the sidebar shows a line instead of a window taking focus.
+- **Update channels.** Settings ▸ General ▸ Updates chooses **Stable** or **Beta** (which also gets pre-releases). Beta builds start on Beta.
+- **Signed and notarized.** This is the first release signed with Developer ID and notarized by Apple, so it opens without right-click → Open.
+
+## Fixes
+
+- Folders could disappear from under their accounts in the sidebar after switching the layout mode (#7).
+
+## Upgrading
+
+0.3.0-beta and earlier have no updater: replace the app by hand once. Updates after this one install themselves.
+
+**Full Changelog**: https://github.com/hamza221/nc-mac-mail/compare/v0.3.0-beta...v0.4.0-beta]]></description>
+      <sparkle:fullReleaseNotesLink>https://github.com/hamza221/nc-mac-mail/releases/tag/v0.4.0-beta</sparkle:fullReleaseNotesLink>
+      <enclosure url="https://github.com/hamza221/nc-mac-mail/releases/download/v0.4.0-beta/NextcloudMail-0.4.0-beta.dmg" type="application/octet-stream" sparkle:edSignature="YMHVFB2GmLydmbVwSFowBT5egl4sb1WLoTtww9ZJiE95QbZzn+R88pMQXB8zl0+T1YJ26NU7Obo2H1Qfx0glDA==" length="21250351"/>
+    </item>
   </channel>
 </rss>
