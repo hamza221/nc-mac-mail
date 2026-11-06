@@ -14,6 +14,25 @@ each one carries the EdDSA signature of the exact DMG it points at.
     <language>en</language>
     <!-- items: newest first -->
     <item>
+      <title>0.4.1-beta</title>
+      <pubDate>Fri, 06 Nov 2026 11:51:23 +0000</pubDate>
+      <sparkle:version>3</sparkle:version>
+      <sparkle:shortVersionString>0.4.1-beta</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+      <sparkle:channel>beta</sparkle:channel>
+      <description sparkle:format="markdown"><![CDATA[## Fixes
+
+- **Printing works.** File ▸ Print Message… opens the print sheet instead of saying the app does not support printing.
+- **`mailto:` links open only the composer.** Before, each link also opened a second main window that took over the mailbox and left triage disabled until relaunch.
+- **Horizontal split.** Both panes span the full width and open half and half. The split keeps its proportion when the window resizes, and the position you drag it to is remembered.
+- **Main window position and size are restored** across launches.
+- **Names.** The app menu reads "Nextcloud Mail", the list title shows translated folder names ("Inbox", not "INBOX"), and the ⋯ menu says "Mark as unread/read/important/unimportant".
+
+**Full Changelog**: https://github.com/hamza221/nc-mac-mail/compare/v0.4.0-beta...v0.4.1-beta]]></description>
+      <sparkle:fullReleaseNotesLink>https://github.com/hamza221/nc-mac-mail/releases/tag/v0.4.1-beta</sparkle:fullReleaseNotesLink>
+      <enclosure url="https://github.com/hamza221/nc-mac-mail/releases/download/v0.4.1-beta/NextcloudMail-0.4.1-beta.dmg" type="application/octet-stream" sparkle:edSignature="CVRxZUDEEkH3Be7vZos42JjsAFh3DfiSA90SHZ185jpC9Gp4rMfy34I1YBM2g0CX7lV/0F5znlyyRV4L7OJXCw==" length="21270892"/>
+    </item>
+    <item>
       <title>0.4.0-beta</title>
       <pubDate>Fri, 06 Nov 2026 10:56:00 +0000</pubDate>
       <sparkle:version>2</sparkle:version>
