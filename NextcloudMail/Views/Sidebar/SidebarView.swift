@@ -291,19 +291,9 @@ private struct MailboxTreeRowView: View {
 
     private var ownCount: Int { showsCounts ? node.unreadCount : 0 }
 
-    /// Special top-level folders carry the translated name whatever the server calls them.
     private var displayName: String {
-        guard node.depth == 0, let role else { return node.displayName }
-        switch role {
-        case "inbox": return String(localized: "Inbox")
-        case "drafts": return String(localized: "Drafts")
-        case "sent": return String(localized: "Sent")
-        case "trash": return String(localized: "Trash")
-        case "junk": return String(localized: "Junk")
-        case "archive": return String(localized: "Archive")
-        case "all": return String(localized: "All")
-        default: return node.displayName
-        }
+        guard node.depth == 0, let special = SpecialMailboxName.localized(role: role) else { return node.displayName }
+        return special
     }
 
     private var syncFailureHelp: String {

@@ -9,8 +9,9 @@ import OSLog
 /// ``SystemLink`` to ``SystemEvents``:
 ///
 /// - URLs the app is asked to open — `mailto:` and `ncmail:`, registered in
-///   `System/Info.plist`. Implementing `application(_:open:)` is also what stops SwiftUI
-///   from opening a second main window for each URL.
+///   `System/Info.plist`. Implementing `application(_:open:)` alone does not stop SwiftUI
+///   opening a second main window for each URL; the main `WindowGroup`'s
+///   `.handlesExternalEvents(matching: [])` does.
 /// - A Spotlight result (`CSSearchableItemActionType`).
 /// - The Services menu (``SystemServicesProvider``).
 final class SystemAppDelegate: NSObject, NSApplicationDelegate {

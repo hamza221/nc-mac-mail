@@ -14,6 +14,10 @@
 	     nothing. Nothing reads the user's files unprompted. -->
 	<key>com.apple.security.files.user-selected.read-write</key>
 	<true/>
+	<!-- Print Message. The sandbox refuses NSPrintOperation without it ("This application
+	     does not support printing"); it reaches the print system, not any file. -->
+	<key>com.apple.security.print</key>
+	<true/>
 	<!-- ADR-0100: the one container shared with the widget and Share extensions. It holds
 	     the widget snapshot (ADR-0071) and the Share inbox, never the mirror. -->
 	<key>com.apple.security.application-groups</key>

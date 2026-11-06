@@ -25,6 +25,9 @@ struct ComposerScene: Scene {
             }
         }
         .defaultSize(width: 760, height: 680)
+        // A `mailto:` reaches the composer through `SystemAppDelegate` with its request; a
+        // window SwiftUI opened for the URL itself would have no request and draw nothing.
+        .handlesExternalEvents(matching: [])
         .commands {
             CommandGroup(replacing: .appTermination) {
                 Button("Quit Nextcloud Mail") { ComposerWindows.shared.requestQuit() }

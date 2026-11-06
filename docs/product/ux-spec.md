@@ -707,7 +707,7 @@ Extends [Message list](#message-list); where the two disagree, this section is c
 | Value | Window |
 | --- | --- |
 | `vertical-split` (default) | Three columns: sidebar, list, message |
-| `horizontal-split` | Two columns: sidebar, then the list above the message in a resizable vertical split |
+| `horizontal-split` | Two columns: sidebar, then the list above the message, both full width. The divider opens half and half, keeps its proportion as the window resizes, and a drag sets the proportion, remembered on this Mac ([ADR-0109](../decisions/0109-the-horizontal-split-is-a-proportional-swiftui-split.md)) |
 | `no-split` | Two columns: sidebar, then the list full width; opening a message (double-click, Return) replaces the list with the message and a Back button |
 
 The selection lives in the list's model, not in a view, so switching layout keeps the
@@ -819,7 +819,7 @@ recipient, with "Reply to sender only" in the menu), **Forward**, and the **⋯*
 | --- | --- |
 | Reply to sender only | `openComposer(.reply(mode: .sender))` |
 | Forward as attachment / Edit as new | `openComposer(.forward(asAttachment: true))` / `.editAsNew` |
-| Star / Unstar, Mark important / unimportant, Mark unread | queued `setFlags` on this message |
+| Star / Unstar, Mark as important / unimportant, Mark as unread / read | queued `setFlags` on this message — "Mark as …" as in the Message menu |
 | Translate | the translation sheet — only when the login's `llmTranslationEnabled` is not false |
 | Copy direct link | `ncmail://open/<Message-ID>` on the pasteboard, label "Link copied" for 2 s; disabled with "Message ID is missing" when there is none |
 | View source | a sheet "Message source", monospaced, selectable; pending until the `messageSource` row lands, offline shows the cached row or "Not downloaded yet" |

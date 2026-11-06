@@ -32,10 +32,10 @@ struct MessageActionsMenu: View {
                 CalendarMenuItems(messageId: header.messageId)
                 Divider()
                 Button(header.isFlagged ? "Unstar" : "Star") { Task { await model.toggle(flag: .star) } }
-                Button(header.isImportant ? "Mark unimportant" : "Mark important") {
+                Button(header.isImportant ? "Mark as unimportant" : "Mark as important") {
                     Task { await model.toggle(flag: .important) }
                 }
-                Button(header.isSeen ? "Mark unread" : "Mark read") { Task { await model.toggle(flag: .unread) } }
+                Button(header.isSeen ? "Mark as unread" : "Mark as read") { Task { await model.toggle(flag: .unread) } }
                 Divider()
                 if model.offersTranslation {
                     Button("Translate") { sheet = .translation }
